@@ -73,3 +73,16 @@ User instruction ("plan with Fable 5, execute with Opus"). Fable retains: interf
 design, force-integration gate review, integration debugging, final review. Opus
 agents own the six Phase-1 workstreams. Where a workstream is unusually
 correctness-critical (A2 physics), Fable reviews the diff line-by-line before G1.
+
+**D-013 · 2026-08-24 · Two-tier compute: local P2000 for smoke/gates, Kaggle free tier for research-grade sweeps**
+User directive: research-grade fidelity using the appropriate service. For this project
+that is Kaggle (~30 GPU-h/wk, P100/2xT4, 12 h sessions) as the sweep workhorse — matches
+the spec's own compute table. Local 4 GB P2000 stays the debug/gating device (force-
+integration gate, 5-epoch smokes, baselines, conformal/coverage CPU work). Repo gets
+Kaggle execution scaffolding: kernel driver notebook that clones the repo, pulls the
+processed cache from a Kaggle Dataset, runs `scripts/sweep.py` partitions sized to a
+12 h session, and re-uploads checkpoints+results as a versioned dataset so sessions
+chain. Blockers needing user action (non-blocking for local work): (a) Kaggle API token
+at `C:\Users\LAPTOP\.kaggle\kaggle.json`; (b) approval to create a GitHub repo (gh is
+authenticated as cocomo069) so Kaggle can clone the code. RunPod/Vast A100 budget
+(~$30–80) reserved for the DrivAerNet++ 3D leg only, if/when Globus access exists.
