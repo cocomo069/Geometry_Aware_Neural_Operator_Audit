@@ -275,8 +275,12 @@ def load_runs(
     strict:
         Turn skips (missing/invalid metrics) into ``ValueError``.
     validate:
-        Run ``src.eval.schema.check_metrics`` on each payload and skip rows that
-        violate the frozen schema.  Violations are reported once per run.
+        Run ``src.eval.schema.check_metrics`` on each payload and *warn* about
+        violations.  The row is still kept: a run written before a metric was
+        added to the schema (e.g. the pre-``cd_head_spearman`` smoke run) is
+        useful data with a hole in it, and :func:`_flatten_metrics` already
+        renders a missing leaf as ``NaN``.  ``strict=True`` promotes the warning
+        to an error.
     include:
         Optional allow-list of ``run_id`` values.
 
@@ -314,11 +318,10 @@ def load_runs(
             errors = checker(payload)
             if errors:
                 _warn(
-                    f"{metrics_path}: schema violations, run skipped: "
-                    + "; ".join(errors[:4]),
+                    f"{metrics_path}: schema violations (row kept, missing "
+                    "leaves become NaN): " + "; ".join(errors[:4]),
                     strict,
                 )
-                continue
         row = _flatten_metrics(payload, run_dir)
         if include is not None and row["run_id"] not in set(include):
             continue

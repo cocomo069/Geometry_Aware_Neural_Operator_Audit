@@ -1,0 +1,13 @@
+\begin{table}[t]
+\centering
+\caption{In-distribution accuracy, consistency and cost (AirfRANS \texttt{full}).}
+\label{tab:indist}
+\begin{tabular}{lrrrrrrr}
+\toprule
+model & $p$ rel-$L_2$ & $\tau_w$ rel-$L_2$ & $C_D$ MAE & $C_D$ $\rho$ & FSC $C_D$ & sym & GPU-h \\
+\midrule
+Ridge & \textbf{1.42} & \textbf{1.16} & \textbf{0.0016} & \textbf{0.902} & \textbf{0.00604} & \textbf{0} & \textbf{0} \\
+Constant & \textbf{1.42} & \textbf{1.16} & 0.00342 & -- & 0.0063 & \textbf{0} & \textbf{0} \\
+\bottomrule
+\end{tabular}
+\end{table}

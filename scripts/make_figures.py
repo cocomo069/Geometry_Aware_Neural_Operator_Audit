@@ -167,7 +167,9 @@ def fig12_cost_accuracy(df: pd.DataFrame, outdir: Path) -> Path | None:
 
 # ---- UQ figures (gated on results/uq) ------------------------------------- #
 def fig6_reliability(outdir: Path, results: str) -> Path | None:
-    rel = vdata.reliability_frame(vdata.load_uq(results))
+    uq_dir = Path(results) / "uq"
+    reports = vdata.load_uq_reports(uq_dir)
+    rel = vdata.reliability_frame(reports) if reports else None
     if rel is None or rel.empty:
         print("TODO fig6: no results/uq reliability data")
         return None
