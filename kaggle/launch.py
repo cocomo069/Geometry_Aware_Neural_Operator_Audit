@@ -58,6 +58,7 @@ def main():
             "kernel_type": "script",
             "is_private": True,
             "enable_gpu": True,
+            "machine_shape": "NvidiaTeslaT4",
             "enable_internet": True,
             "dataset_sources": [cache_ds, code_ds] + ([args.runs_dataset] if args.runs_dataset else []),
             "kernel_sources": [],
