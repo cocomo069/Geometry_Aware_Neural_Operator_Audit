@@ -1,1 +1,0 @@
-.venv/Scripts/python.exe fluent/mesh_gen.py --naca 2412 --re 4e+06 --aoa 6 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.6 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/placeholder_naca2412_re4e6_a6/placeholder_naca2412_re4e6_a6.msh --json fluent/cases/placeholder_naca2412_re4e6_a6/placeholder_naca2412_re4e6_a6_mesh.json

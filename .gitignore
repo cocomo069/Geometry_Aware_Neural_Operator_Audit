@@ -20,3 +20,6 @@ Thumbs.db
 *.err.log
 data/cache_build.log
 results/g2_train.log
+
+# stray kernel-output extractions
+/repo/
