@@ -123,3 +123,15 @@ checkpoints existed pre-v2, so no comparability break occurred; rule going forwa
 metrics.json runs are only comparable within the same CACHE_VERSION (recorded by the
 harness). Cached grid_sdf is stored transposed to match M2's row-major latent grid —
 bit-exact equality asserted in tests, do not "fix" the transpose.
+
+**D-018 · 2026-08-24 · Private working repo `Geometry_Aware_Neural_Operator_Audit` under cocomo069; portfolio-rules upload deferred to paper release**
+User provided tokens and approval. GITHUB_UPLOAD_RULES.md (read in full) targets
+finished public portfolio uploads (staged copy, numbered 01_Code/ folders). This repo
+is live infrastructure: Kaggle kernels clone it and tests import `src/` — restructuring
+would break execution; and the spec's scooping-risk mitigation argues against public
+until the arXiv timestamp. Resolution: PRIVATE repo now, named per the rules' naming
+convention; at paper release, a rules-compliant public staging copy is produced
+(numbered folders, README format, figures) alongside the Zenodo archive. Kaggle cloud
+execution uses a repo snapshot shipped inside the Kaggle dataset (no GitHub token in
+the cloud path; the GH PAT the user supplied stays only in Kaggle secrets, unused
+unless snapshot mode fails).
