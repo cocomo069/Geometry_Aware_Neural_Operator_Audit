@@ -723,3 +723,12 @@ Cache: 1000/1000 sims, 0 failed, 5.22 s/sim, ~5 GB; norm_stats from 700 full-tra
 sims; 6 split manifests written. G1 on ALL 1000 sims (kinematic, rho=1, a_ref=1):
 CD rel err median 3.31e-4, p95 1.20e-3, max 1.61e-3; CL median 4.84e-6.
 Protocol quadrature error ~100x below expected model error. G1 CLOSED.
+
+## 2026-08-24 — Kaggle cloud pipeline VALIDATED (Fable/Opus)
+
+Smoke v9 on T4: sweep_rc=0, GNN 2-epoch train in 50s (25s/epoch → ~2.8h/400-epoch run),
+p_rel_l2=0.537, cd_head_spearman=0.869. Full cloud path works: geo-op-code dataset →
+T4 kernel → cache located by manifest search → train → checkpoint → results.zip export →
+pull. Nine smoke iterations fixed: secret attach, tar-extract, output path, log capture,
+data path override (processed_dir + norm_stats), mount path discovery, T4 vs P100 (D-020).
+Launching core grid (3 models × 6 splits).
