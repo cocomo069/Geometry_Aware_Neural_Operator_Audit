@@ -716,3 +716,10 @@ smoke cache built (8.3 s/sim). Force integration on cached ground-truth fields v
 dataset coefficients (pressure_mode=kinematic, rho=1, a_ref=1):
 **CD median rel err 1.44e-4 (max 1.02e-3); CL median 4.79e-6 (max 1.63e-5), n=20.**
 Two orders inside the 1% gate. Full 1000-sim cache build launched.
+
+## 2026-08-24 — Full cache + definitive G1 (Fable)
+
+Cache: 1000/1000 sims, 0 failed, 5.22 s/sim, ~5 GB; norm_stats from 700 full-train
+sims; 6 split manifests written. G1 on ALL 1000 sims (kinematic, rho=1, a_ref=1):
+CD rel err median 3.31e-4, p95 1.20e-3, max 1.61e-3; CL median 4.84e-6.
+Protocol quadrature error ~100x below expected model error. G1 CLOSED.
