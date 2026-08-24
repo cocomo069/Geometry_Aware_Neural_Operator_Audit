@@ -33,12 +33,16 @@ def sh(cmd, **kw):
 
 
 def main():
-    # 1. Obtain the code from the geo-op-code dataset snapshot (repo.tar.gz),
-    #    which launch.py attaches and push_code.py refreshes each launch. This
-    #    needs no GitHub token. Fall back to a git clone if a token is present.
+    # 1. Obtain the code from the geo-op-code dataset, which launch.py attaches
+    #    and push_code.py refreshes each launch. Needs no GitHub token. Kaggle
+    #    auto-extracts the uploaded repo.tar.gz into a read-only ``repo/`` dir,
+    #    so copy it into the writable working tree; handle a raw tarball too.
     REPO.mkdir(parents=True, exist_ok=True)
+    extracted = Path(CODE_DATASET_DIR) / "repo"
     snapshot = Path(CODE_DATASET_DIR) / "repo.tar.gz"
-    if snapshot.exists():
+    if extracted.is_dir():
+        shutil.copytree(extracted, REPO, dirs_exist_ok=True)
+    elif snapshot.exists():
         sh(f"tar -xzf {snapshot} -C {REPO}")
     else:
         token = ""
