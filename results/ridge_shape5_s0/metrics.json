@@ -1,0 +1,41 @@
+{
+  "run_id": "ridge_shape5_s0",
+  "model": "ridge",
+  "split": "shape5",
+  "seed": 0,
+  "tag": null,
+  "params": 29,
+  "train_time_s": 0.0,
+  "epochs": 0,
+  "device": "cuda",
+  "field": {
+    "p_rel_l2": 1.597089909283705,
+    "tau_rel_l2": 1.1848872252556668,
+    "p_mae": 2342.5739266772275,
+    "tau_mae": 9.037020662668859
+  },
+  "coef": {
+    "cl_head_mae": 0.23088999984169892,
+    "cd_head_mae": 0.00201352931825178,
+    "cl_int_mae": 0.681599457923199,
+    "cd_int_mae": 0.005989328373511506,
+    "cd_spearman": 0.2655997287613675,
+    "cd_head_spearman": 0.8604750633129963,
+    "cd_int_spearman": 0.2655997287613675,
+    "cl_rel": 0.9911743429410805,
+    "cd_rel": 0.4900752600795131
+  },
+  "consistency": {
+    "fsc_cl": 0.8530088398922708,
+    "fsc_cd": 0.00482218360588494,
+    "fsc_rel_cl": 1.2852873972863517,
+    "fsc_rel_cd": 0.3559416855587836,
+    "sym_residual": 0.0010174018974868871,
+    "antisym_cl_gap": 0.6084521505981684
+  },
+  "cost": {
+    "infer_ms_per_sim": 0.5275745602295444,
+    "peak_mem_mb": 3.86279296875
+  },
+  "n_sims": 511
+}

@@ -1,0 +1,41 @@
+{
+  "run_id": "ridge_scarce_s0",
+  "model": "ridge",
+  "split": "scarce",
+  "seed": 0,
+  "tag": null,
+  "params": 29,
+  "train_time_s": 0.0,
+  "epochs": 0,
+  "device": "cuda",
+  "field": {
+    "p_rel_l2": 1.3992283573291102,
+    "tau_rel_l2": 1.1676338099410692,
+    "p_mae": 2378.4003632724,
+    "tau_mae": 9.386807120462523
+  },
+  "coef": {
+    "cl_head_mae": 0.12016857319511473,
+    "cd_head_mae": 0.0018487596302293242,
+    "cl_int_mae": 0.7440242171951104,
+    "cd_int_mae": 0.00619682946242392,
+    "cd_spearman": 0.3494802370059252,
+    "cd_head_spearman": 0.8320108002700068,
+    "cd_int_spearman": 0.3494802370059252,
+    "cl_rel": 0.9913518647306228,
+    "cd_rel": 0.4897751195535539
+  },
+  "consistency": {
+    "fsc_cl": 0.761348860085709,
+    "fsc_cd": 0.006230515951756388,
+    "fsc_rel_cl": 0.9990398112368617,
+    "fsc_rel_cd": 0.5329025880548539,
+    "sym_residual": 0.0003783659480896435,
+    "antisym_cl_gap": 0.5323075167834759
+  },
+  "cost": {
+    "infer_ms_per_sim": 0.46448050008621067,
+    "peak_mem_mb": 3.74072265625
+  },
+  "n_sims": 200
+}

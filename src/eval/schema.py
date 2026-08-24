@@ -58,6 +58,8 @@ COEF_KEYS = (
     "cl_int_mae",
     "cd_int_mae",
     "cd_spearman",
+    "cd_head_spearman",
+    "cd_int_spearman",
     "cl_rel",
     "cd_rel",
 )

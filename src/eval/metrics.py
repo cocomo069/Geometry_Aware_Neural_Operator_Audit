@@ -216,6 +216,8 @@ def coef_metrics(
         "cl_int_mae": nanmean(np.abs(cli - clt)),
         "cd_int_mae": nanmean(np.abs(cdi - cdt)),
         "cd_spearman": spearman(cd_rank, cdt),
+        "cd_head_spearman": spearman(cdh, cdt),
+        "cd_int_spearman": spearman(cdi, cdt) if np.isfinite(cdi).any() else None,
         "cl_rel": _agg_rel(cli - clt, clt) if np.isfinite(cli).any() else _agg_rel(clh - clt, clt),
         "cd_rel": _agg_rel(cdi - cdt, cdt) if np.isfinite(cdi).any() else _agg_rel(cdh - cdt, cdt),
     }

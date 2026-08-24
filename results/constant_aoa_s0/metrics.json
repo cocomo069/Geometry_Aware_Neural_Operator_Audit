@@ -1,0 +1,41 @@
+{
+  "run_id": "constant_aoa_s0",
+  "model": "constant",
+  "split": "aoa",
+  "seed": 0,
+  "tag": null,
+  "params": 3,
+  "train_time_s": 0.0,
+  "epochs": 0,
+  "device": "cuda",
+  "field": {
+    "p_rel_l2": 1.1793759688136343,
+    "tau_rel_l2": 1.2047973540720978,
+    "p_mae": 3248.9131892243413,
+    "tau_mae": 12.953252235309296
+  },
+  "coef": {
+    "cl_head_mae": 0.8328267067091122,
+    "cd_head_mae": 0.006647323785653832,
+    "cl_int_mae": 0.7946239674537519,
+    "cd_int_mae": 0.00875953781865157,
+    "cd_spearman": 0.39638215301739593,
+    "cd_head_spearman": null,
+    "cd_int_spearman": 0.39638215301739593,
+    "cl_rel": 1.000336435899292,
+    "cd_rel": 0.5556816444949573
+  },
+  "consistency": {
+    "fsc_cl": 0.6928428445921317,
+    "fsc_cd": 0.00606802743336908,
+    "fsc_rel_cl": 1.6676256584676168,
+    "fsc_rel_cd": 0.39139916109498873,
+    "sym_residual": 0.00019289685020425652,
+    "antisym_cl_gap": 0.059313178062438965
+  },
+  "cost": {
+    "infer_ms_per_sim": 0.2614301020559874,
+    "peak_mem_mb": 3.82861328125
+  },
+  "n_sims": 196
+}

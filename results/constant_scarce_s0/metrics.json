@@ -1,0 +1,41 @@
+{
+  "run_id": "constant_scarce_s0",
+  "model": "constant",
+  "split": "scarce",
+  "seed": 0,
+  "tag": null,
+  "params": 3,
+  "train_time_s": 0.0,
+  "epochs": 0,
+  "device": "cuda",
+  "field": {
+    "p_rel_l2": 1.3992283573291102,
+    "tau_rel_l2": 1.1676338099410692,
+    "p_mae": 2378.4003632724,
+    "tau_mae": 9.386807120462523
+  },
+  "coef": {
+    "cl_head_mae": 0.497492279978469,
+    "cd_head_mae": 0.00355009411694482,
+    "cl_int_mae": 0.7440242285770364,
+    "cd_int_mae": 0.006196829079417512,
+    "cd_spearman": 0.3494802370059252,
+    "cd_head_spearman": null,
+    "cd_int_spearman": 0.3494802370059252,
+    "cl_rel": 0.9913518798961152,
+    "cd_rel": 0.4897750892821045
+  },
+  "consistency": {
+    "fsc_cl": 0.7016128828423098,
+    "fsc_cd": 0.006629151637898758,
+    "fsc_rel_cl": 0.9478757649819018,
+    "fsc_rel_cd": 0.5666483565882074,
+    "sym_residual": 0.0003783659480896435,
+    "antisym_cl_gap": 0.07650423049926758
+  },
+  "cost": {
+    "infer_ms_per_sim": 0.18361499882303178,
+    "peak_mem_mb": 3.74072265625
+  },
+  "n_sims": 200
+}

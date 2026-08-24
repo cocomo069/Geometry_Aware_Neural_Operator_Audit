@@ -1,0 +1,39 @@
+{
+  "run_id": "gnn_full_s0_smoke_dryrun",
+  "model": "gnn",
+  "split": "full",
+  "seed": 0,
+  "tag": "smoke_dryrun",
+  "params": 1389637,
+  "train_time_s": 104.80999340000562,
+  "epochs": 2,
+  "device": "cuda",
+  "field": {
+    "p_rel_l2": 0.9498117036026258,
+    "tau_rel_l2": 0.9387009003091832,
+    "p_mae": 774.28249361135,
+    "tau_mae": 2.741617217955098
+  },
+  "coef": {
+    "cl_head_mae": 0.5777709387242794,
+    "cd_head_mae": 0.006180029269307852,
+    "cl_int_mae": 0.7418748665601015,
+    "cd_int_mae": 0.00799045548774302,
+    "cd_spearman": 0.6606060606060605,
+    "cl_rel": 0.8996131253889567,
+    "cd_rel": 0.4729612374698918
+  },
+  "consistency": {
+    "fsc_cl": 0.5599667694419622,
+    "fsc_cd": 0.011376224225386977,
+    "fsc_rel_cl": 0.8619874977432458,
+    "fsc_rel_cd": 0.7423665302954727,
+    "sym_residual": 0.5514622660009325,
+    "antisym_cl_gap": 0.14635050892829896
+  },
+  "cost": {
+    "infer_ms_per_sim": 194.13765000062995,
+    "peak_mem_mb": 343.28759765625
+  },
+  "n_sims": 10
+}
