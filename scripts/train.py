@@ -230,6 +230,7 @@ def build_datasets(cfg: Mapping[str, Any]) -> dict[str, Any]:
         normalize_stats=stats if stats else "auto",
         load_volume=bool(get_in(cfg, "data.load_volume", False)),
         cache_in_ram=bool(get_in(cfg, "data.cache_in_ram", True)),
+        missing=get_in(cfg, "data.missing", "error"),
     )
     out: dict[str, Any] = {"collate": collate}
     for subset in ("train", "cal", "test"):
