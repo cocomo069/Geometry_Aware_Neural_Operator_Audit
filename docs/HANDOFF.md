@@ -1,0 +1,172 @@
+# HANDOFF.md — Session handoff (written 2026-08-24, end of session 1)
+
+Complete state of the project for whoever (human or Claude) picks this up next.
+Read order for a fresh session: this file → [CONTEXT.md](CONTEXT.md) (frozen interfaces)
+→ [DECISIONS.md](DECISIONS.md) (17 logged decisions + rationale) → [PLAN.md](PLAN.md)
+→ [DATA_NOTES.md](DATA_NOTES.md) (dataset conventions) → [PROGRESS.md](PROGRESS.md) (per-agent logs).
+
+---
+
+## 1. What this project is
+
+Implementation of the research design in
+[`05_geometry_aware_neural_operator_surrogate_uq.md`](../05_geometry_aware_neural_operator_surrogate_uq.md):
+an evaluation/methodology paper auditing three geometry-conditioned neural surrogates
+(GNN, SDF-FNO "GINO-lite", Transolver-style transformer) on AirfRANS with a consistency
+protocol (force self-consistency, symmetry), multi-axis OOD splits, conformal
+uncertainty, data-efficiency curves, and a Fluent-verified active-learning loop.
+Target: arXiv preprint (spec's timeline was discarded per user — ASAP, dependency-ordered).
+
+**Execution model (user-mandated):** Fable 5 plans/gates/integrates; Opus subagents
+implement. Nothing CPU-heavy on this laptop (Fluent runs deferred); GPU free to use;
+research-grade sweeps belong on Kaggle free tier (D-013), local P2000 is for smoke/gates.
+
+## 2. Environment (all working, verified)
+
+- Repo: `D:\Personal Projects\geom_aware_neural_operator`, git on `main`, no remote yet.
+- venv: `.venv` — **Python 3.11, torch 2.13.0+cu126** (P2000 is Pascal sm_61: cu126 is
+  the LAST wheel line that supports it; never upgrade past cu126). Run everything as
+  `.venv/Scripts/python.exe` from repo root. fp32 only, no AMP, no torch.compile (D-004).
+- GPU: Quadro P2000 4 GB. Measured: M1 GNN needs batch 4 (grad-checkpoint knob exists),
+  M2/M3 batch 8. M1 ≈ 0.7 s/sim/epoch → full-split epoch ≈ 8 min locally.
+- Data: AirfRANS fully downloaded (`data/raw/Dataset.zip`, 10.03 GB, extracted to
+  `data/raw/Dataset/`, 1000 sims) and fully cached (`data/processed/airfrans/`,
+  1000 .npz, cache_version=2, ~5 GB, plus `manifest.json` + `norm_stats.json` computed
+  from the 700 `full`-train sims). Six split manifests committed in `data/splits/`.
+- Tests: **352 passed, 3 skipped** as of last full run (`.venv/Scripts/python.exe -m
+  pytest tests/ -q`, ~35 s, CPU-only). Run this first after any resume.
+
+## 3. What is DONE (with the numbers that matter)
+
+### Infrastructure (all committed, all tested)
+| Piece | Where | State |
+|---|---|---|
+| Frozen interfaces | docs/CONTEXT.md | cache schema §4, splits §5, physics §6, model API §7, results schema §9, config/training §10 |
+| Data pipeline (A1) | src/data/, scripts/build_cache.py | cache v2 incl. precomputed grid_sdf (stored TRANSPOSED to match M2 — don't "fix"), edge_index, curvature; bit-exact vs model fallback paths |
+| Physics core (A2) | src/geometry/, src/physics/ | force integration validated analytically (Kutta–Joukowski, d'Alembert) and against dataset |
+| Models (A3) | src/models/ | gnn 1.49M / sdf_fno 1.49M / transolver 1.45M params (matched ±3%); registry `build_model(name, cfg)`; losses with λ_H head term (D-016) |
+| Train/eval infra (A4) | src/utils/, src/eval/, scripts/train.py, evaluate.py, sweep.py, configs/ | per-epoch checkpoint + bit-identical resume (norm_ref in ckpt); `sweep.py --max-seconds`; `data.missing=skip` for partial caches |
+| UQ + active (A5) | src/uq/, src/active/ | split conformal (sim-level coef + field via max/quantile scores), NACA 4/5-digit pool generator (validated vs Abbott & von Doenhoff), acquisition + farthest-point diversity |
+| Aux scaffolds (A6) | fluent/, paper/, model_cards/, scripts/subset_drivaernet.py | Fluent gmsh+journal pipeline with 2 placeholder cases + 3-level grid study RENDERED in fluent/cases/; paper/main.tex COMPILES (12 pp, all 12 figures + 6 tables as placeholders, refs.bib complete); DrivAerNet access doc |
+| Kaggle tier | kaggle/ | session_driver/launch/push_cache/pull_results ready; UNTESTED (blocked on token) |
+
+### Gates & results (the science so far)
+- **GATE G1 PASSED (definitive, n=1000):** integrating cached ground-truth surface
+  fields reproduces dataset coefficients — CD rel err median **3.31e-4**, p95 1.20e-3,
+  max 1.61e-3; CL median **4.84e-6**. Convention set: `pressure_mode='kinematic'`,
+  rho=1, a_ref=1 (dataset stores p/ρ; .vtp normals are INWARD, cache flips to outward).
+- **Baselines done on all 6 splits** (12 runs in `results/{constant,ridge}_<split>_s0/`):
+  headline finding — **ridge (NACA params + condition → CD) ranks CD at Spearman
+  0.83–0.90 on every split incl. OOD**; constant-field integration only 0.27–0.42.
+  This is the bar the neural models must beat (spec §8.b anticipated exactly this).
+- **Pipeline learns on real data:** 2-epoch GNN dry-run trained on GPU end-to-end,
+  metrics.json written (`results/gnn_full_s0_smoke_dryrun/`).
+- Split sizes: full 700/100/200, scarce 160/40/200, reynolds 404/100/496,
+  aoa 704/100/196, shape5 391/98/511, combined 191/48/246 (train/cal/test, disjoint,
+  leakage-tested).
+
+### Git state
+13 commits on `main`, latest `ce978ad`. **Untracked, intentionally:** `src/viz/`
+(A7's half-finished work, see §4), `results/gnn_full_s0_g2/` (dead run, only
+config.yaml — safe to delete), `data/cache_build*.log`, `results/g2_train*.log`
+(empty). `data/raw`, `data/processed`, `checkpoints/` are gitignored by design.
+
+## 4. What was IN FLIGHT when the session died (needs restart)
+
+1. **GATE G2 run — NOT done.** A 60-epoch GNN training (`gnn_full_s0_g2`) was launched
+   detached and died at startup when the machine/session went down (0-byte logs, empty
+   checkpoint dir). Relaunch:
+   `.venv/Scripts/python.exe scripts/train.py --config configs/gnn.yaml split=full seed=0 tag=g2 train.epochs=60`
+   (~6–8 h locally; auto-resumes from `checkpoints/gnn_full_s0_g2/last.pt` if interrupted).
+   G2 = trained M1 beats constant + ridge on CD metrics.
+2. **A7 (figures/tables agent) — half done.** On disk: `src/viz/{style,data,__init__}.py`,
+   `paper/figures/README.md`. Missing: `scripts/make_figures.py`, `scripts/make_tables.py`,
+   `tests/test_viz.py`. The original A7 brief is in the session-1 transcript; in a new
+   session simply re-launch an agent with the same scope (spec Figures 4,5,6,7,8,9,12 +
+   Tables 1–3 from `results/*/metrics.json`; the 12 baseline runs are live fixtures).
+
+## 5. What REMAINS (dependency order, from PLAN.md Phase 3–5)
+
+1. **G2** (above) — then commit its metrics.
+2. **Core grid:** 3 models × 6 splits × seed 0 (18 runs, ~400 epochs each at research
+   fidelity). Sweep spec exists: `configs/sweeps/core.yaml`; runner:
+   `scripts/sweep.py --spec ... --max-seconds N` (skips completed runs; every run
+   checkpoints per epoch). **Local is too slow for the full grid (~days) — this is the
+   Kaggle workload** (see §6 blockers).
+3. **Ensembles:** +4 seeds for 3 models × {full, reynolds, aoa, shape5}
+   (`configs/sweeps/ensembles.yaml`) → K=5 ensembles.
+4. **Conformal + coverage:** CPU-cheap once ensembles exist — `src/uq/` is ready;
+   produce `results/uq/*.json` per split, then reliability/coverage-vs-shift figures.
+5. **Data-efficiency:** sizes {25,50,100,200,400,800} × 3 seeds × (M1, M3 at least).
+6. **Ablations:** M2 conditioning (sdf/mask/sdf+normals — config switch exists),
+   physics-loss λ sweep on M1, ensemble size K∈{1,3,5}, conformal score choice.
+7. **Active learning:** score the NACA pool with the trained ensembles
+   (`src/active/`), select 3×8 cases (uncertainty / +FSC / random), write
+   `fluent/cases_to_run.json` → `fluent/make_cases.py` renders journals.
+8. **Fluent verification runs** — DEFERRED by user instruction (CPU-heavy). Everything
+   is rendered and runnable via the Ansys MCP tools when green-lit; grid-study cases
+   for NACA0012 Re3e6 α5 already in `fluent/cases/`. See docs/FLUENT_PLAN.md.
+9. **Figures/tables** (finish A7) → populate `paper/main.tex` → model cards from
+   metrics → README results table.
+10. **DrivAerNet++ 3D leg** — BLOCKED on user's Globus login (docs/DRIVAERNET_ACCESS.md
+    has the step-by-step); `scripts/subset_drivaernet.py` is ready. Optional stretch;
+    the 2D paper stands alone (D-005).
+
+## 6. Blockers needing the USER (all non-blocking for local G2/figures work)
+
+1. **Kaggle API token** → save at `C:\Users\LAPTOP\.kaggle\kaggle.json`; account must
+   be phone-verified. Unblocks: `kaggle/push_cache.py` (upload the 5 GB processed cache
+   as a dataset) → `kaggle/launch.py --sweep configs/sweeps/core.yaml` (P100 sessions).
+2. **GitHub repo approval** — `gh` is authenticated as **cocomo069** (NEVER use the
+   wkabz07 account — client's). Asked to create private repo `geo-operator-audit`; user
+   has not yet said yes. Before ANY push, read `D:\Personal Projects\GITHUB_UPLOAD_RULES.md`
+   (mandatory per user's global CLAUDE.md; note its naming/structure rules conflict with
+   this repo's layout — resolve with user or via the rules file before pushing).
+3. After repo exists: user adds a read-only fine-grained PAT as Kaggle secret `GH_TOKEN`
+   (kernel clones the repo). Never handle the raw PAT yourself.
+4. (Later) Globus login for DrivAerNet++; green light for CPU-heavy Fluent runs.
+
+## 7. Gotchas the next session must not rediscover the hard way
+
+- **cu126 pin** (D-001): `uv pip install torch --index-url https://download.pytorch.org/whl/cu126`.
+  cu128+ has no Pascal kernels — torch.cuda.is_available() would still be True-ish
+  trap-free but kernels fail; don't touch the torch install.
+- **No compiled-extension deps** (D-002): no PyG/torch_scatter/neuraloperator. Everything
+  is self-implemented; kNN via scipy, scatter via index_add_.
+- **AirfRANS conventions** (DATA_NOTES.md): .vtp normals INWARD (cache flips); pressure
+  is kinematic p/ρ; wall shear uses molecular ν only; `force_coefficient` returns
+  **drag first** `((cd,..),(cl,..))`; sim name fields 2,3 = inlet velocity, AoA;
+  NACA family distinguished only by param count (3→4-digit, 4→5-digit). Canonical
+  parser: `src.data.splits.parse_sim_name` — never re-implement.
+- **grid_sdf in the cache is transposed on purpose** (D-017a) to match M2's row-major
+  latent grid; a test asserts bit-exact equality. Cache/model comparability is tracked
+  by `cache_version` (currently 2); metrics are only comparable within a version.
+- **Normalization** (D-014): positions physical (chord units), fields standardized;
+  the trainer's force-loss closure denormalizes fields AND re-normalizes coefficients —
+  both halves required.
+- **λ_H=0.1 head term must stay on** (D-016) or the coef head gets zero gradient and
+  FSC is meaningless.
+- **Schema validators**: `validate_*` raise, `check_*` return error lists (A4/A5
+  harmonized). `cd_spearman` is on integrated CD; `cd_head_spearman` /
+  `cd_int_spearman` added for the ridge comparison.
+- **Windows**: paths via pathlib; Bash tool heredocs choke on some quoting — agents
+  should use the Write tool for files with heavy `$`/backticks; git prints CRLF
+  warnings (harmless).
+- **Detached long jobs**: Bash background tool calls are killed at 10 min — launch
+  multi-hour jobs via PowerShell `Start-Process` with log redirect (pattern used for
+  cache build; note a machine sleep/restart kills those too, hence per-epoch resume).
+- Session usage limits killed all 6 agents mid-flight once; they were resumed by
+  SendMessage with "continue where you left off" and lost nothing. Partial work on
+  disk + PROGRESS.md is the recovery mechanism.
+
+## 8. Quick-resume commands
+
+```bash
+cd "D:/Personal Projects/geom_aware_neural_operator"
+.venv/Scripts/python.exe -m pytest tests/ -q            # expect ~352 passed
+.venv/Scripts/python.exe -m pytest tests/test_force_integration.py -k gate -q  # G1 re-check
+# G2 (relaunch, detached via PowerShell Start-Process or just foreground overnight):
+.venv/Scripts/python.exe scripts/train.py --config configs/gnn.yaml split=full seed=0 tag=g2 train.epochs=60
+# Baseline table sanity:
+.venv/Scripts/python.exe -c "import json,glob; [print(p.split('\\\\')[1], json.load(open(p))['coef']['cd_head_spearman']) for p in sorted(glob.glob('results/*_s0/metrics.json'))]"
+```
