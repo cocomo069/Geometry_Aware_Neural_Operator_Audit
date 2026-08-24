@@ -1,9 +1,30 @@
-# HANDOFF.md — Session handoff (written 2026-08-24, end of session 1)
+# HANDOFF.md — Session handoff (updated 2026-08-24, session 2)
 
 Complete state of the project for whoever (human or Claude) picks this up next.
 Read order for a fresh session: this file → [CONTEXT.md](CONTEXT.md) (frozen interfaces)
-→ [DECISIONS.md](DECISIONS.md) (17 logged decisions + rationale) → [PLAN.md](PLAN.md)
+→ [DECISIONS.md](DECISIONS.md) (20 logged decisions + rationale) → [PLAN.md](PLAN.md)
 → [DATA_NOTES.md](DATA_NOTES.md) (dataset conventions) → [PROGRESS.md](PROGRESS.md) (per-agent logs).
+
+## Session-2 update (what changed since session 1)
+
+- **Kaggle cloud training is LIVE on T4** (D-020: P100 is Pascal sm_60, incompatible with
+  Kaggle's torch — must request `machine_shape: NvidiaTeslaT4`). Full path validated end
+  to end (smoke v9, sweep_rc=0, GNN 2-epoch in 50s). Setup: private repo
+  `cocomo069/Geometry_Aware_Neural_Operator_Audit`; two Kaggle datasets
+  (`airfrans-cache` = 867 MB processed cache+splits, `geo-op-code` = repo snapshot);
+  driver `kaggle/session_driver.py`, helpers `kaggle/{launch,push_code,push_cache,pull_results}.py`.
+- **Core grid launched** (`configs/sweeps/kaggle_core.yaml`: 3 models × 6 splits × seed 0,
+  batch 16 per D-019) on `cocomo069/geo-op-session`. ~2.8 h/run on T4 → ~5 sessions.
+  **To resume across sessions:** `python kaggle/pull_results.py` (merges results+checkpoints,
+  republishes `geo-op-runs`), then `python kaggle/launch.py --sweep configs/sweeps/kaggle_core.yaml
+  --runs-dataset cocomo069/geo-op-runs`. Sweep skips finished runs.
+- **Figures/tables pipeline done** (`scripts/make_figures.py`, `scripts/make_tables.py`,
+  `src/viz/`): Fig 4 (error-vs-shift) and Fig 5 (FSC scatter) render live from baselines;
+  rest data-gated. Tables 1–2 as LaTeX+MD. 9 viz tests; full suite **369 passing**.
+- **Three QA agents** auditing physics/models, data/eval/UQ, infra/kaggle (session 2, in flight).
+- Push mechanics reminder: `gh` default account is **wkabz07** (client — never touch);
+  `gh auth switch -u cocomo069` before any push, switch back after. Kaggle token at
+  `C:\Users\LAPTOP\.kaggle\access_token`.
 
 ---
 
