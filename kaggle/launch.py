@@ -45,7 +45,7 @@ def main():
               .replace("{{REPO_URL}}", repo_url)
               .replace("{{COMMIT}}", git_head(root))
               .replace("{{SWEEP}}", args.sweep)
-              .replace("{{RUNS_DIR}}", f"/kaggle/input/{args.runs_dataset.split('/')[-1]}" if args.runs_dataset else ""))
+              .replace("{{RUNS_SLUG}}", args.runs_dataset.split('/')[-1] if args.runs_dataset else ""))
 
     with tempfile.TemporaryDirectory() as td:
         tdp = Path(td)

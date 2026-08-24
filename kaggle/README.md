@@ -19,7 +19,7 @@ session costs at most one epoch.
 1. `python kaggle/push_cache.py` — packages `data/processed/airfrans` + `data/splits`
    into a versioned Kaggle Dataset (`<user>/airfrans-cache`). Re-run only when the cache
    changes.
-2. `python kaggle/launch.py --sweep configs/sweeps/core.yaml [--resume-dataset <user>/geo-op-runs]`
+2. `python kaggle/launch.py --sweep configs/sweeps/core.yaml [--runs-dataset <user>/geo-op-runs]`
    — renders `kernel-metadata.json`, sets the sweep name as an env line in the driver,
    pushes the kernel (`kaggle kernels push`), which Kaggle executes with GPU.
 3. The kernel (`session_driver.py`): clones the repo at a pinned commit, installs

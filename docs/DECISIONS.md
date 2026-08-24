@@ -136,14 +136,18 @@ execution uses a repo snapshot shipped inside the Kaggle dataset (no GitHub toke
 the cloud path; the GH PAT the user supplied stays only in Kaggle secrets, unused
 unless snapshot mode fails).
 
-**D-019 · 2026-08-24 · Kaggle sweeps use train.batch_size=16 uniformly across all three models**
-The frozen configs set batch 8/8/4 to fit the 4 GB P2000 (D-004, A3 measurements). The
-Kaggle P100 has 16 GB, so cloud sweeps override to a single batch_size=16 for all three
-architectures: (a) faster wall-clock (~2-4 h/run, matching the spec's compute table),
-(b) MORE matched than 8/8/4 -- identical batch statistics strengthen the equal-budget
-claim C2. lr held at 1e-3 (no aggressive linear scaling, conservative for stability).
-Local gate runs keep the frozen small-batch configs. Batch size is recorded per run in
-metrics.json config, so cloud/local provenance is never ambiguous.
+**D-019 · 2026-08-24 · train.batch_size=16 uniformly across all three models (local + cloud)**
+CORRECTED (QA session 2): the shipped configs' `train.batch_size` is **16** for all three
+models (the 8/8/4 values in those files are under the separate `eval:` block, for
+validation passes only). So training runs at batch 16 everywhere -- matched across
+architectures, which strengthens the equal-budget comparison C2 -- and `kaggle_core.yaml`'s
+`train.batch_size=16` default is an explicit-but-redundant statement of that intent, not an
+override to a different value. Empirically batch 16 fits both the T4 (16 GB) and the local
+P2000 (4 GB) -- the GNN dry-run trained at batch 16 on the P2000 without OOM (surface point
+clouds are small). lr held at 1e-3. Batch size is recorded per run in metrics.json config.
+Note (QA #4): local *neural* gating runs must use a distinct `tag=` (the `--dry-run` path
+auto-adds `_dryrun`) so a `pull_results.py` merge of the cloud grid never clobbers a
+same-run_id local run; baselines are safe (distinct `constant_`/`ridge_` model prefixes).
 
 **D-020 · 2026-08-24 · Kaggle sweeps must request the T4 (sm_75), never the P100 (sm_60)**
 Discovered during smoke validation: Kaggle's default "GPU" accelerator is a Tesla P100,

@@ -10,7 +10,7 @@ COMMIT = "{{COMMIT}}"                # pinned commit sha
 SWEEP = "{{SWEEP}}"                  # e.g. configs/sweeps/core.yaml
 CACHE_DATASET_DIR = "/kaggle/input/airfrans-cache"   # attached via kernel-metadata
 CODE_DATASET_DIR = "/kaggle/input/geo-op-code"      # repo.tar.gz snapshot
-RUNS_DATASET_DIR = "{{RUNS_DIR}}"    # "" or /kaggle/input/<runs-dataset>
+RUNS_SLUG = "{{RUNS_SLUG}}"           # "" or the runs dataset slug name (e.g. geo-op-runs)
 MAX_SECONDS = 11 * 3600
 # =========================================
 
@@ -70,24 +70,41 @@ def main():
     # 2. Locate the cache by finding the per-sim manifest.json ANYWHERE under the
     #    input mounts -- Kaggle's zip extraction can nest it under an extra dir,
     #    so we search rather than assume a layout. Passed to runs via --extra.
-    candidates = []
-    for root in ("/kaggle/input",):
-        candidates += [m.parent for m in Path(root).glob("**/manifest.json")
-                       if list(m.parent.glob("*.npz"))]
+    candidates = sorted(
+        m.parent for m in Path("/kaggle/input").glob("**/manifest.json")
+        if list(m.parent.glob("*.npz")))
     # Always dump the mount tree (dirs) so layout is diagnosable from the export.
     tree = "\n".join(sorted(str(p) for p in Path("/kaggle/input").glob("**/*")
                             if p.is_dir()))
     (WORK / "MOUNT_TREE.txt").write_text(tree)
+    if len(candidates) > 1:
+        print(f"[diag] WARNING multiple cache candidates, using first: {candidates}")
     cache_processed = candidates[0] if candidates else Path(CACHE_DATASET_DIR)
     print(f"[diag] located cache at {cache_processed} "
           f"({len(list(cache_processed.glob('*.npz')))} npz)")
 
-    # 3. Resume state from previous session, if any
-    if RUNS_DATASET_DIR and Path(RUNS_DATASET_DIR).exists():
-        for sub in ("results", "checkpoints"):
-            src = Path(RUNS_DATASET_DIR) / sub
-            if src.exists():
-                shutil.copytree(src, REPO / sub, dirs_exist_ok=True)
+    # 3. Resume state from a previous session's runs-dataset, if one was passed.
+    #    Datasets mount at /kaggle/input/datasets/<owner>/<slug>/ (D-020), so we
+    #    LOCATE the runs dataset by its slug name rather than a hardcoded path,
+    #    the same content-search fix used for the cache. Copying prior results/ +
+    #    checkpoints/ into the repo is what lets sweep.py skip finished runs and
+    #    resume partial ones -- a silent miss here retrains everything (QA #1).
+    if RUNS_SLUG:
+        runs_roots = sorted(
+            p for p in Path("/kaggle/input").glob(f"**/{RUNS_SLUG}")
+            if p.is_dir() and ((p / "results").exists() or (p / "checkpoints").exists()))
+        if not runs_roots:
+            print(f"[diag] RUNS resume: no dataset '{RUNS_SLUG}' with results/ or "
+                  f"checkpoints/ found under /kaggle/input -- starting fresh")
+        else:
+            root = runs_roots[0]
+            for sub in ("results", "checkpoints"):
+                src = root / sub
+                if src.exists():
+                    shutil.copytree(src, REPO / sub, dirs_exist_ok=True)
+                    n = len(list(src.rglob("metrics.json"))) if sub == "results" else \
+                        len(list(src.glob("*/last.pt")))
+                    print(f"[diag] RUNS resume: restored {sub} from {root} ({n} items)")
 
     # 3b. Environment diagnostics (Kaggle logs are unreliable on failure, so we
     #     print these and also tee the sweep output into an always-exported file).
