@@ -77,6 +77,9 @@ paper/        LaTeX skeleton
 | `vol_nut` | (Nv,) | turbulent viscosity |
 | `vol_sdf` | (Nv,) | distance function to airfoil (≥0 in fluid) |
 | `cond` | (2,) | freestream velocity vector (u∞x, u∞y) — encodes speed + AoA |
+| `grid_sdf` | (64, 64) | (optional, D-017) SDF on M2's default latent grid, bbox [-0.5,1.5]×[-1,1] |
+| `edge_index` | (2, E) int32 | (optional, D-017) k=16 kNN edges over surf_pos |
+| `curvature` | (Ns,) | (optional, D-017) signed Menger curvature |
 | scalars | — | `re`, `aoa_deg`, `u_inf_mag`, `cl_true`, `cd_true`, `n_surf`, `n_vol` |
 
 `src/data/airfrans_loader.py` provides
