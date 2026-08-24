@@ -7,6 +7,7 @@ Usage:
 import argparse
 import json
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -18,9 +19,7 @@ def git_head(repo_root: Path) -> str:
                           capture_output=True, text=True, check=True).stdout.strip()
 
 
-def kaggle_username() -> str:
-    cfg = Path.home() / ".kaggle" / "kaggle.json"
-    return json.loads(cfg.read_text())["username"]
+from _common import kaggle_username  # noqa: E402
 
 
 def main():
@@ -64,7 +63,7 @@ def main():
             "competition_sources": [],
         }
         (tdp / "kernel-metadata.json").write_text(json.dumps(meta, indent=2))
-        subprocess.run(["kaggle", "kernels", "push", "-p", td], check=True)
+        subprocess.run([sys.executable, "-m", "kaggle", "kernels", "push", "-p", td], check=True)
     print(f"pushed {slug}; monitor: kaggle kernels status {slug}")
 
 

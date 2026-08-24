@@ -5,6 +5,7 @@ Usage: python kaggle/pull_results.py [--kernel user/geo-op-session] [--runs-data
 import argparse
 import json
 import subprocess
+import sys
 import tempfile
 import zipfile
 from pathlib import Path
@@ -23,12 +24,13 @@ def main():
     ap.add_argument("--runs-dataset", default=None)
     args = ap.parse_args()
     root = HERE.parent
-    user = json.loads((Path.home() / ".kaggle" / "kaggle.json").read_text())["username"]
+    from _common import kaggle_username
+    user = kaggle_username()
     kernel = args.kernel or f"{user}/geo-op-session"
     runs_slug = args.runs_dataset or f"{user}/geo-op-runs"
 
     with tempfile.TemporaryDirectory() as td:
-        subprocess.run(["kaggle", "kernels", "output", kernel, "-p", td], check=True)
+        subprocess.run([sys.executable, "-m", "kaggle", "kernels", "output", kernel, "-p", td], check=True)
         for name in ("results.zip", "checkpoints.zip"):
             zp = Path(td) / name
             if zp.exists():
@@ -46,11 +48,11 @@ def main():
             "title": "geo-op-runs", "id": runs_slug,
             "licenses": [{"name": "other"}],
         }, indent=2))
-        exists = subprocess.run(["kaggle", "datasets", "status", runs_slug],
+        exists = subprocess.run([sys.executable, "-m", "kaggle", "datasets", "status", runs_slug],
                                 capture_output=True).returncode == 0
-        cmd = (["kaggle", "datasets", "version", "-p", str(tdp), "-m", "session merge", "--dir-mode", "zip"]
+        cmd = ([sys.executable, "-m", "kaggle", "datasets", "version", "-p", str(tdp), "-m", "session merge", "--dir-mode", "zip"]
                if exists else
-               ["kaggle", "datasets", "create", "-p", str(tdp), "--dir-mode", "zip"])
+               [sys.executable, "-m", "kaggle", "datasets", "create", "-p", str(tdp), "--dir-mode", "zip"])
         subprocess.run(cmd, check=True)
     print(f"republished {runs_slug}")
 
