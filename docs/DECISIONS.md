@@ -86,3 +86,11 @@ chain. Blockers needing user action (non-blocking for local work): (a) Kaggle AP
 at `C:\Users\LAPTOP\.kaggle\kaggle.json`; (b) approval to create a GitHub repo (gh is
 authenticated as cocomo069) so Kaggle can clone the code. RunPod/Vast A100 budget
 (~$30–80) reserved for the DrivAerNet++ 3D leg only, if/when Globus access exists.
+
+**D-014 · 2026-08-24 · Positions not standardized; geometry stays in physical chord units**
+(A1 proposal, accepted.) Per-component standardization of `surf_pos` would stretch y by
+~10× (airfoils are thin), destroying aspect ratio for kNN graphs, SDF grids and
+curvature. Chord is already 1 m ⇒ positions are O(1) naturally. Field targets (p, tau)
+ARE standardized; `surf_ds`, `surf_normal`, `vol_sdf` always physical so
+`integrate_forces` consumes raw geometry. Canonical sim-name parser is
+`src.data.splits.parse_sim_name` — all other modules must import it, not re-implement.
