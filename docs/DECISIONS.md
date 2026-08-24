@@ -94,3 +94,24 @@ curvature. Chord is already 1 m ⇒ positions are O(1) naturally. Field targets 
 ARE standardized; `surf_ds`, `surf_normal`, `vol_sdf` always physical so
 `integrate_forces` consumes raw geometry. Canonical sim-name parser is
 `src.data.splits.parse_sim_name` — all other modules must import it, not re-implement.
+
+**D-015 · 2026-08-24 · M2 spectral conv uses groups=4 block-diagonal channel mixing**
+(A3 finding.) Dense SpectralConv2d at frozen "modes 16, width 32" = 1.05M params/layer;
+4 layers ≈ 4.2M, breaking the equally-frozen 1.5M budget. Resolution: block-diagonal
+spectral mixing (`spectral_groups: 4`) with the dense 1x1 path restoring full mixing per
+layer. `spectral_groups: 1` recovers the textbook layer (ablatable). Budget wins over
+layer shape because matched capacity is what makes the model comparison meaningful (C2).
+
+**D-016 · 2026-08-24 · Coefficient head always trained: λ_H·(|CL_head−CL|+|CD_head−CD|), λ_H=0.1**
+(A3 finding.) Under the pure field loss the coef head receives zero gradient, making
+FSC (int vs head) meaningless. The head-regression term is now part of the base loss
+(normalized at init like other terms); λ_F stays the *consistency* ablation term
+(|C_int−C_true| + |C_int−C_head|) per spec §5.4. A4 implements in losses/train config.
+
+**D-017 · 2026-08-24 · Cache stores precomputed static geometry: grid_sdf, edge_index, curvature**
+(A3 finding: M2 is CPU-bound recomputing SDF+cKDTree per step — 2.45 s/forward.)
+Geometry is static per sim, so build_cache.py additionally stores optional keys:
+`grid_sdf` (64x64 float32 on bbox [-0.5,1.5]x[-1,1], the M2 default), `edge_index`
+(2,E int32, k=16 kNN), `curvature` (Ns,). Models already accept these via batch and
+fall back to on-the-fly computation. CONTEXT.md §4 amended (this entry is the migration
+record). Positions confirmed chord-frame physical (D-014), so the fixed bbox stands.
