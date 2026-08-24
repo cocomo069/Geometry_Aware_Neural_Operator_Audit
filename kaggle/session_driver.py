@@ -113,7 +113,8 @@ def main():
             p = subprocess.Popen(
                 [sys.executable, "-u", "-m", "scripts.sweep", "--spec", SWEEP,
                  "--max-seconds", str(budget),
-                 "--extra", f"data.processed_dir={cache_processed}"],
+                 "--extra", f"data.processed_dir={cache_processed}",
+                 f"data.norm_stats={cache_processed / 'norm_stats.json'}"],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             for line in p.stdout:
                 print(line, end="")
