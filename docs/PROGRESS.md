@@ -486,3 +486,215 @@ for itself within the first training step of the first epoch.
   cancellation failures out of 64 checks (analysed in A1.10) — unchanged by
   D-017, and an artefact of the test geometry, not the cache.
 - No packages were installed by A1.
+
+## 2026-08-24 — A4 infra (config / eval / trainer / sweeps)
+
+**Delivered.** `src/utils/{config,seed,io}.py`, `src/eval/{metrics,harness,schema,baselines}.py`,
+`scripts/{train,evaluate,sweep}.py`, `configs/{gnn,sdf_fno,transolver}.yaml`,
+`configs/sweeps/{core,ensembles}.yaml`, `requirements.txt`, `tests/test_infra.py`.
+`.venv/Scripts/python.exe -m pytest tests/ -q` → **352 passed, 3 skipped** (49 of them A4's).
+
+- **config**: `load_config(path, overrides)` with dotted overrides and type inference.
+  `3e-4` is handled explicitly — PyYAML's 1.1 resolver returns it as a *string*, so a bare
+  `yaml.safe_load` would set `lr` to `'3e-4'`. Bare aliases (`split=`, `seed=`, `epochs=`,
+  `lr=`, `batch_size=`) expand to their dotted path. `save_config` writes the resolved config.
+- **seed**: `seed_all` covers python/numpy/torch(+all CUDA); `get_rng_state`/`set_rng_state`
+  back exact resume. `torch.use_deterministic_algorithms` is deliberately *not* set —
+  `index_add_` (the GNN's scatter) has no deterministic CUDA kernel and would raise.
+- **io**: atomic JSON/CSV writers (temp + `os.replace`), strict JSON (NaN → `null`),
+  `build_run_id` = `{model}_{split}_s{seed}[_{tag}]`, run/checkpoint dir helpers.
+- **eval**: `harness.evaluate` is the only producer of `metrics.json`; output is
+  schema-validated before it is returned. All metrics in denormalized physical units,
+  per-sim then averaged (a 5000-point sim must not outweigh a 500-point one). Inference
+  timing excludes a warm-up batch and syncs on CUDA; `peak_mem_mb` from
+  `max_memory_allocated`, `null` on CPU. Baselines (`constant`, `ridge`) implement the §7
+  model interface, so they go through the *same* harness and emit the same schema.
+- **train**: Adam + cosine, clip 1.0, fp32, checkpoint every epoch to `last.pt`
+  (model+optim+sched+epoch+RNG+`norm_ref`), auto-resume, `best.pt` on the val metric (val =
+  the split's `cal` list), `history.csv`, then the eval harness. `--dry-run` = 2 epochs ×
+  2 batches and suffixes the tag with `_dryrun`, so a smoke test can never write a
+  `metrics.json` that makes a sweep skip the real run.
+- **sweep**: sequential only (4 GB card), skips runs whose `metrics.json` exists,
+  `--max-seconds` budget checked before each run *and* enforced as a child timeout
+  (Kaggle 12 h; per-epoch checkpointing makes a killed run free to resume).
+
+**Verified end to end** against the real `src/data`, `src/models`, `src/physics` on a
+synthetic 12-sim cache: all 3 models train → checkpoint → resume → `metrics.json`;
+both baselines; `scripts/evaluate.py` on a checkpoint; a real `scripts/sweep.py` run plus
+its skip-on-rerun path.
+
+### Decisions taken inside A4's scope
+
+- **No `jsonschema` dependency.** `src/eval/schema.py` validates plain dicts. The schema is
+  frozen and fully specified by CONTEXT.md §9; a second copy of it in JSON-Schema syntax
+  would be a second source of truth, and the hand-rolled errors name the exact dotted key.
+- **`cl_rel`/`cd_rel` are aggregate ratios** `Σ|C_pred−C_true| / Σ|C_true|`, not the mean of
+  per-sim ratios: C_L crosses zero on symmetric airfoils near α=0 and per-sim ratios diverge
+  there. `fsc_rel_*` keeps the spec's per-sim form but aggregates by **median** for the same
+  reason. ⚠ On sims with |C_L| ≈ 0 `fsc_rel_cl` is still large by construction — read
+  `fsc_cl` (absolute) alongside it.
+- **`sym_residual` is computed on the general reflection** (mirror geometry *and* condition),
+  not only on symmetric airfoils, so it is defined for every sim; it uses A2's
+  `reflect_x_batch`/`reflect_prediction` conventions and is evaluated in physical units,
+  because the p-normalisation has a non-zero mean and the relative residual is not
+  invariant under it.
+- **Cached geometry-derived keys** (`grid_sdf`, `edge_index`, …, `CACHED_DERIVED_KEYS` in
+  `harness.py`) are dropped from the *reflected* batch during the symmetry check so the
+  model rebuilds them from the mirrored geometry instead of silently reusing values built
+  for the original one. Unknown batch keys are otherwise passed through untouched (D-017).
+
+### Integration friction found and fixed (worth knowing about)
+
+1. **Units in the force term of `src/models/losses.py`.** `force_consistency_loss` compares
+   `integrate_fn(...)`'s output against `coef_head` and `cl_true`/`cd_true`, which are
+   *normalized* (D-014). Integration only means anything on physical fields, so the trainer's
+   injected closure (`make_denorm_integrator`) now denormalizes p/tau/cond **and
+   re-normalizes the returned C_L/C_D**. Without the second half the term silently mixes
+   units. Both transforms are affine, so gradients are unaffected.
+2. **`norm_ref` must live in the checkpoint.** Re-capturing the auxiliary-loss scales on the
+   first batch of a *resumed* session changes the objective and broke bit-identical resume.
+   Now saved in `last.pt`/`best.pt` and restored. (A3's `init_norm_ref` docstring already
+   said "stash the result in the checkpoint" — this is that.)
+3. **CONTEXT.md §8 assigns `src/models/losses.py` to A4, but PLAN.md Phase 1 gives all of
+   `src/models/` to A3.** A3 shipped it; A4 uses it and keeps a compatible
+   `fallback_total_loss` in `scripts/train.py` for the case where it is absent.
+   ⚠ PROPOSAL: correct §8's ownership note to A3 to stop this recurring.
+4. **λ_H (D-016)** is implemented through A3's `extra_fns` extension point rather than by
+   editing `losses.py`: `train.weights.head` (default **0.1**, set in all three configs and
+   in `config.DEFAULTS`) drives `head_regression_loss`, normalized at init like the other
+   auxiliaries. `tests/test_infra.py` asserts the head receives **no gradient at all** when
+   λ_H = 0 — that is the failure mode D-016 exists to prevent.
+5. **`parse_naca_params`** now delegates to A1's `src.data.splits.parse_sim_name` (fixes the
+   off-by-one A1 reported: a regex over the whole name caught the `2` in `airFoil2D`), with a
+   tolerant local fallback so `src.eval` stays importable without `src.data`.
+6. **Schema API (A5's report)**: `validate_metrics`/`validate_uq` now **raise** `SchemaError`;
+   `check_metrics`/`check_uq` are the non-raising variants. On success the validators still
+   return the empty error list, so existing `assert validate_uq(x) == []` call sites keep
+   working while an ignored return can no longer pass an invalid payload.
+7. **CLI overrides may be interleaved with flags** (`parse_cli`): argparse fills a `nargs="*"`
+   positional greedily, so `--checkpoint X tag=eval --device cpu split=aoa` used to error.
+   `scripts/sweep.py --train-args` takes one quoted string (argparse will not absorb
+   dash-prefixed values into a list).
+
+**Not verified yet** (needs the real cache): metric magnitudes on AirfRANS, VRAM/batch-size
+fit on the P2000, and `cd_spearman` (needs ≥3 test sims — it is `null` below that by design).
+
+## 2026-08-24 — A6 (aux scaffolds): fluent/, DrivAerNet++ subset, paper/, model_cards/
+
+Scope delivered in full. **No solver was run, nothing was downloaded, no git
+commands were issued.** All numeric work was mesh generation (pure numpy,
+seconds) and one LaTeX compile.
+
+### fluent/ — 2D RANS verification pipeline, ready to execute
+
+- `fluent/mesh_gen.py` (896 ln) — parametric single-block C-grid generator for
+  NACA 4- and 5-digit sections, writing a **native Fluent 2D `.msh` directly**.
+  numpy-only, deterministic, no gmsh / meshio / ICEM on the critical path.
+  Includes the y+ -> first-cell-height sizing (flat-plate Schlichting
+  correlation, documented with the factor-of-2 cell-centre-vs-cell-height trap)
+  and `--self-check`, which re-parses the written file and asserts index ranges,
+  owner/neighbour consistency and section counts.
+- `fluent/templates/case_template.jou` (279 ln) — the TUI journal template.
+  Reads mesh, pressure-based steady incompressible, **SA and k-omega SST
+  variants**, velocity-inlet from (Re, AoA), pressure-outlet, no-slip wall,
+  reference values for CL/CD, two-stage first-order -> second-order solve,
+  convergence on residuals **and** a CD-stability monitor, CSV export of surface
+  p / cp / wall shear / cf / y+, forces, achieved y+, transcript on, display
+  objects baked into the saved case for later GUI inspection.
+- `fluent/templates/probe_bc_keywords.jou` — **Step 0**, a keyword probe. These
+  journals were authored without a live Fluent; a wrong grouped-`set` keyword
+  does not fail loudly, it leaves an unanswered prompt that eats following
+  journal lines and produces a plausible-looking wrong result. The probe removes
+  that failure mode for about a minute of runtime.
+- `fluent/templates/mesh_cgrid.rpl` (148 ln) — ICEM Tcl replay, kept as the
+  independent cross-check/fallback meshing route with the same substitution
+  slots.
+- `fluent/make_cases.py` (397 ln) + `fluent/cases_to_run.json` — manifest-driven
+  journal instantiation with schema validation. Verified: 5 cases -> 10 journals,
+  zero unfilled slots.
+- `fluent/README.md` (operating manual, orchestrator call sequence, solver-choice
+  rationale) and `docs/FLUENT_PLAN.md` (431 ln: mesh-route argument, y+ maths
+  with worked numbers, 3-level grid study with the Celik GCI arithmetic, the
+  6-simulation AirfRANS-replication offset study, acceptance criteria).
+
+**Mesh generation validated** (this is the part that could have silently
+shipped broken). Three separate bugs each produced a folded grid — the
+far-field distribution inheriting the wall clustering; a direction blend running
+on the distance fraction rather than the index fraction; and a discontinuous ray
+family across the trailing-edge fold. All three are fixed and written up in
+FLUENT_PLAN.md section 2.2. Current quality, NACA 0012 / Re 3e6 / 5 deg:
+
+| Level | Cells | min Jacobian | min orthogonality | max AR | normal growth |
+|---|---|---|---|---|---|
+| 1 coarse | 18 796 | > 0 | 0.284 | 5.4e3 | 1.189 |
+| 2 medium | 43 008 | > 0 | 0.290 | 5.2e3 | 1.121 |
+| 3 fine | 96 768 | > 0 | 0.294 | 5.2e3 | 1.079 |
+
+Spot checks: NACA 23012 at +10 deg -> 0.225; NACA 4412 at -5 deg -> 0.238.
+Refinement ratio ~1.5 per direction per level (GCI wants >= 1.3); y+ target
+scales 0.90 / 0.60 / 0.40 so refinement is systematic at the wall too and all
+three levels stay wall-resolved.
+
+### scripts/subset_drivaernet.py + docs/DRIVAERNET_ACCESS.md
+
+- Script (573 ln) consumes already-downloaded coefficient CSVs and decimated
+  meshes; stdlib `csv` (no pandas), numpy/pyvista/trimesh guarded with actionable
+  error messages. Auto-detects the stratification columns actually present and
+  reports them rather than assuming a schema. Seeded stratified draw with
+  proportional allocation plus a per-stratum floor; decimation to 8k-16k points,
+  float16 storage; emits `subset_manifest.json` with exact design IDs, strata
+  counts, seed and source-CSV SHA-256s.
+- Tested against a synthetic 900-design fixture: 600 selected across 12 strata,
+  identical IDs on re-run with the same seed, 456/600 overlap across seeds,
+  `--describe` / `--strata` / `--allow-missing-meshes` paths all exercised.
+  Warns loudly if fastback/notchback/estateback are not all present, since the
+  shape-family OOD split of spec 5.7 depends on it.
+- ACCESS doc (214 ln): Globus Connect Personal setup including the D:-drive
+  access grant that is the usual failure point, what to select and what not to
+  (the 39 TB is the volumetric fields), expected sizes, CC BY-NC 4.0 obligations,
+  and the 200-design fallback.
+
+### paper/ and model_cards/
+
+- `main.tex` (714 ln): every section of spec section 11, all **12 figures** and
+  **6 tables** of spec section 8 as placeholders with `\label` and a caption
+  saying what will go there, plus appendices A-D. Figure placeholders render as
+  framed boxes so the skeleton compiles before any figure exists; swapping in a
+  real figure is a one-line change.
+- `refs.bib` (328 ln): all 16 spec section 14 reading-list items with arXiv/venue
+  entries, plus supporting refs (Celik GCI, Roache, Spalart-Allmaras, Menter SST,
+  Vovk, Lei, Tibshirani covariate shift). Header flags that page/volume numbers
+  need checking against publisher records before submission.
+- `macros.tex` (145 ln): notation matching spec section 5 (FSC, C_D^int,
+  C^head, the loss terms, the split names). Every symbol is `\ensuremath`-wrapped
+  so it works in prose as well as maths.
+- `paper/figures/README.md`: the figure-file naming contract.
+- `model_cards/TEMPLATE.md` (219 ln) per spec section 13, including the explicit
+  "do not use for" section and the rule that a number not in a committed
+  `metrics.json` does not go on the card.
+
+**LaTeX status.** `pdflatex` exists (MiKTeX) but **`natbib.sty` is not
+installed**, and installing it would be a download, which was out of scope. I
+verified the document by compiling a scratch copy with natbib/siunitx/microtype
+stubbed out: **clean compile, no errors, no undefined references, 12 pages**
+(inflated by the placeholder boxes and TODO text; the real paper targets 8-10).
+Three genuine bugs were found and fixed in the process: math-mode-unsafe macros,
+an undefined `\degree`, and my `\num` macro clashing with siunitx's. To build
+for real: `mpm --install=natbib` (about 100 kB), then `latexmk -pdf main.tex`.
+
+### Notes for the integrator
+
+- **PROPOSAL (not actioned, outside A6's paths):** `.gitignore` has no LaTeX
+  entries. Suggest adding `paper/*.aux paper/*.log paper/*.out paper/*.bbl
+  paper/*.blg paper/main.pdf` and `data/processed/drivaernet/points/`.
+- **Blocking on A1:** `fluent/cases_to_run.json` currently assumes air at
+  298.15 K (rho 1.184, mu 1.85e-5) because that is what the AirfRANS generator
+  states. The offset study measures the wrong thing if that differs from what
+  the dataset actually used — please confirm in `docs/DATA_NOTES.md`, and I will
+  re-derive U_inf and the y+ sizing if it changes.
+- **Blocking on Phase 3 step 7:** the two `placeholder_*` cases are stand-ins.
+  `scripts/sweep.py` should overwrite them with the real active-learning
+  selection. They must not be hand-tuned into something plausible — the
+  falsifiable claim requires the selection to come from the model.
+- The `gridstudy_*` trio is not a placeholder and should run first: its GCI band
+  is the numerical uncertainty quoted on every other Fluent case.

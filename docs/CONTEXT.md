@@ -131,7 +131,7 @@ forward(batch: dict) -> dict
 
 ## 8. Losses (FROZEN)
 
-`src/models/losses.py` (A4 owns): `total_loss(pred, batch, weights, norm_ref)` = rel-L2 on p and tau + λ_F·force + λ_S·sym (train-time terms per spec §5.3–5.5). Each auxiliary term normalized by its value at init (`norm_ref` captured on first batch). Default λ's = 0 (pure data loss) — physics terms are ablation flags in config.
+`src/models/losses.py` (A3 owns; A4 consumes via injected closures — trainer denormalizes fields before `integrate_fn` and re-normalizes returned coefficients): `total_loss(pred, batch, weights, norm_ref)` = rel-L2 on p and tau + λ_F·force + λ_S·sym (train-time terms per spec §5.3–5.5). Each auxiliary term normalized by its value at init (`norm_ref` captured on first batch). Default λ's = 0 (pure data loss) — physics terms are ablation flags in config.
 
 ## 9. Results schema (FROZEN)
 

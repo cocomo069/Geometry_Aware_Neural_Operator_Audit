@@ -1,0 +1,15 @@
+# Deep-ensemble members (PLAN.md Phase 3.2): seeds 1-4 on top of the core
+# seed-0 runs, for 3 models x {full, reynolds, aoa, shape5} -> K = 5 members.
+# Seed 0 is deliberately absent: core.yaml already produced it and this sweep
+# would otherwise re-check 12 finished runs on every resume.
+
+name: ensembles
+
+matrix:
+  config:
+    - configs/gnn.yaml
+    - configs/transolver.yaml
+    - configs/sdf_fno.yaml
+  overrides:
+    split: [full, reynolds, aoa, shape5]
+    seed: [1, 2, 3, 4]

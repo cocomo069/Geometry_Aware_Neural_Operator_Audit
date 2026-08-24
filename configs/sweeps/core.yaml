@@ -1,0 +1,19 @@
+# Core grid (PLAN.md Phase 3.1): 3 models x 6 splits x seed 0.
+# Runs sequentially; already-finished runs (results/<run_id>/metrics.json) are skipped.
+#
+#   .venv/Scripts/python.exe -m scripts.sweep --spec configs/sweeps/core.yaml
+#   .venv/Scripts/python.exe -m scripts.sweep --spec configs/sweeps/core.yaml --max-seconds 39600
+#
+# Order is model-major so that a truncated budget still yields a complete
+# model row (M1 across all splits) rather than six half-finished models.
+
+name: core
+
+matrix:
+  config:
+    - configs/gnn.yaml
+    - configs/transolver.yaml
+    - configs/sdf_fno.yaml
+  overrides:
+    split: [full, scarce, reynolds, aoa, shape5, combined]
+    seed: [0]
