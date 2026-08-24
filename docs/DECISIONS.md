@@ -144,3 +144,15 @@ architectures: (a) faster wall-clock (~2-4 h/run, matching the spec's compute ta
 claim C2. lr held at 1e-3 (no aggressive linear scaling, conservative for stability).
 Local gate runs keep the frozen small-batch configs. Batch size is recorded per run in
 metrics.json config, so cloud/local provenance is never ambiguous.
+
+**D-020 · 2026-08-24 · Kaggle sweeps must request the T4 (sm_75), never the P100 (sm_60)**
+Discovered during smoke validation: Kaggle's default "GPU" accelerator is a Tesla P100,
+which is Pascal **sm_60** — and Kaggle's preinstalled PyTorch supports only sm_70+
+(`no kernel image is available for execution on the device`), the same Pascal wall we hit
+locally (D-001). The T4 is Turing **sm_75**, fully supported by the stock Kaggle torch, so
+`kaggle/launch.py` sets `machine_shape: NvidiaTeslaT4` in kernel-metadata. Kaggle grants
+2×T4 in this shape; our sweep is single-GPU sequential (one T4 used). Never fall back to
+P100 unless also installing a cu126 torch (slow, avoided). T4 has 16 GB so batch_size=16
+(D-019) is unaffected. Also recorded: the cache dataset mounts at
+`/kaggle/input/datasets/<owner>/<slug>/…`, not `/kaggle/input/<slug>/`; the driver locates
+it by searching for manifest.json rather than hard-coding a mount path.
