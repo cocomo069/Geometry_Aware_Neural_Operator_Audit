@@ -708,3 +708,11 @@ for real: `mpm --install=natbib` (about 100 kB), then `latexmk -pdf main.tex`.
   study), docs/DRIVAERNET_ACCESS.md + scripts/subset_drivaernet.py (user-gated).
 - paper/: main.tex compiles clean — 12 pages, all 12 figures + 6 tables placeholdered,
   refs.bib from spec reading list, macros.tex. model_cards/TEMPLATE.md.
+
+## 2026-08-24 — GATE G1 PASSED (Fable)
+
+Dataset downloaded (10.03 GB, checksummed by size), extracted (1000 sims), 20-sim
+smoke cache built (8.3 s/sim). Force integration on cached ground-truth fields vs
+dataset coefficients (pressure_mode=kinematic, rho=1, a_ref=1):
+**CD median rel err 1.44e-4 (max 1.02e-3); CL median 4.79e-6 (max 1.63e-5), n=20.**
+Two orders inside the 1% gate. Full 1000-sim cache build launched.
