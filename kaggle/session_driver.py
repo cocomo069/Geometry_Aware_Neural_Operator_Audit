@@ -32,22 +32,30 @@ def sh(cmd, **kw):
 
 
 def main():
-    # 1. Obtain the code: prefer the repo snapshot shipped inside the cache dataset
-    #    (no GitHub token needed, D-018); fall back to git clone with GH_TOKEN secret.
-    snapshot = Path(CACHE_DATASET_DIR) / "repo.tar.gz"
-    if snapshot.exists():
+    # 1. Obtain the code: prefer a fresh git clone at the pinned commit via the
+    #    GH_TOKEN Kaggle secret (small, always current); fall back to the repo
+    #    snapshot shipped inside the cache dataset if the clone is unavailable.
+    token = ""
+    try:
+        from kaggle_secrets import UserSecretsClient
+        token = UserSecretsClient().get_secret("GH_TOKEN")
+    except Exception:
+        pass
+    cloned = False
+    if token:
+        url = REPO_URL.replace("https://", f"https://{token}@")
+        try:
+            sh(f"git clone --quiet {url} {REPO}")
+            sh(f"git -C {REPO} checkout --quiet {COMMIT}")
+            cloned = True
+        except Exception as exc:
+            print(f"clone failed ({exc}); trying dataset snapshot")
+    if not cloned:
+        snapshot = Path(CACHE_DATASET_DIR) / "repo.tar.gz"
+        if not snapshot.exists():
+            raise SystemExit("no GH_TOKEN clone and no repo.tar.gz snapshot available")
         REPO.mkdir(parents=True, exist_ok=True)
         sh(f"tar -xzf {snapshot} -C {REPO}")
-    else:
-        token = ""
-        try:
-            from kaggle_secrets import UserSecretsClient
-            token = UserSecretsClient().get_secret("GH_TOKEN")
-        except Exception:
-            pass
-        url = REPO_URL.replace("https://", f"https://{token}@") if token else REPO_URL
-        sh(f"git clone --quiet {url} {REPO}")
-        sh(f"git -C {REPO} checkout --quiet {COMMIT}")
 
     os.chdir(REPO)
     # Kaggle preinstalls a CUDA-enabled torch; installing our pinned torch would

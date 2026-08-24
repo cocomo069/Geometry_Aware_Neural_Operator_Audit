@@ -135,3 +135,12 @@ convention; at paper release, a rules-compliant public staging copy is produced
 execution uses a repo snapshot shipped inside the Kaggle dataset (no GitHub token in
 the cloud path; the GH PAT the user supplied stays only in Kaggle secrets, unused
 unless snapshot mode fails).
+
+**D-019 · 2026-08-24 · Kaggle sweeps use train.batch_size=16 uniformly across all three models**
+The frozen configs set batch 8/8/4 to fit the 4 GB P2000 (D-004, A3 measurements). The
+Kaggle P100 has 16 GB, so cloud sweeps override to a single batch_size=16 for all three
+architectures: (a) faster wall-clock (~2-4 h/run, matching the spec's compute table),
+(b) MORE matched than 8/8/4 -- identical batch statistics strengthen the equal-budget
+claim C2. lr held at 1e-3 (no aggressive linear scaling, conservative for stability).
+Local gate runs keep the frozen small-batch configs. Batch size is recorded per run in
+metrics.json config, so cloud/local provenance is never ambiguous.
