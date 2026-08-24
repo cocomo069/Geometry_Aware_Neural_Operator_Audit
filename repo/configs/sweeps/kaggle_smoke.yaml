@@ -1,0 +1,11 @@
+# Cloud-path validation: one model, one split, 2 epochs. Proves the Kaggle
+# kernel (snapshot extract -> deps -> cache symlink -> train -> export) works
+# before spending GPU-hours on the real grid. ~3 minutes on a P100.
+name: kaggle_smoke
+defaults:
+  overrides: [train.epochs=2, tag=ksmoke]
+matrix:
+  config: [configs/gnn.yaml]
+  overrides:
+    split: [full]
+    seed: [0]

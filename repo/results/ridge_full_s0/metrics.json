@@ -1,0 +1,41 @@
+{
+  "run_id": "ridge_full_s0",
+  "model": "ridge",
+  "split": "full",
+  "seed": 0,
+  "tag": null,
+  "params": 29,
+  "train_time_s": 0.0,
+  "epochs": 0,
+  "device": "cuda",
+  "field": {
+    "p_rel_l2": 1.422984481336765,
+    "tau_rel_l2": 1.1592714908927624,
+    "p_mae": 2400.010873539826,
+    "tau_mae": 9.344832815134898
+  },
+  "coef": {
+    "cl_head_mae": 0.11557437949813902,
+    "cd_head_mae": 0.001602128364611417,
+    "cl_int_mae": 0.7442574802646413,
+    "cd_int_mae": 0.006157502311980352,
+    "cd_spearman": 0.3409975249381235,
+    "cd_head_spearman": 0.9023925598139955,
+    "cd_int_spearman": 0.3409975249381235,
+    "cl_rel": 0.9916626688329733,
+    "cd_rel": 0.4866668429861582
+  },
+  "consistency": {
+    "fsc_cl": 0.7379000516049564,
+    "fsc_cd": 0.006036368381464854,
+    "fsc_rel_cl": 0.9710145816879434,
+    "fsc_rel_cd": 0.4985073055513386,
+    "sym_residual": 0.0,
+    "antisym_cl_gap": 0.4509240626357496
+  },
+  "cost": {
+    "infer_ms_per_sim": 0.536026498884894,
+    "peak_mem_mb": 3.74072265625
+  },
+  "n_sims": 200
+}

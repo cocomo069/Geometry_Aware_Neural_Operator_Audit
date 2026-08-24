@@ -1,0 +1,282 @@
+; =====================================================================
+; case_template.jou -- Fluent 2D steady incompressible RANS, NACA airfoil
+; =====================================================================
+; Template. `fluent/make_cases.py` substitutes every <SLOT> and writes an
+; instantiated copy to fluent/cases/<case_id>/<case_id>_<model>.jou.
+;
+; Target: ANSYS Fluent 2021 R1, 2D double precision, headless (-g), driven
+; either by mcp__ansys__fluent_run_journal or by
+;     fluent 2ddp -g -t<N> -i <this>.jou -wait
+;
+; SUBSTITUTION SLOTS (all filled by make_cases.py):
+;   <CASE_ID>            case identifier, e.g. naca0012_re3e6_a5_L2
+;   <TURB_LABEL>         "sa" | "sst"
+;   <MESH_PATH>          absolute path to the .msh from fluent/mesh_gen.py
+;   <OUT_DIR>            absolute path to fluent/cases/<case_id>/ (forward slashes)
+;   <RHO>                density, kg/m^3
+;   <MU>                 dynamic viscosity, Pa.s
+;   <U_INF>              freestream speed, m/s  (freestream is along +x)
+;   <U_X> <U_Y>        freestream components, m/s (<U_Y> is 0 by construction)
+;   <TURB_MODEL_CMD>     "spalart-allmaras yes" | "kw-sst yes"
+;   <TURB_INLET_BLOCK>   model-specific inlet turbulence keywords
+;   <TURB_SCHEME_BLOCK_FIRST>  / <TURB_SCHEME_BLOCK_SECOND>
+;                          model-specific discretisation-scheme lines per stage
+;   <TURB_URF_BLOCK>     model-specific under-relaxation lines
+;   <RESIDUAL_CRITERIA>  space-separated per-equation criteria (count varies!)
+;   <CHORD>              chord, m
+;   <A_REF>              reference area = chord * 1 m depth
+;   <ITER_STAGE1>        first-order startup iterations
+;   <ITER_STAGE2>        second-order iterations to convergence
+;   <CD_STOP_CRITERION>  relative change in CD that counts as converged
+;
+; ---------------------------------------------------------------------
+; TUI hygiene rules obeyed throughout (these are the batch-automation
+; failure modes that silently corrupt runs -- do not "tidy them away"):
+;   * every /file/write-* is followed by `ok` on its own line, because the
+;     overwrite prompt otherwise EATS THE NEXT COMMAND. /file/confirm-overwrite
+;     does not reliably suppress it.
+;   * no command that prompts is left without its answer on the following line.
+;   * `/file/read-case` (not read-mesh -- that is a meshing-mode verb).
+;   * surface-integral report files APPEND across runs; every filename here is
+;     unique per case+model so a re-run cannot interleave with an old block.
+;   * /file/export/ascii REORDERS COLUMNS. The reader must map by header name.
+; =====================================================================
+
+/file/start-transcript "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/gridstudy_naca0012_re3e6_a5_L1/gridstudy_naca0012_re3e6_a5_L1_sa.trn"
+/file/confirm-overwrite yes
+
+; ---------------------------------------------------------------------
+; 1. Mesh
+; ---------------------------------------------------------------------
+/file/read-case "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/gridstudy_naca0012_re3e6_a5_L1/gridstudy_naca0012_re3e6_a5_L1.msh"
+/mesh/check
+/mesh/quality
+/mesh/repair-improve/report-poor-elements
+
+; ---------------------------------------------------------------------
+; 2. Solver: pressure-based, steady, 2D planar
+; ---------------------------------------------------------------------
+; Pressure-based is correct here: M = U/a is at most ~0.28 over the AirfRANS
+; Re range at sea-level conditions, so the flow is incompressible and a
+; density-based solver would only add stiffness and cost.
+/define/models/solver/pressure-based yes
+/define/models/steady yes
+/define/models/energy no
+/define/models/viscous/spalart-allmaras yes
+
+; ---------------------------------------------------------------------
+; 3. Material
+; ---------------------------------------------------------------------
+; Redefine the default `air` in place rather than creating and assigning a new
+; material: the fluid zone already references `air`, so this avoids the long,
+; brittle positional prompt chain of /define/boundary-conditions/fluid.
+; Argument pattern: name newname, then per property either
+;   `yes constant <value>` to change, or `no` to keep.
+/define/materials/change-create air air yes constant 1.184 no no yes constant 1.85e-05 no no no
+
+; ---------------------------------------------------------------------
+; 4. Boundary conditions
+; ---------------------------------------------------------------------
+; Grouped `set` menus, not positional prompt chains -- short keyword/value
+; pairs instead of a cascade of yes/no selectors that is easy to get wrong.
+;
+; NOTE ON `velocity-spec`: it is a CYCLING selector, not a yes/no. It shows
+; "Magnitude, Normal to Boundary [yes]"; `no` advances to the next option
+; ("Components"), `yes` selects the current one. Hence the `no` then `yes`.
+; Every profile-capable VALUE field prompts "Use Profile? [no]" BEFORE the
+; value, which is what each bare `no` before a number is answering.
+;
+; Angle of attack is baked into the MESH (the airfoil is rotated by -AoA about
+; the quarter chord), so the freestream here is always 46.875000 along +x with
+; 0 = 0. Drag is then Fx and lift is Fy -- no direction bookkeeping.
+;
+; >>> RUN fluent/templates/probe_bc_keywords.jou ONCE BEFORE THE FIRST REAL
+; >>> CASE. It dumps the real keyword names this Fluent build accepts. These
+; >>> templates were authored without a live solver; fix any mismatch there
+; >>> first rather than burning a solve finding out.
+/define/boundary-conditions/set/velocity-inlet farfield ()
+velocity-spec
+no
+yes
+u
+no
+46.875000
+v
+no
+0
+turb-viscosity-ratio
+3
+q
+
+/define/boundary-conditions/set/pressure-outlet outlet ()
+gauge-pressure
+no
+0
+prevent-reverse-flow?
+yes
+turb-viscosity-ratio
+3
+q
+
+; airfoil: stationary no-slip smooth wall (Fluent's wall defaults), stated
+; explicitly so the case is self-documenting rather than default-dependent.
+/define/boundary-conditions/set/wall airfoil ()
+shear-bc
+no-slip
+q
+
+; ---------------------------------------------------------------------
+; 5. Reference values -- these define CL and CD
+; ---------------------------------------------------------------------
+; A_ref = chord x 1 m depth (Fluent 2D uses unit depth), so the coefficients
+; match the standard 2D convention and are directly comparable with AirfRANS.
+/report/reference-values/area 1
+/report/reference-values/density 1.184
+/report/reference-values/velocity 46.875000
+/report/reference-values/length 1
+/report/reference-values/viscosity 1.85e-05
+/report/reference-values/pressure 0
+/report/reference-values/zone fluid
+
+; ---------------------------------------------------------------------
+; 6. Report definitions -- CL, CD and the convergence monitor
+; ---------------------------------------------------------------------
+/solve/report-definitions/add cd drag thread-names airfoil () force-vector 1 0 scaled? yes quit
+/solve/report-definitions/add cl lift thread-names airfoil () force-vector 0 1 scaled? yes quit
+/solve/report-definitions/add cm moment thread-names airfoil () about-point 0.25 0 scaled? yes quit
+
+/solve/report-files/add rf_coeffs
+report-defs
+cd
+cl
+cm
+()
+file-name
+"D:/Personal Projects/geom_aware_neural_operator/fluent/cases/gridstudy_naca0012_re3e6_a5_L1/gridstudy_naca0012_re3e6_a5_L1_sa_coeffs.out"
+frequency
+1
+quit
+
+; ---------------------------------------------------------------------
+; 7. Solution methods
+; ---------------------------------------------------------------------
+; SIMPLE with conservative under-relaxation is the robust choice for an
+; unattended batch. Coupled converges faster on a clean structured mesh but
+; has been observed to diverge on the turbulence equations near skewed cells,
+; and an unattended sweep cannot babysit that.
+/solve/set/p-v-coupling 20
+/solve/set/gradient-scheme no yes
+/solve/set/under-relaxation/pressure 0.3
+/solve/set/under-relaxation/mom 0.7
+/solve/set/under-relaxation/nut 0.7
+/solve/set/under-relaxation/turb-viscosity 1
+
+; ---------------------------------------------------------------------
+; 8. Initialisation, from the far-field state
+; ---------------------------------------------------------------------
+/solve/initialize/compute-defaults/velocity-inlet farfield
+/solve/initialize/initialize-flow
+
+; ---------------------------------------------------------------------
+; 9. Stage 1 -- first-order startup
+; ---------------------------------------------------------------------
+; Purely for robustness: get a physically sane field on the board before
+; switching to second order. Stage-1 numbers are NEVER reported.
+/solve/set/discretization-scheme/pressure 10
+/solve/set/discretization-scheme/mom 0
+/solve/set/discretization-scheme/nut 0
+/solve/monitors/residual/convergence-criteria 1e-4 1e-4 1e-4 1e-4
+/solve/iterate 300
+
+; ---------------------------------------------------------------------
+; 10. Stage 2 -- second order, run to convergence
+; ---------------------------------------------------------------------
+; Second order is MANDATORY, not a refinement: a grid-independence study on a
+; first-order solution measures numerical diffusion, not discretisation error,
+; and the Richardson extrapolation underlying GCI assumes a formal order p
+; that first-order upwind on a stretched grid does not deliver. The observed
+; order of accuracy p_obs computed in docs/FLUENT_PLAN.md section 4 is the
+; check that this actually held.
+/solve/set/discretization-scheme/pressure 13
+/solve/set/discretization-scheme/mom 1
+/solve/set/discretization-scheme/nut 1
+/solve/monitors/residual/convergence-criteria 1e-6 1e-6 1e-6 1e-6
+
+; Convergence is judged on the ENGINEERING QUANTITY, not on residual magnitude
+; alone: CD must stop moving. External-aero residuals can plateau while the
+; coefficients are still drifting in the third digit, and CD is what the paper
+; reports.
+/solve/convergence-conditions
+conv-reports
+add cd-steady
+report-defs
+cd
+stop-criterion
+1e-05
+initial-values-to-ignore
+200
+previous-values-to-consider
+150
+print?
+yes
+quit
+quit
+condition
+1
+frequency
+1
+quit
+
+/solve/iterate 4000
+
+; ---------------------------------------------------------------------
+; 11. Save case + data BEFORE any extraction
+; ---------------------------------------------------------------------
+; Deliberate ordering: a misfiring report must not be able to eat the save.
+/file/write-case "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/gridstudy_naca0012_re3e6_a5_L1/gridstudy_naca0012_re3e6_a5_L1_sa.cas.h5"
+ok
+/file/write-data "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/gridstudy_naca0012_re3e6_a5_L1/gridstudy_naca0012_re3e6_a5_L1_sa.dat.h5"
+ok
+
+; ---------------------------------------------------------------------
+; 12. Extraction -- coefficients
+; ---------------------------------------------------------------------
+/report/forces/wall-forces yes 1 0 yes "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/gridstudy_naca0012_re3e6_a5_L1/gridstudy_naca0012_re3e6_a5_L1_sa_force_x.txt"
+/report/forces/wall-forces yes 0 1 yes "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/gridstudy_naca0012_re3e6_a5_L1/gridstudy_naca0012_re3e6_a5_L1_sa_force_y.txt"
+/solve/report-definitions/compute cd cl cm ()
+
+; ---------------------------------------------------------------------
+; 13. Extraction -- y+ (the mesh-adequacy evidence for the paper)
+; ---------------------------------------------------------------------
+; The a-priori flat-plate sizing in mesh_gen.py is an ESTIMATE. These two
+; numbers are what Table 5 quotes.
+/report/surface-integrals/facet-max airfoil () y-plus yes "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/gridstudy_naca0012_re3e6_a5_L1/gridstudy_naca0012_re3e6_a5_L1_sa_yplus_max.txt"
+/report/surface-integrals/area-weighted-avg airfoil () y-plus yes "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/gridstudy_naca0012_re3e6_a5_L1/gridstudy_naca0012_re3e6_a5_L1_sa_yplus_avg.txt"
+
+; ---------------------------------------------------------------------
+; 14. Extraction -- surface fields for the surrogate comparison
+; ---------------------------------------------------------------------
+; This is the file that feeds the AirfRANS-replication offset study and the
+; surrogate-vs-solver comparison: position, pressure, wall shear components.
+; The columns come back in FLUENT'S OWN ORDER, not the requested order --
+; the reader MUST map by the header line, never by position.
+/file/export/ascii "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/gridstudy_naca0012_re3e6_a5_L1/gridstudy_naca0012_re3e6_a5_L1_sa_surface.csv" airfoil () no pressure pressure-coefficient x-wall-shear y-wall-shear wall-shear skin-friction-coef y-plus () yes
+
+; ---------------------------------------------------------------------
+; 15. Bake display objects into the case for later GUI inspection
+; ---------------------------------------------------------------------
+; Headless Fluent cannot render a PNG, but these objects PERSIST in the saved
+; case, so the case can be opened in the GUI later and screenshotted with
+; nothing to rebuild. Standing requirement for every case in this study.
+/display/objects/create contour ct_pressure field pressure surfaces-list interior () quit
+/display/objects/create contour ct_velocity field velocity-magnitude surfaces-list interior () quit
+/display/objects/create contour ct_cp field pressure-coefficient surfaces-list interior () quit
+/display/objects/create vector vec_velocity field velocity-magnitude surfaces-list interior () quit
+
+; re-save so the display objects are actually in the file on disk
+/file/write-case "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/gridstudy_naca0012_re3e6_a5_L1/gridstudy_naca0012_re3e6_a5_L1_sa.cas.h5"
+ok
+
+/file/stop-transcript
+exit
+ok

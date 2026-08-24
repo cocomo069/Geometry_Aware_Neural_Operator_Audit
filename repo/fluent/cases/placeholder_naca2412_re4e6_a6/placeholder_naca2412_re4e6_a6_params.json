@@ -1,0 +1,43 @@
+{
+  "case_id": "placeholder_naca2412_re4e6_a6",
+  "naca_digits": "2412",
+  "re": 4000000.0,
+  "aoa_deg": 6.0,
+  "mesh_level": 2,
+  "chord": 1.0,
+  "rho": 1.184,
+  "mu": 1.85e-05,
+  "nu": 1.5625e-05,
+  "u_inf": 62.5,
+  "mach_estimate": 0.18063583815028902,
+  "a_ref": 1.0,
+  "x_moment": 0.25,
+  "y_plus": 0.6,
+  "y_plus_target": 0.6,
+  "boundary_layer": {
+    "re_c": 4000000.0,
+    "cf": 0.0029636159307237517,
+    "tau_w": 6.8533618397986755,
+    "u_tau": 2.4058911788970896,
+    "y1_centre": 3.8966849715529085e-06,
+    "first_cell_height": 7.793369943105817e-06
+  },
+  "grid": {
+    "na": 256,
+    "nw": 64,
+    "nj": 112,
+    "n_cells": 43008,
+    "normal_growth": 1.1238237944080702
+  },
+  "r_far": 30.0,
+  "x_out": 30.0,
+  "smooth_sweeps": 0,
+  "iter_stage1": 300,
+  "iter_stage2": 4000,
+  "cd_stop_criterion": 1e-05,
+  "models": [
+    "sa",
+    "sst"
+  ],
+  "note": "PLACEHOLDER, to be replaced by active-learning selection. Cambered 4-digit section inside the AirfRANS training envelope; exercises the pipeline end to end on a non-symmetric case where CL is large and the wake is deflected."
+}

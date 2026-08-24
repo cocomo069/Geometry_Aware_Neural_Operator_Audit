@@ -83,7 +83,7 @@ paper/        LaTeX skeleton
 | scalars | — | `re`, `aoa_deg`, `u_inf_mag`, `cl_true`, `cd_true`, `n_surf`, `n_vol` |
 
 `src/data/airfrans_loader.py` provides
-`AirfransSurfaceDataset(split_file, processed_dir, normalize_stats)` returning per-item dict of torch tensors with the keys above (surface subset + `cond`, `cl_true`, `cd_true`, `sim_name`), and `collate(items) -> Batch` where **Batch concatenates points and carries `batch_idx` (long, (ΣNs,))** — PyG-style, no padding. Normalization stats (mean/std per field, computed on train split of `full` only) stored at `data/processed/airfrans/norm_stats.json`; inputs normalized, model outputs are in normalized space, loader exposes `denormalize(field_name, tensor)`.
+`AirfransSurfaceDataset(split_file, processed_dir, normalize_stats)` returning per-item dict of torch tensors with the keys above (surface subset + `cond`, `cl_true`, `cd_true`, `sim_name`), and `collate(items) -> Batch` where **Batch concatenates points and carries `batch_idx` (long, (ΣNs,))** — PyG-style, no padding. Normalization stats (mean/std per field) are computed **per split from that split's own train list** (D-021) — not a single global file — so no cal/test statistic enters the transform on any split; `data/processed/airfrans/norm_stats.json` (full-train) remains as a convenience/default. Inputs normalized, model outputs are in normalized space, loader exposes `denormalize(field_name, tensor)`.
 
 ## 5. Splits (FROZEN)
 
@@ -141,7 +141,7 @@ Each run: `results/<run_id>/` with `config.yaml`, `metrics.json`, `history.csv`;
 ```json
 {"run_id","model","split","seed","tag","params","train_time_s","epochs","device",
  "field":{"p_rel_l2","tau_rel_l2","p_mae","tau_mae"},
- "coef":{"cl_head_mae","cd_head_mae","cl_int_mae","cd_int_mae","cd_spearman","cl_rel","cd_rel"},
+ "coef":{"cl_head_mae","cd_head_mae","cl_int_mae","cd_int_mae","cd_spearman","cd_head_spearman","cd_int_spearman","cl_rel","cd_rel"},
  "consistency":{"fsc_cl","fsc_cd","fsc_rel_cl","fsc_rel_cd","sym_residual","antisym_cl_gap"},
  "cost":{"infer_ms_per_sim","peak_mem_mb"}}
 ```

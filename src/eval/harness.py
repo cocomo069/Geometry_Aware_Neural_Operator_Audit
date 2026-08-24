@@ -75,6 +75,17 @@ def _batch_set(batch: Any, key: str, value: Any) -> None:
         setattr(batch, key, value)
 
 
+def _batch_del(batch: Any, key: str) -> None:
+    """Remove ``key`` from a dict batch (no-op if absent or non-dict)."""
+    if isinstance(batch, dict):
+        batch.pop(key, None)
+    elif hasattr(batch, key):
+        try:
+            delattr(batch, key)
+        except AttributeError:
+            _batch_set(batch, key, None)
+
+
 def _shallow_copy(batch: Any) -> Any:
     import copy as _copy
 
@@ -220,6 +231,11 @@ def reflect_batch(batch: Any) -> Any:
             w = v.clone()
             w[..., 1] = -w[..., 1]
             _batch_set(out, key, w)
+    # Drop fixed-grid caches so the model recomputes them from the mirrored
+    # geometry rather than reusing the original's (QA F1). See CACHED_DERIVED_KEYS.
+    for key in ("grid_sdf", "grid_mask", "grid_feat"):
+        if batch_get(out, key) is not None:
+            _batch_del(out, key)
     return out
 
 
@@ -545,7 +561,8 @@ def _reflect(batch: Any) -> Any:
     """Reflect via ``src.geometry.symmetry`` when available, else locally."""
     try:
         mod = importlib.import_module("src.geometry.symmetry")
-        fn = getattr(mod, "reflect_batch", None)
+        # canonical name is reflect_x_batch (A2); older reflect_batch kept as alias
+        fn = getattr(mod, "reflect_x_batch", None) or getattr(mod, "reflect_batch", None)
         if callable(fn):
             return fn(batch)
     except Exception:

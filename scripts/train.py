@@ -224,6 +224,20 @@ def build_datasets(cfg: Mapping[str, Any]) -> dict[str, Any]:
     processed = get_in(cfg, "data.processed_dir", "data/processed/airfrans")
     stats = get_in(cfg, "data.norm_stats", "auto")
 
+    # Per-split train-only normalization (D-021, QA2): for OOD splits the global
+    # full-train norm_stats.json incorporates test-sim statistics (test sims are
+    # mostly inside full-train), tainting the exact numbers the OOD claims rest
+    # on. Instead compute normalization from THIS split's own train list so no
+    # test/cal statistic ever enters the transform. Deterministic (fixed list).
+    if bool(get_in(cfg, "data.norm_per_split_train", True)):
+        try:
+            import json as _json
+            from scripts.build_cache import compute_norm_stats  # noqa: PLC0415
+            train_sims = _json.loads(Path(split_file).read_text())["train"]
+            stats = compute_norm_stats(train_sims, Path(processed), split_name=split)
+        except Exception as exc:  # fall back to the configured path on any issue
+            print(f"[train] per-split norm stats unavailable ({exc}); using {stats}")
+
     common = dict(
         split_file=split_file,
         processed_dir=processed,

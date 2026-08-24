@@ -160,3 +160,30 @@ P100 unless also installing a cu126 torch (slow, avoided). T4 has 16 GB so batch
 (D-019) is unaffected. Also recorded: the cache dataset mounts at
 `/kaggle/input/datasets/<owner>/<slug>/…`, not `/kaggle/input/<slug>/`; the driver locates
 it by searching for manifest.json rather than hard-coding a mount path.
+
+**D-021 · 2026-08-24 · Per-split train-only normalization (QA2 MAJOR fix)**
+CONTEXT §4 originally froze a single global `full`-train `norm_stats.json` reused for all
+splits. QA2 showed that for the four OOD splits, most test sims are inside `full`-train, so
+their input/output statistics (notably `cond` = Re/AoA, the OOD axis) entered the shared
+normalization — contradicting CONTEXT §5 ("test never touched by normalization") and mildly
+flattering the absolute OOD numbers the paper's headline rests on. No label leak, and the
+equal-budget model *comparison* was unaffected (shared transform), but an OOD/calibration
+paper cannot ship test-tainted normalization. Fix: the trainer now computes normalization
+from THIS split's own train list (`data.norm_per_split_train=true` default;
+`compute_norm_stats(split.train, processed_dir)`), so no cal/test statistic ever enters the
+transform. Deterministic (fixed train list). For `full` this equals the old global stats;
+for OOD splits it differs (e.g. aoa surf_p mean −823 vs full's −1118). Needs no cache change
+— stats compute on the fly from the mounted npz. Also this session (QA2 minor): CONTEXT §9
+coef block updated to list `cd_head_spearman`/`cd_int_spearman` (added in ce978ad; schema
+already required them). **Consequence: any runs trained under the old global normalization
+are superseded — the core grid was restarted after this fix.**
+
+**D-022 · 2026-08-24 · Reflection drops fixed-grid caches so M2 recomputes them (QA1 F1 fix)**
+`reflect_x_batch`/harness reflection passed `grid_sdf` (a field on a FIXED latent grid)
+through unchanged under the y-reflection, so M2's symmetry residual compared the mirrored
+surface against conditioning built for the un-mirrored geometry (measured SDF discrepancy
+~0.2; prediction impact ~1e-5 on the untrained model but a real logic error in a
+paper-critical diagnostic). Fix: reflection now drops `grid_sdf`/`grid_mask`/`grid_feat` so
+the model rebuilds them from the mirrored `surf_pos`; `edge_index`/`curvature` are kept
+(provably reflection-invariant). Harness `_reflect` now calls the canonical
+`reflect_x_batch` (was silently falling back to a local copy via a stale name lookup).

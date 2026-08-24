@@ -48,6 +48,13 @@ _FLIP_Y_KEYS = (
 # per-sample scalars that negate under R
 _NEGATE_KEYS = ("aoa_deg",)
 
+# fixed-grid / connectivity caches (D-017) that are NOT per-point 2-vectors and
+# must be RECOMPUTED from the mirrored geometry, not passed through: a reflected
+# airfoil needs a reflected grid SDF. Dropping them makes the model rebuild them
+# from the mirrored surf_pos (QA F1). edge_index/curvature are reflection-
+# invariant (isometry preserves kNN and signed curvature) so they are NOT dropped.
+_DROP_UNDER_REFLECTION = ("grid_sdf", "grid_mask", "grid_feat")
+
 
 def _flip_y(t: torch.Tensor) -> torch.Tensor:
     assert t.shape[-1] == 2, f"expected trailing dim 2, got {tuple(t.shape)}"
@@ -66,6 +73,8 @@ def reflect_x_batch(batch: dict) -> dict:
     """
     out = {}
     for key, val in batch.items():
+        if key in _DROP_UNDER_REFLECTION:
+            continue  # force recompute from the mirrored geometry (F1)
         if key in _FLIP_Y_KEYS and isinstance(val, torch.Tensor):
             out[key] = _flip_y(val)
         elif key in _NEGATE_KEYS and isinstance(val, torch.Tensor):

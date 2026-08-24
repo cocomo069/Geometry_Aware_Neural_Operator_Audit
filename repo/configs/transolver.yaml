@@ -1,0 +1,55 @@
+# M3 -- Transolver-style physics attention over surface points (CONTEXT.md 7):
+# M = 32 slices, 4 layers, d = 128.
+
+model:
+  name: transolver
+  dim: 128               # d
+  n_layers: 4
+  n_heads: 8
+  n_slices: 32           # M
+  ffn_mult: 4
+  n_freqs: 6
+  activation: gelu
+  slice_temperature: 0.5
+  trunk_dim: 256
+  coef_hidden: 256
+  coef_layers: 2
+  coef_pooling: ds_mean_max
+
+train:
+  epochs: 400
+  lr: 1.0e-3
+  batch_size: 16
+  weight_decay: 0.0
+  optimizer: adam
+  scheduler: cosine
+  min_lr: 1.0e-6
+  warmup_epochs: 0
+  grad_clip: 1.0
+  num_workers: 0
+  val_every: 1
+  val_metric: val_loss
+  val_metric_mode: min
+  weights:
+    head: 0.1            # lambda_H, D-016: coefficient-head regression, ALWAYS on
+    force: 0.0
+    sym: 0.0
+    bc: 0.0
+    div: 0.0
+
+data:
+  split: full
+  splits_dir: data/splits
+  processed_dir: data/processed/airfrans
+  norm_stats: data/processed/airfrans/norm_stats.json
+  load_volume: false
+  cache_in_ram: true
+
+eval:
+  batch_size: 8
+  compute_symmetry: true
+  symmetry_max_sims: 64
+
+seed: 0
+tag: null
+device: auto
