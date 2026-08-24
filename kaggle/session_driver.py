@@ -80,11 +80,42 @@ def main():
             if src.exists():
                 shutil.copytree(src, REPO / sub, dirs_exist_ok=True)
 
-    # 4. Run sweep with wall-clock guard
-    budget = int(MAX_SECONDS - (time.time() - T0))
-    sh(f"{sys.executable} -m scripts.sweep --spec {SWEEP} --max-seconds {budget}")
+    # 3b. Environment diagnostics (Kaggle logs are unreliable on failure, so we
+    #     print these and also tee the sweep output into an always-exported file).
+    proc = Path("data/processed/airfrans")
+    n_npz = len(list(proc.glob("*.npz"))) if proc.exists() else -1
+    print(f"[diag] python={sys.version.split()[0]} cwd={os.getcwd()}")
+    print(f"[diag] data/processed/airfrans exists={proc.exists()} n_npz={n_npz}")
+    print(f"[diag] norm_stats={(proc / 'norm_stats.json').exists()} "
+          f"manifest={(proc / 'manifest.json').exists()}")
+    try:
+        import torch
+        print(f"[diag] torch={torch.__version__} cuda={torch.cuda.is_available()}")
+    except Exception as exc:
+        print(f"[diag] torch import failed: {exc}")
 
-    # 5. Export state as kernel output
+    # 4. Run sweep with wall-clock guard, teeing output into WORK/session.log so
+    #    the real error survives even if Kaggle returns an empty kernel log.
+    session_log = WORK / "session.log"
+    budget = int(MAX_SECONDS - (time.time() - T0))
+    sweep_rc = 0
+    try:
+        with open(session_log, "w", encoding="utf-8") as lf:
+            p = subprocess.Popen(
+                [sys.executable, "-u", "-m", "scripts.sweep", "--spec", SWEEP,
+                 "--max-seconds", str(budget)],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            for line in p.stdout:
+                print(line, end="")
+                lf.write(line)
+            sweep_rc = p.wait()
+    except Exception as exc:  # noqa: BLE001
+        sweep_rc = 1
+        session_log.write_text(f"{session_log.read_text() if session_log.exists() else ''}\n"
+                               f"DRIVER EXCEPTION: {exc}\n")
+        print(f"[driver] sweep raised: {exc}")
+
+    # 5. Always export state (results/checkpoints + the session log), pass or fail.
     for name, folder in (("results", REPO / "results"), ("checkpoints", REPO / "checkpoints")):
         zpath = WORK / f"{name}.zip"
         with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
@@ -93,6 +124,11 @@ def main():
                     if f.is_file():
                         z.write(f, f.relative_to(REPO))
         print(f"exported {zpath} ({zpath.stat().st_size/1e6:.1f} MB)")
+    print(f"[driver] sweep rc={sweep_rc}; session.log tail:")
+    if session_log.exists():
+        print("\n".join(session_log.read_text().splitlines()[-40:]))
+    if sweep_rc != 0:
+        raise SystemExit(sweep_rc)
 
 
 if __name__ == "__main__":
