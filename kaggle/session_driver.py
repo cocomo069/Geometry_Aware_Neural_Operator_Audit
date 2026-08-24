@@ -24,7 +24,9 @@ from pathlib import Path
 
 T0 = time.time()
 WORK = Path("/kaggle/working")
-REPO = WORK / "repo"
+# Repo lives OFF the output path (/kaggle/working) so kernel-output pulls stay
+# small -- only the zips + session.log below are exported.
+REPO = Path("/kaggle/tmp/repo")
 
 
 def sh(cmd, **kw):
@@ -124,11 +126,14 @@ def main():
                     if f.is_file():
                         z.write(f, f.relative_to(REPO))
         print(f"exported {zpath} ({zpath.stat().st_size/1e6:.1f} MB)")
+    # Record the outcome in the exported log, but let the kernel finish
+    # "complete" (not raise) so Kaggle preserves its output and log for pulling.
+    with open(session_log, "a", encoding="utf-8") as lf:
+        lf.write(f"\n[driver] sweep rc={sweep_rc}\n")
+    (WORK / "STATUS.txt").write_text(f"sweep_rc={sweep_rc}\n")
     print(f"[driver] sweep rc={sweep_rc}; session.log tail:")
     if session_log.exists():
         print("\n".join(session_log.read_text().splitlines()[-40:]))
-    if sweep_rc != 0:
-        raise SystemExit(sweep_rc)
 
 
 if __name__ == "__main__":
