@@ -1,0 +1,91 @@
+"""Active learning: NACA pool generation, acquisition scoring, diversity (spec 5.8).
+
+    from src.active import build_pool, acquisition_score, select_top_k_diverse
+"""
+
+from .acquisition import (
+    AcquisitionResult,
+    acquisition_score,
+    random_scores,
+    rank_pool,
+    select_cases,
+    select_top_k,
+    variance_only_scores,
+    write_case_list,
+    zscore,
+)
+from .diversity import (
+    NormalizationStats,
+    apply_normalization,
+    coverage_radius,
+    farthest_point_selection,
+    greedy_score_diversity,
+    min_pairwise_distance,
+    normalize_design_space,
+    select_top_k_diverse,
+)
+from .pool import (
+    DESIGN_COLUMNS,
+    NU_AIR,
+    AirfoilShape,
+    ExclusionSet,
+    NACA4,
+    NACA5,
+    PoolEntry,
+    build_pool,
+    collate_batches,
+    cosine_spacing,
+    default_pool_shapes,
+    design_matrix,
+    entry_to_batch,
+    freestream_from_re,
+    naca4_family,
+    naca5_family,
+    parse_naca,
+    reynolds_to_speed,
+    signed_area,
+    surface_geometry,
+)
+
+__all__ = [
+    # pool
+    "AirfoilShape",
+    "NACA4",
+    "NACA5",
+    "PoolEntry",
+    "ExclusionSet",
+    "parse_naca",
+    "cosine_spacing",
+    "surface_geometry",
+    "signed_area",
+    "naca4_family",
+    "naca5_family",
+    "default_pool_shapes",
+    "build_pool",
+    "entry_to_batch",
+    "collate_batches",
+    "design_matrix",
+    "reynolds_to_speed",
+    "freestream_from_re",
+    "DESIGN_COLUMNS",
+    "NU_AIR",
+    # acquisition
+    "zscore",
+    "acquisition_score",
+    "AcquisitionResult",
+    "rank_pool",
+    "select_top_k",
+    "random_scores",
+    "variance_only_scores",
+    "select_cases",
+    "write_case_list",
+    # diversity
+    "normalize_design_space",
+    "apply_normalization",
+    "NormalizationStats",
+    "farthest_point_selection",
+    "select_top_k_diverse",
+    "greedy_score_diversity",
+    "min_pairwise_distance",
+    "coverage_radius",
+]
