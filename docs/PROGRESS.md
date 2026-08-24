@@ -698,3 +698,13 @@ for real: `mpm --install=natbib` (about 100 kB), then `latexmk -pdf main.tex`.
   falsifiable claim requires the selection to come from the model.
 - The `gridstudy_*` trio is not a placeholder and should run first: its GCI band
   is the numerical uncertainty quoted on every other Fluent case.
+
+## 2026-08-24 — A6 (aux scaffolds) — DONE (final log by orchestrator; agent hit usage limit after finishing work)
+
+- fluent/: gmsh-based mesh_gen.py (C-grid, y+ targeted), parameterized SA + SST TUI
+  journal templates, make_cases.py + rendered cases (2 placeholders + 3-level
+  NACA0012 grid study), RUNBOOK.md, MANIFEST.json. Runs deferred per D-007.
+- docs/FLUENT_PLAN.md (grid study/GCI design, y+ math, AirfRANS replication offset
+  study), docs/DRIVAERNET_ACCESS.md + scripts/subset_drivaernet.py (user-gated).
+- paper/: main.tex compiles clean — 12 pages, all 12 figures + 6 tables placeholdered,
+  refs.bib from spec reading list, macros.tex. model_cards/TEMPLATE.md.
