@@ -67,14 +67,20 @@ def main():
     Path("requirements.kaggle.txt").write_text("\n".join(reqs))
     sh(f"{sys.executable} -m pip install -q -r requirements.kaggle.txt")
 
-    # 2. Locate the cache in the read-only dataset mount. We pass its absolute
-    #    path to every run via --extra (below) rather than symlinking, which was
-    #    fragile across CWD/mount layouts. The npz live at processed/airfrans/.
-    cache_processed = Path(CACHE_DATASET_DIR) / "processed" / "airfrans"
-    if not cache_processed.exists():  # tolerate a flatter layout
-        alt = list(Path(CACHE_DATASET_DIR).glob("**/manifest.json"))
-        if alt:
-            cache_processed = alt[0].parent
+    # 2. Locate the cache by finding the per-sim manifest.json ANYWHERE under the
+    #    input mounts -- Kaggle's zip extraction can nest it under an extra dir,
+    #    so we search rather than assume a layout. Passed to runs via --extra.
+    candidates = []
+    for root in ("/kaggle/input",):
+        candidates += [m.parent for m in Path(root).glob("**/manifest.json")
+                       if list(m.parent.glob("*.npz"))]
+    # Always dump the mount tree (dirs) so layout is diagnosable from the export.
+    tree = "\n".join(sorted(str(p) for p in Path("/kaggle/input").glob("**/*")
+                            if p.is_dir()))
+    (WORK / "MOUNT_TREE.txt").write_text(tree)
+    cache_processed = candidates[0] if candidates else Path(CACHE_DATASET_DIR)
+    print(f"[diag] located cache at {cache_processed} "
+          f"({len(list(cache_processed.glob('*.npz')))} npz)")
 
     # 3. Resume state from previous session, if any
     if RUNS_DATASET_DIR and Path(RUNS_DATASET_DIR).exists():
