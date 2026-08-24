@@ -37,6 +37,7 @@ def main():
         ["git", "-C", str(root), "remote", "get-url", "origin"],
         capture_output=True, text=True, check=True).stdout.strip()
     cache_ds = args.cache_dataset or f"{user}/airfrans-cache"
+    code_ds = f"{user}/geo-op-code"
     slug = args.kernel_slug or f"{user}/geo-op-session"
 
     driver = (HERE / "session_driver.py").read_text()
@@ -51,14 +52,14 @@ def main():
         (tdp / "session_driver.py").write_text(driver)
         meta = {
             "id": slug,
-            "title": "geo-op-session",
+            "title": slug.split("/")[-1],
             "code_file": "session_driver.py",
             "language": "python",
             "kernel_type": "script",
             "is_private": True,
             "enable_gpu": True,
             "enable_internet": True,
-            "dataset_sources": [cache_ds] + ([args.runs_dataset] if args.runs_dataset else []),
+            "dataset_sources": [cache_ds, code_ds] + ([args.runs_dataset] if args.runs_dataset else []),
             "kernel_sources": [],
             "competition_sources": [],
         }

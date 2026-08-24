@@ -27,9 +27,6 @@ def main():
         tdp = Path(td)
         shutil.copytree(root / "data" / "processed", tdp / "processed")
         shutil.copytree(root / "data" / "splits", tdp / "splits")
-        # repo snapshot: lets the Kaggle kernel run without any GitHub token (D-018)
-        subprocess.run(["git", "-C", str(root), "archive", "--format=tar.gz",
-                        "-o", str(tdp / "repo.tar.gz"), "HEAD"], check=True)
         (tdp / "dataset-metadata.json").write_text(json.dumps({
             "title": "airfrans-cache",
             "id": slug,

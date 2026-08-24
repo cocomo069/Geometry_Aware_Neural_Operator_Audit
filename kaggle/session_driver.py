@@ -9,6 +9,7 @@ REPO_URL = "{{REPO_URL}}"            # e.g. https://github.com/<user>/geo-operat
 COMMIT = "{{COMMIT}}"                # pinned commit sha
 SWEEP = "{{SWEEP}}"                  # e.g. configs/sweeps/core.yaml
 CACHE_DATASET_DIR = "/kaggle/input/airfrans-cache"   # attached via kernel-metadata
+CODE_DATASET_DIR = "/kaggle/input/geo-op-code"      # repo.tar.gz snapshot
 RUNS_DATASET_DIR = "{{RUNS_DIR}}"    # "" or /kaggle/input/<runs-dataset>
 MAX_SECONDS = 11 * 3600
 # =========================================
@@ -32,30 +33,25 @@ def sh(cmd, **kw):
 
 
 def main():
-    # 1. Obtain the code: prefer a fresh git clone at the pinned commit via the
-    #    GH_TOKEN Kaggle secret (small, always current); fall back to the repo
-    #    snapshot shipped inside the cache dataset if the clone is unavailable.
-    token = ""
-    try:
-        from kaggle_secrets import UserSecretsClient
-        token = UserSecretsClient().get_secret("GH_TOKEN")
-    except Exception:
-        pass
-    cloned = False
-    if token:
-        url = REPO_URL.replace("https://", f"https://{token}@")
-        try:
-            sh(f"git clone --quiet {url} {REPO}")
-            sh(f"git -C {REPO} checkout --quiet {COMMIT}")
-            cloned = True
-        except Exception as exc:
-            print(f"clone failed ({exc}); trying dataset snapshot")
-    if not cloned:
-        snapshot = Path(CACHE_DATASET_DIR) / "repo.tar.gz"
-        if not snapshot.exists():
-            raise SystemExit("no GH_TOKEN clone and no repo.tar.gz snapshot available")
-        REPO.mkdir(parents=True, exist_ok=True)
+    # 1. Obtain the code from the geo-op-code dataset snapshot (repo.tar.gz),
+    #    which launch.py attaches and push_code.py refreshes each launch. This
+    #    needs no GitHub token. Fall back to a git clone if a token is present.
+    REPO.mkdir(parents=True, exist_ok=True)
+    snapshot = Path(CODE_DATASET_DIR) / "repo.tar.gz"
+    if snapshot.exists():
         sh(f"tar -xzf {snapshot} -C {REPO}")
+    else:
+        token = ""
+        try:
+            from kaggle_secrets import UserSecretsClient
+            token = UserSecretsClient().get_secret("GH_TOKEN")
+        except Exception:
+            pass
+        if not token:
+            raise SystemExit(f"no repo.tar.gz at {CODE_DATASET_DIR} and no GH_TOKEN secret")
+        url = REPO_URL.replace("https://", f"https://{token}@")
+        sh(f"git clone --quiet {url} {REPO}")
+        sh(f"git -C {REPO} checkout --quiet {COMMIT}")
 
     os.chdir(REPO)
     # Kaggle preinstalls a CUDA-enabled torch; installing our pinned torch would
