@@ -67,13 +67,14 @@ def main():
     Path("requirements.kaggle.txt").write_text("\n".join(reqs))
     sh(f"{sys.executable} -m pip install -q -r requirements.kaggle.txt")
 
-    # 2. Wire data cache (read-only input -> expected paths)
-    (REPO / "data").mkdir(exist_ok=True)
-    for sub in ("processed", "splits"):
-        src = Path(CACHE_DATASET_DIR) / sub
-        dst = REPO / "data" / sub
-        if not dst.exists():
-            os.symlink(src, dst, target_is_directory=True)
+    # 2. Locate the cache in the read-only dataset mount. We pass its absolute
+    #    path to every run via --extra (below) rather than symlinking, which was
+    #    fragile across CWD/mount layouts. The npz live at processed/airfrans/.
+    cache_processed = Path(CACHE_DATASET_DIR) / "processed" / "airfrans"
+    if not cache_processed.exists():  # tolerate a flatter layout
+        alt = list(Path(CACHE_DATASET_DIR).glob("**/manifest.json"))
+        if alt:
+            cache_processed = alt[0].parent
 
     # 3. Resume state from previous session, if any
     if RUNS_DATASET_DIR and Path(RUNS_DATASET_DIR).exists():
@@ -84,10 +85,10 @@ def main():
 
     # 3b. Environment diagnostics (Kaggle logs are unreliable on failure, so we
     #     print these and also tee the sweep output into an always-exported file).
-    proc = Path("data/processed/airfrans")
+    proc = cache_processed
     n_npz = len(list(proc.glob("*.npz"))) if proc.exists() else -1
     print(f"[diag] python={sys.version.split()[0]} cwd={os.getcwd()}")
-    print(f"[diag] data/processed/airfrans exists={proc.exists()} n_npz={n_npz}")
+    print(f"[diag] cache_processed={proc} exists={proc.exists()} n_npz={n_npz}")
     print(f"[diag] norm_stats={(proc / 'norm_stats.json').exists()} "
           f"manifest={(proc / 'manifest.json').exists()}")
     try:
@@ -105,7 +106,8 @@ def main():
         with open(session_log, "w", encoding="utf-8") as lf:
             p = subprocess.Popen(
                 [sys.executable, "-u", "-m", "scripts.sweep", "--spec", SWEEP,
-                 "--max-seconds", str(budget)],
+                 "--max-seconds", str(budget),
+                 "--extra", f"data.processed_dir={cache_processed}"],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             for line in p.stdout:
                 print(line, end="")
