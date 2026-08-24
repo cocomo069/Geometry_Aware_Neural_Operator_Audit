@@ -115,3 +115,11 @@ Geometry is static per sim, so build_cache.py additionally stores optional keys:
 (2,E int32, k=16 kNN), `curvature` (Ns,). Models already accept these via batch and
 fall back to on-the-fly computation. CONTEXT.md §4 amended (this entry is the migration
 record). Positions confirmed chord-frame physical (D-014), so the fixed bbox stands.
+
+**D-017a · 2026-08-24 · Cache v2 vintage note: curvature changes model inputs**
+(A1.) `edge_index`/`grid_sdf` are pure caches (predictions identical, asserted);
+`curvature` upgraded from constant-zero to real signal → CACHE_VERSION=2. No
+checkpoints existed pre-v2, so no comparability break occurred; rule going forward:
+metrics.json runs are only comparable within the same CACHE_VERSION (recorded by the
+harness). Cached grid_sdf is stored transposed to match M2's row-major latent grid —
+bit-exact equality asserted in tests, do not "fix" the transpose.

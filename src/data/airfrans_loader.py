@@ -63,6 +63,7 @@ __all__ = [
     "DEFAULT_NORMALIZE_FIELDS",
     "SURFACE_KEYS",
     "VOLUME_KEYS",
+    "GEOMETRY_KEYS",
     "NormStats",
     "AirfransSurfaceDataset",
     "collate",
@@ -86,6 +87,17 @@ VOLUME_KEYS: tuple[str, ...] = (
     "vol_nut",
     "vol_sdf",
 )
+
+#: Precomputed static geometry (D-017).  Optional: caches built before
+#: ``CACHE_VERSION = 2`` lack them and the models fall back to computing them
+#: on the fly, so their absence is never an error.
+#:
+#: * ``curvature`` ``(Ns,)``   -- point-wise, concatenated like the surface keys;
+#: * ``grid_sdf``  ``(64, 64)``-- per sim, stacked to ``(B, 64, 64)``;
+#: * ``edge_index`` ``(2, E)`` -- per sim in *local* indices, concatenated along
+#:   dim 1 with each sample's point offset added, so the result indexes the
+#:   concatenated point array exactly as ``common.knn_edges`` would have.
+GEOMETRY_KEYS: tuple[str, ...] = ("curvature", "grid_sdf", "edge_index")
 
 #: Per-simulation scalars/vectors stacked to a leading batch dimension.
 _SIM_VECTOR_KEYS: tuple[str, ...] = ("cond",)
@@ -221,6 +233,10 @@ class AirfransSurfaceDataset(Dataset):
         Which list inside the manifest to serve.
     load_volume : bool
         Also return the ``vol_*`` arrays (CONTEXT.md section 7 volume variants).
+    load_geometry : bool
+        Pass through the D-017 precomputed static geometry
+        (``curvature``, ``grid_sdf``, ``edge_index``) when the cache carries it.
+        Silently inert on a pre-D-017 cache.
     normalize_fields : iterable of str, optional
         Override :data:`DEFAULT_NORMALIZE_FIELDS`.
     cache_in_ram : bool
@@ -244,6 +260,7 @@ class AirfransSurfaceDataset(Dataset):
         normalize_stats: Any = "auto",
         subset: str = "train",
         load_volume: bool = False,
+        load_geometry: bool = True,
         normalize_fields: Iterable[str] | None = None,
         cache_in_ram: bool = False,
         missing: str = "error",
@@ -261,6 +278,7 @@ class AirfransSurfaceDataset(Dataset):
         self.processed_dir = Path(processed_dir)
         self.subset = subset
         self.load_volume = bool(load_volume)
+        self.load_geometry = bool(load_geometry)
         self.dtype = dtype
         self._ram: dict[int, dict[str, Any]] | None = {} if cache_in_ram else None
 
@@ -280,6 +298,15 @@ class AirfransSurfaceDataset(Dataset):
             )
         self.sim_names: list[str] = present
         self.missing_sims: list[str] = absent
+
+        # D-017 geometry is optional; decide once, from the first sim, so every
+        # item in the dataset carries the same key set (collate requires it).
+        self.geometry_keys: tuple[str, ...] = ()
+        if self.load_geometry and self.sim_names:
+            with np.load(self.path_for(self.sim_names[0])) as probe:
+                self.geometry_keys = tuple(
+                    k for k in GEOMETRY_KEYS if k in probe
+                )
 
         if normalize_stats == "auto":
             default_path = self.processed_dir / "norm_stats.json"
@@ -315,6 +342,21 @@ class AirfransSurfaceDataset(Dataset):
                 item["vol_is_surf"] = torch.as_tensor(
                     np.ascontiguousarray(d["vol_is_surf"]), dtype=torch.bool
                 )
+
+            for key in self.geometry_keys:
+                if key not in d:
+                    raise KeyError(
+                        f"{name}: cache is missing {key!r} although "
+                        f"{self.sim_names[0]!r} has it; rebuild the cache "
+                        f"(scripts/build_cache.py --force)"
+                    )
+                if key == "edge_index":
+                    # models index the concatenated point array with these
+                    item[key] = torch.as_tensor(
+                        np.ascontiguousarray(d[key]), dtype=torch.long
+                    )
+                else:
+                    item[key] = self._t(d[key])
 
             for key in _SIM_VECTOR_KEYS:
                 item[key] = self._t(np.atleast_1d(d[key]))
@@ -355,6 +397,28 @@ class AirfransSurfaceDataset(Dataset):
             if got != shape:
                 raise ValueError(
                     f"{name}: cached {key} has shape {got}, expected {shape}"
+                )
+        if "curvature" in item and tuple(item["curvature"].shape) != (ns,):
+            raise ValueError(
+                f"{name}: cached curvature has shape "
+                f"{tuple(item['curvature'].shape)}, expected {(ns,)}"
+            )
+        if "grid_sdf" in item and item["grid_sdf"].dim() != 2:
+            raise ValueError(
+                f"{name}: cached grid_sdf must be 2-D (n_y, n_x), got "
+                f"{tuple(item['grid_sdf'].shape)}"
+            )
+        if "edge_index" in item:
+            edge = item["edge_index"]
+            if edge.dim() != 2 or edge.shape[0] != 2:
+                raise ValueError(
+                    f"{name}: cached edge_index must be (2, E), got "
+                    f"{tuple(edge.shape)}"
+                )
+            if edge.numel() and int(edge.max()) >= ns:
+                raise ValueError(
+                    f"{name}: edge_index references point "
+                    f"{int(edge.max())} but the contour has only {ns}"
                 )
         if self.load_volume:
             nv = int(item["n_vol"])
@@ -426,7 +490,10 @@ def collate(items: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             )
 
     batch: dict[str, Any] = {}
+    # 'curvature' is point-wise like the surf_* arrays, so it concatenates too.
     point_keys = [k for k in keys if k.startswith("surf_")]
+    if "curvature" in keys:
+        point_keys.append("curvature")
     vol_keys = [
         k for k in keys if k.startswith("vol_") and k not in ("n_vol",)
     ]
@@ -447,6 +514,24 @@ def collate(items: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     if batch["batch_idx"].numel() != batch["surf_pos"].shape[0]:
         raise ValueError(
             "n_surf disagrees with the number of concatenated surface points"
+        )
+
+    # D-017 edge_index: cached per sim in *local* indices. Shift each sample by
+    # its point offset so the concatenated result indexes the concatenated point
+    # array -- byte-identical to knn_edges(batch_pos, k, batch_idx), which is
+    # what src/models/common.get_edge_index would otherwise have built. It uses
+    # batch['edge_index'] verbatim, so the offsetting has to happen here.
+    if "edge_index" in keys:
+        shifted = []
+        offset = 0
+        for it in items:
+            edge = torch.as_tensor(it["edge_index"], dtype=torch.long)
+            shifted.append(edge + offset if edge.numel() else edge)
+            offset += int(it["n_surf"])
+        batch["edge_index"] = (
+            torch.cat(shifted, dim=1)
+            if shifted
+            else torch.zeros((2, 0), dtype=torch.long)
         )
 
     if vol_keys:

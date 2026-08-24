@@ -62,7 +62,15 @@ from src.data.splits import (  # noqa: E402
 )
 
 #: Bump when the on-disk layout changes; stale caches are then rebuilt.
-CACHE_VERSION = 1
+#: v2 (D-017) added the precomputed static geometry keys below.
+CACHE_VERSION = 2
+
+# -- D-017 precomputed static geometry -------------------------------------
+#: M2's default latent grid (src/models/sdf_fno.py DEFAULT_CONFIG).
+GRID_BBOX = (-0.5, 1.5, -1.0, 1.0)   # (xmin, xmax, ymin, ymax)
+GRID_RES = (64, 64)                  # (n_y, n_x) -- y first, as M2 indexes it
+#: M1's neighbourhood size (src/models/gnn.py DEFAULT_CONFIG k=16).
+KNN_K = 16
 
 #: CONTEXT.md section 4: "volume node coords (subsampled to <= 32768 if larger)".
 MAX_VOL_POINTS = 32768
@@ -80,6 +88,7 @@ _POINT_FIELDS = {
     "vol_p": 1,
     "vol_nut": 1,
     "vol_sdf": 1,
+    "curvature": 1,          # optional (D-017); skipped when absent
 }
 _SIM_FIELDS = {
     "cond": 2,
@@ -241,6 +250,94 @@ def _geometric_outward_normals(
     return nrm / mag
 
 
+def geometry_extras(
+    surf_pos: np.ndarray,
+    k: int = KNN_K,
+    bbox: Sequence[float] = GRID_BBOX,
+    res: Sequence[int] = GRID_RES,
+) -> dict[str, np.ndarray]:
+    """Precompute the static per-sim geometry of D-017.
+
+    These three arrays depend only on the airfoil shape, never on the flow, so
+    recomputing them every training step is pure waste (A3 measured M2 at
+    2.45 s/forward, CPU-bound on exactly this).
+
+    Parameters
+    ----------
+    surf_pos : (Ns, 2) float array
+        Contour-ordered surface points.  **Pass the float32 array that is
+        actually stored**, not the float64 original: the models recompute these
+        quantities from the cached float32 positions, and on a near-uniform
+        contour the float32 rounding is enough to flip kNN tie-breaks and shift
+        the SDF in the last bit.  Feeding float64 here yields a cache that is
+        *almost* but not exactly what the model would have built.
+    k : int
+        kNN degree; must match ``src/models/gnn.py``'s ``k``.
+    bbox, res : sequences
+        M2's latent grid, ``(xmin, xmax, ymin, ymax)`` and ``(n_y, n_x)``.
+
+    Returns
+    -------
+    dict with ``grid_sdf`` (n_y, n_x) float32, ``edge_index`` (2, E) int32 and
+    ``curvature`` (Ns,) float32.
+
+    Notes
+    -----
+    **Grid orientation is a trap.**  ``src/geometry/sdf.make_grid(bbox, (nx, ny))``
+    returns ``grid[ix, iy] = (x_ix, y_iy)`` -- x on the *first* axis -- whereas
+    M2's ``make_latent_grid`` lays nodes out row-major as ``iy * nx + ix`` so
+    that a reshape to ``(n_y, n_x)`` is the ``(H, W)`` image its FNO expects.
+    The two differ by a transpose; feeding the untransposed array to M2 is a
+    silent 0.38-magnitude error on a unit-chord airfoil rather than a crash.
+    We therefore transpose here, and ``tests/test_loader.py`` asserts the
+    cached array is bit-identical to M2's own on-the-fly result.
+    """
+    import torch  # noqa: PLC0415  (heavy; only the builder needs it)
+
+    from src.geometry.quadrature import curvature as _curvature  # noqa: PLC0415
+    from src.geometry.sdf import make_grid, sdf_on_grid  # noqa: PLC0415
+    from src.models.common import knn_edges  # noqa: PLC0415
+
+    # Mirror the model path exactly: it receives float32 and widens to float64.
+    surf_pos = np.ascontiguousarray(
+        np.asarray(surf_pos, dtype=np.float32), dtype=np.float64
+    )
+    n_surf = surf_pos.shape[0]
+
+    # -- grid_sdf: A2's SDF on M2's grid, in M2's (n_y, n_x) layout ----------
+    n_y, n_x = int(res[0]), int(res[1])
+    grid = make_grid(bbox, (n_x, n_y))                 # (n_x, n_y, 2)
+    grid_sdf = np.asarray(sdf_on_grid(surf_pos, grid)).T   # -> (n_y, n_x)
+    if grid_sdf.shape != (n_y, n_x):  # pragma: no cover - guarded by make_grid
+        raise ValueError(
+            f"grid_sdf has shape {grid_sdf.shape}, expected {(n_y, n_x)}"
+        )
+
+    # -- edge_index: exactly what src.models.common.knn_edges would build ----
+    edge = knn_edges(torch.from_numpy(surf_pos), k=int(k))
+    edge_np = edge.detach().cpu().numpy()
+    if edge_np.ndim != 2 or edge_np.shape[0] != 2:  # pragma: no cover
+        raise ValueError(f"edge_index must be (2, E), got {edge_np.shape}")
+    if edge_np.size and int(edge_np.max()) >= n_surf:  # pragma: no cover
+        raise ValueError("edge_index references a point outside the contour")
+
+    # -- curvature: A2's signed Menger curvature -----------------------------
+    curv = np.asarray(_curvature(surf_pos), dtype=np.float64)
+    if curv.shape != (n_surf,):
+        # quadrature.dedup_closed_contour drops a duplicated closing point; our
+        # contour walk should never produce one, so this means coincident nodes.
+        raise ValueError(
+            f"curvature returned {curv.shape}, expected {(n_surf,)} -- the "
+            "contour probably has coincident points"
+        )
+
+    return {
+        "grid_sdf": np.ascontiguousarray(grid_sdf, dtype=np.float32),
+        "edge_index": np.ascontiguousarray(edge_np, dtype=np.int32),
+        "curvature": np.ascontiguousarray(curv, dtype=np.float32),
+    }
+
+
 def _stable_seed(name: str) -> int:
     """Platform-independent 32-bit seed from a simulation name."""
     digest = hashlib.blake2s(name.encode("utf-8"), digest_size=8).digest()
@@ -255,6 +352,8 @@ def build_one(
     raw_root: Path,
     max_vol_points: int = MAX_VOL_POINTS,
     strict: bool = True,
+    geometry: bool = True,
+    knn_k: int = KNN_K,
 ) -> tuple[dict[str, np.ndarray], dict]:
     """Convert one raw simulation into the frozen cache arrays.
 
@@ -269,6 +368,11 @@ def build_one(
         Volume subsample ceiling.
     strict : bool
         Raise instead of warn when a geometric sanity check fails.
+    geometry : bool
+        Also precompute the D-017 static geometry (``grid_sdf``,
+        ``edge_index``, ``curvature``).
+    knn_k : int
+        kNN degree for ``edge_index``.
 
     Returns
     -------
@@ -411,6 +515,17 @@ def build_one(
         "n_vol_full": np.int64(n_vol_all),
         "cache_version": np.int64(CACHE_VERSION),
     }
+    # D-017: static geometry the models would otherwise rebuild every step.
+    if geometry:
+        try:
+            arrays.update(
+                geometry_extras(arrays["surf_pos"], k=knn_k)
+            )
+        except Exception as exc:  # noqa: BLE001
+            if strict:
+                raise
+            warnings.append(f"geometry extras skipped: {exc}")
+
     for key, arr in arrays.items():
         if isinstance(arr, np.ndarray) and arr.ndim > 0:
             arrays[key] = np.ascontiguousarray(arr)
@@ -438,6 +553,11 @@ def build_one(
         "normal_alignment": align,
         "normal_closure": closure,
         "cache_version": CACHE_VERSION,
+        "has_geometry": all(
+            key in arrays for key in ("grid_sdf", "edge_index", "curvature")
+        ),
+        "n_edges": int(arrays["edge_index"].shape[1])
+        if "edge_index" in arrays else 0,
     }
     if warnings:
         meta["warnings"] = warnings
@@ -477,6 +597,10 @@ def _meta_from_npz(path: Path, sim_name: str) -> dict:
             "nu": float(d["nu"]),
             "perimeter": float(d["perimeter"]),
             "cache_version": int(d["cache_version"]),
+            "has_geometry": all(
+                key in d for key in ("grid_sdf", "edge_index", "curvature")
+            ),
+            "n_edges": int(d["edge_index"].shape[1]) if "edge_index" in d else 0,
         }
 
 
@@ -535,7 +659,8 @@ def compute_norm_stats(
             continue
         with np.load(path) as d:
             for key in _POINT_FIELDS:
-                accs[key].update(d[key])
+                if key in d:          # optional keys may be absent
+                    accs[key].update(d[key])
             for key in _SIM_FIELDS:
                 accs[key].update(np.atleast_1d(d[key]))
         used += 1
@@ -630,6 +755,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="rebuild sims whose .npz already exists",
     )
     parser.add_argument(
+        "--no-geometry",
+        action="store_true",
+        help="skip the D-017 precomputed static geometry (grid_sdf, "
+        "edge_index, curvature)",
+    )
+    parser.add_argument(
+        "--knn-k",
+        type=int,
+        default=KNN_K,
+        help="kNN degree for the cached edge_index; must match the GNN's k "
+        "(default: %(default)s)",
+    )
+    parser.add_argument(
         "--no-strict",
         action="store_true",
         help="downgrade geometric sanity-check failures to warnings",
@@ -698,6 +836,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raw_root,
                 max_vol_points=args.max_vol_points,
                 strict=not args.no_strict,
+                geometry=not args.no_geometry,
+                knn_k=args.knn_k,
             )
         except Exception as exc:  # noqa: BLE001 - one bad sim must not stop us
             failed += 1

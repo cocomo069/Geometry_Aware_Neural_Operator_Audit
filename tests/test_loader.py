@@ -14,8 +14,10 @@ import numpy as np
 import pytest
 import torch
 
+from scripts.build_cache import GRID_BBOX, GRID_RES, KNN_K, geometry_extras
 from src.data.airfrans_loader import (
     DEFAULT_NORMALIZE_FIELDS,
+    GEOMETRY_KEYS,
     SURFACE_KEYS,
     VOLUME_KEYS,
     AirfransSurfaceDataset,
@@ -23,15 +25,17 @@ from src.data.airfrans_loader import (
     collate,
     make_dataloader,
 )
+from src.models.common import get_edge_index, knn_edges
+from src.models.sdf_fno import compute_grid_sdf, make_latent_grid
 
-CACHE_VERSION = 1
+CACHE_VERSION = 2
 
 
 # ---------------------------------------------------------------------------
 # synthetic cache
 # ---------------------------------------------------------------------------
 def _fake_sim_arrays(
-    name: str, n_surf: int, n_vol: int, seed: int
+    name: str, n_surf: int, n_vol: int, seed: int, geometry: bool = True
 ) -> dict[str, np.ndarray]:
     """Build one cache entry with the exact CONTEXT.md section 4 schema.
 
@@ -51,7 +55,7 @@ def _fake_sim_arrays(
     aoa_deg = -5.0 + 20.0 * rng.random()
     aoa = np.deg2rad(aoa_deg)
 
-    return {
+    arrays = {
         "surf_pos": surf_pos.astype(np.float32),
         "surf_normal": surf_normal.astype(np.float32),
         "surf_ds": surf_ds.astype(np.float32),
@@ -83,6 +87,11 @@ def _fake_sim_arrays(
         "n_vol_full": np.int64(n_vol * 4),
         "cache_version": np.int64(CACHE_VERSION),
     }
+    if geometry:
+        # Built by the real builder, from the float32 array that is stored --
+        # exactly what scripts/build_cache.py does.
+        arrays.update(geometry_extras(arrays["surf_pos"], k=KNN_K))
+    return arrays
 
 
 #: (name, n_surf, n_vol) -- deliberately ragged so batching cannot be padded.
@@ -429,6 +438,384 @@ def test_collate_rejects_heterogeneous_items(
     with_vol = _ds(cache, split_file, load_volume=True)[0]
     with pytest.raises(ValueError, match="keys"):
         collate([plain, with_vol])
+
+
+# ---------------------------------------------------------------------------
+# D-017 precomputed static geometry
+# ---------------------------------------------------------------------------
+@pytest.fixture(scope="module")
+def plain_cache(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """A pre-D-017 cache: no grid_sdf / edge_index / curvature."""
+    root = tmp_path_factory.mktemp("processed_nogeom")
+    names = [s[0] for s in _SPEC[:2]]
+    for seed, (name, ns, nv) in enumerate(_SPEC[:2]):
+        np.savez_compressed(
+            root / f"{name}.npz",
+            **_fake_sim_arrays(name, ns, nv, seed, geometry=False),
+        )
+    (root / "split.json").write_text(
+        json.dumps(
+            {
+                "name": "nogeom",
+                "train": names,
+                "cal": [],
+                "test": [],
+                "seed": 0,
+                "description": "pre-D-017 cache",
+            }
+        ),
+        encoding="utf-8",
+    )
+    return root
+
+
+def test_dataset_detects_the_geometry_keys(cache: Path, split_file: Path) -> None:
+    ds = _ds(cache, split_file)
+    assert set(ds.geometry_keys) == set(GEOMETRY_KEYS)
+
+
+def test_geometry_item_shapes_and_dtypes(cache: Path, split_file: Path) -> None:
+    item = _ds(cache, split_file)[0]
+    ns = int(item["n_surf"])
+    assert item["curvature"].shape == (ns,)
+    assert item["curvature"].dtype == torch.float32
+    assert item["grid_sdf"].shape == tuple(GRID_RES)
+    assert item["grid_sdf"].dtype == torch.float32
+    edge = item["edge_index"]
+    assert edge.shape == (2, ns * min(KNN_K, ns - 1))
+    # long, because that is what the models index with
+    assert edge.dtype == torch.long
+    assert int(edge.max()) < ns
+
+
+def test_cached_curvature_matches_the_circle(cache: Path, split_file: Path) -> None:
+    """The fixture geometry is a radius-0.5 circle, so kappa == +2 everywhere."""
+    item = _ds(cache, split_file)[0]
+    assert torch.allclose(
+        item["curvature"], torch.full_like(item["curvature"], 2.0), atol=1e-3
+    )
+
+
+def test_collate_concatenates_curvature(cache: Path, split_file: Path) -> None:
+    ds = _ds(cache, split_file, subset="train")
+    items = [ds[i] for i in range(len(ds))]
+    batch = collate(items)
+    total = sum(int(it["n_surf"]) for it in items)
+    assert batch["curvature"].shape == (total,)
+    for i, item in enumerate(items):
+        mask = batch["batch_idx"] == i
+        assert torch.equal(batch["curvature"][mask], item["curvature"])
+
+
+def test_collate_stacks_grid_sdf(cache: Path, split_file: Path) -> None:
+    ds = _ds(cache, split_file, subset="train")
+    items = [ds[i] for i in range(len(ds))]
+    batch = collate(items)
+    assert batch["grid_sdf"].shape == (len(items), *GRID_RES)
+    for i, item in enumerate(items):
+        assert torch.equal(batch["grid_sdf"][i], item["grid_sdf"])
+
+
+def test_batched_edge_index_equals_on_the_fly_knn(
+    cache: Path, split_file: Path
+) -> None:
+    """The load-bearing D-017 invariant.
+
+    ``common.get_edge_index`` uses ``batch['edge_index']`` *verbatim*, so the
+    per-sim cached edges must be offset here into the concatenated point array.
+    Anything else silently wires messages between the wrong nodes.
+    """
+    ds = _ds(cache, split_file, subset="train")
+    items = [ds[i] for i in range(len(ds))]
+    batch = collate(items)
+
+    reference = knn_edges(
+        batch["surf_pos"],
+        k=KNN_K,
+        batch_idx=batch["batch_idx"],
+        num_graphs=len(items),
+    )
+    assert torch.equal(batch["edge_index"], reference)
+
+
+def test_edge_index_never_crosses_samples(cache: Path, split_file: Path) -> None:
+    ds = _ds(cache, split_file, subset="train")
+    items = [ds[i] for i in range(len(ds))]
+    batch = collate(items)
+    src, dst = batch["edge_index"]
+    bidx = batch["batch_idx"]
+    assert torch.equal(bidx[src], bidx[dst]), "an edge crosses two simulations"
+    assert int(batch["edge_index"].max()) < batch["surf_pos"].shape[0]
+
+
+def test_edge_index_offsets_are_per_sample(cache: Path, split_file: Path) -> None:
+    """Sample i's edges must land in [ptr[i], ptr[i+1])."""
+    ds = _ds(cache, split_file, subset="train")
+    items = [ds[i] for i in range(len(ds))]
+    batch = collate(items)
+    ptr = batch["ptr"]
+    consumed = 0
+    for i, item in enumerate(items):
+        e = item["edge_index"]
+        got = batch["edge_index"][:, consumed : consumed + e.shape[1]]
+        assert torch.equal(got, e + int(ptr[i]))
+        consumed += e.shape[1]
+    assert consumed == batch["edge_index"].shape[1]
+
+
+def test_get_edge_index_uses_the_cache_verbatim(
+    cache: Path, split_file: Path
+) -> None:
+    ds = _ds(cache, split_file, subset="train")
+    batch = collate([ds[i] for i in range(len(ds))])
+    assert torch.equal(
+        get_edge_index(batch, k=KNN_K, num_graphs=batch["num_graphs"]),
+        batch["edge_index"],
+    )
+
+
+def test_cached_grid_sdf_is_bit_identical_to_m2(
+    cache: Path, split_file: Path
+) -> None:
+    """Cached grid_sdf must equal what M2 computes on the fly.
+
+    ``src/geometry/sdf.make_grid`` puts **x** on the first axis while M2's
+    ``make_latent_grid`` is row-major ``iy * nx + ix``; the two differ by a
+    transpose.  Skipping it is a silent ~0.4-magnitude error, not a crash, so
+    this asserts exact float32 equality rather than a tolerance.
+    """
+    ds = _ds(cache, split_file, subset="train")
+    items = [ds[i] for i in range(len(ds))]
+    batch = collate(items)
+    grid = make_latent_grid(GRID_BBOX, GRID_RES)
+
+    for i in range(len(items)):
+        sel = (batch["batch_idx"] == i).numpy()
+        reference = compute_grid_sdf(batch["surf_pos"].numpy()[sel], grid)
+        cached = batch["grid_sdf"][i].numpy().reshape(-1)
+        assert np.array_equal(cached, reference), f"sample {i}"
+
+
+def test_grid_sdf_is_negative_inside_the_body(
+    cache: Path, split_file: Path
+) -> None:
+    item = _ds(cache, split_file)[0]
+    grid_sdf = item["grid_sdf"].numpy()
+    n_y, n_x = GRID_RES
+    xs = np.linspace(GRID_BBOX[0], GRID_BBOX[1], n_x)
+    ys = np.linspace(GRID_BBOX[2], GRID_BBOX[3], n_y)
+    # fixture body is the circle centred at (0.5, 0) with radius 0.5
+    iy = int(np.argmin(np.abs(ys - 0.0)))
+    ix = int(np.argmin(np.abs(xs - 0.5)))
+    assert grid_sdf[iy, ix] < 0.0, "grid_sdf must be negative inside the body"
+    assert grid_sdf[0, 0] > 0.0, "a far corner must be outside"
+
+
+def test_geometry_can_be_switched_off(cache: Path, split_file: Path) -> None:
+    ds = _ds(cache, split_file, load_geometry=False)
+    assert ds.geometry_keys == ()
+    item = ds[0]
+    for key in GEOMETRY_KEYS:
+        assert key not in item
+
+
+def test_pre_d017_cache_still_loads(plain_cache: Path) -> None:
+    """Absence of the optional keys is never an error (models fall back)."""
+    ds = AirfransSurfaceDataset(
+        plain_cache / "split.json", plain_cache, normalize_stats=None
+    )
+    assert ds.geometry_keys == ()
+    batch = collate([ds[i] for i in range(len(ds))])
+    for key in GEOMETRY_KEYS:
+        assert key not in batch
+    # and the model-side fallback still produces a usable graph
+    edges = get_edge_index(batch, k=KNN_K, num_graphs=batch["num_graphs"])
+    assert edges.shape[0] == 2
+
+
+def test_geometry_survives_normalisation(cache: Path, split_file: Path) -> None:
+    """Curvature/grid_sdf are geometry, not fields: never standardised."""
+    raw = _ds(cache, split_file)[0]
+    norm = _ds(cache, split_file, normalize_stats="auto")[0]
+    for key in GEOMETRY_KEYS:
+        assert key not in DEFAULT_NORMALIZE_FIELDS
+        assert torch.equal(norm[key], raw[key]), key
+
+
+def test_dataloader_carries_geometry(cache: Path, split_file: Path) -> None:
+    ds = _ds(cache, split_file, subset="train")
+    loader = make_dataloader(ds, batch_size=2, shuffle=False, num_workers=0)
+    batch = next(iter(loader))
+    assert batch["grid_sdf"].shape == (2, *GRID_RES)
+    assert batch["edge_index"].shape[0] == 2
+    assert batch["curvature"].shape[0] == batch["surf_pos"].shape[0]
+
+
+# ---------------------------------------------------------------------------
+# the models actually consume the cached geometry (D-017 hand-off)
+# ---------------------------------------------------------------------------
+def _real_batch(cache: Path, split_file: Path) -> dict:
+    ds = _ds(cache, split_file, subset="train", normalize_stats="auto")
+    return collate([ds[i] for i in range(len(ds))])
+
+
+@pytest.mark.parametrize("name", ["gnn", "sdf_fno", "transolver"])
+def test_models_forward_on_a_cached_batch(
+    cache: Path, split_file: Path, name: str
+) -> None:
+    """End-to-end: a batch straight out of the loader drives every model."""
+    from src.models import build_model
+
+    cfgs = {
+        "gnn": {"hidden_dim": 16, "mlp_hidden": 16, "n_rounds": 2,
+                "k": KNN_K, "n_freqs": 2, "trunk_dim": 16,
+                "coef_hidden": 16, "coef_layers": 1},
+        "sdf_fno": {"width": 8, "modes": 4, "n_fno_layers": 2,
+                    "spectral_groups": 2, "grid_res": GRID_RES, "k_enc": 4,
+                    "k_dec": 4, "kernel_hidden": 16, "point_hidden": 16,
+                    "n_freqs": 2, "trunk_dim": 16, "coef_hidden": 16,
+                    "coef_layers": 1},
+        "transolver": {"dim": 16, "n_layers": 2, "n_heads": 2, "n_slices": 4,
+                       "ffn_mult": 2, "n_freqs": 2, "trunk_dim": 16,
+                       "coef_hidden": 16, "coef_layers": 1},
+    }
+    torch.manual_seed(0)
+    model = build_model(name, cfgs[name])
+    batch = _real_batch(cache, split_file)
+
+    out = model(batch)
+    n_pts = batch["surf_pos"].shape[0]
+    b = batch["num_graphs"]
+    assert out["p"].shape == (n_pts,)
+    assert out["tau"].shape == (n_pts, 2)
+    assert out["coef_head"].shape == (b, 2)
+    assert torch.isfinite(out["p"]).all()
+    assert torch.isfinite(out["coef_head"]).all()
+
+
+def test_gnn_uses_the_cached_edge_index_not_a_fresh_kdtree(
+    cache: Path, split_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Proof of the speedup: no kD-tree is built when the cache supplies edges."""
+    import src.models.common as common_mod
+    from src.models import build_model
+
+    def boom(*a, **kw):  # pragma: no cover - must never run
+        raise AssertionError("knn_edges was called despite a cached edge_index")
+
+    monkeypatch.setattr(common_mod, "knn_edges", boom)
+
+    torch.manual_seed(0)
+    model = build_model(
+        "gnn",
+        {"hidden_dim": 16, "mlp_hidden": 16, "n_rounds": 2, "k": KNN_K,
+         "n_freqs": 2, "trunk_dim": 16, "coef_hidden": 16, "coef_layers": 1},
+    )
+    out = model(_real_batch(cache, split_file))
+    assert torch.isfinite(out["p"]).all()
+
+
+def test_sdf_fno_uses_the_cached_grid_sdf(
+    cache: Path, split_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Proof of the speedup: no per-step SDF sweep when grid_sdf is cached."""
+    import src.models.sdf_fno as fno_mod
+    from src.models import build_model
+
+    def boom(*a, **kw):  # pragma: no cover - must never run
+        raise AssertionError("compute_grid_sdf ran despite a cached grid_sdf")
+
+    monkeypatch.setattr(fno_mod, "compute_grid_sdf", boom)
+
+    torch.manual_seed(0)
+    model = build_model(
+        "sdf_fno",
+        {"width": 8, "modes": 4, "n_fno_layers": 2, "spectral_groups": 2,
+         "grid_res": GRID_RES, "k_enc": 4, "k_dec": 4, "kernel_hidden": 16,
+         "point_hidden": 16, "n_freqs": 2, "trunk_dim": 16,
+         "coef_hidden": 16, "coef_layers": 1},
+    )
+    out = model(_real_batch(cache, split_file))
+    assert torch.isfinite(out["p"]).all()
+
+
+def test_cached_and_on_the_fly_geometry_give_identical_predictions(
+    cache: Path, split_file: Path
+) -> None:
+    """``edge_index`` / ``grid_sdf`` are pure caches: identical predictions.
+
+    ``curvature`` is deliberately excluded -- it is *not* an optimisation. Before
+    D-017 ``SurrogateBase.get_curvature`` zero-filled the channel, so caching it
+    feeds the models real information they previously did not have. Predictions
+    with and without it differ by design; see ``test_curvature_changes_...``.
+    """
+    from src.models import build_model
+
+    batch = _real_batch(cache, split_file)
+    pure_caches = ("edge_index", "grid_sdf")
+    stripped = {k: v for k, v in batch.items() if k not in pure_caches}
+
+    for name, cfg in (
+        ("gnn", {"hidden_dim": 16, "mlp_hidden": 16, "n_rounds": 2,
+                 "k": KNN_K, "n_freqs": 2, "trunk_dim": 16,
+                 "coef_hidden": 16, "coef_layers": 1}),
+        ("sdf_fno", {"width": 8, "modes": 4, "n_fno_layers": 2,
+                     "spectral_groups": 2, "grid_res": GRID_RES, "k_enc": 4,
+                     "k_dec": 4, "kernel_hidden": 16, "point_hidden": 16,
+                     "n_freqs": 2, "trunk_dim": 16, "coef_hidden": 16,
+                     "coef_layers": 1}),
+    ):
+        torch.manual_seed(0)
+        model = build_model(name, cfg).eval()
+        with torch.no_grad():
+            a = model(batch)
+            b = model(stripped)
+        assert torch.allclose(a["p"], b["p"], atol=1e-5), name
+        assert torch.allclose(
+            a["coef_head"], b["coef_head"], atol=1e-5
+        ), name
+
+
+def test_curvature_changes_predictions_versus_the_zero_fill(
+    cache: Path, split_file: Path
+) -> None:
+    """Caching curvature is a model-input change, not just a speedup.
+
+    Consequence for A3/A4: checkpoints trained against a pre-D-017 cache saw a
+    constant-zero curvature channel and are not comparable to ones trained now.
+    """
+    from src.models import build_model
+
+    batch = _real_batch(cache, split_file)
+    without = {k: v for k, v in batch.items() if k != "curvature"}
+    torch.manual_seed(0)
+    model = build_model(
+        "gnn",
+        {"hidden_dim": 16, "mlp_hidden": 16, "n_rounds": 2, "k": KNN_K,
+         "n_freqs": 2, "trunk_dim": 16, "coef_hidden": 16, "coef_layers": 1},
+    ).eval()
+    with torch.no_grad():
+        assert not torch.allclose(model(batch)["p"], model(without)["p"], atol=1e-6)
+
+
+def test_curvature_channel_reaches_the_model(
+    cache: Path, split_file: Path
+) -> None:
+    """``SurrogateBase.get_curvature`` must pick the cached values up.
+
+    Without the cache it returns a constant-zero channel, so a non-zero cached
+    curvature has to change the assembled input features.
+    """
+    from src.models.common import SurrogateBase
+
+    batch = _real_batch(cache, split_file)
+    curv = SurrogateBase.get_curvature(batch)
+    assert curv.shape == (batch["surf_pos"].shape[0], 1)
+    assert torch.allclose(curv.reshape(-1), batch["curvature"])
+    assert curv.abs().sum() > 0, "fixture curvature is +2, not zero"
+
+    stripped = {k: v for k, v in batch.items() if k != "curvature"}
+    assert SurrogateBase.get_curvature(stripped).abs().sum() == 0
 
 
 # ---------------------------------------------------------------------------

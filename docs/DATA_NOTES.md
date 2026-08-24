@@ -301,7 +301,8 @@ Every CONTEXT.md section 4 key is present with the mandated shapes and dtypes
 | `rho`, `nu` | scalar | `Simulation.RHO` / `.NU`, so nothing downstream re-derives them |
 | `perimeter` | scalar | `sum(surf_ds)`, a cheap cache-integrity check |
 | `n_vol_full` | scalar | node count before subsampling |
-| `cache_version` | scalar | idempotency and staleness detection |
+| `cache_version` | scalar | idempotency and staleness detection (**2** since D-017) |
+| `grid_sdf`, `edge_index`, `curvature` | see A1.11 | D-017 precomputed static geometry; optional |
 
 Volume subsampling: uniform without replacement to at most 32768 nodes, seeded
 per sim by `blake2s(sim_name)` (platform-independent, unlike Python's `hash`),
@@ -406,3 +407,71 @@ stress (A1.3).
 
 **[verify after download]** re-run `verify_cache.py`'s G1 block on 20 real sims
 and confirm the median relative error lands at 1e-4 or better.
+
+## A1.11 D-017 precomputed static geometry (cache v2)
+
+A3 measured M2 at 2.45 s/forward, CPU-bound rebuilding the SDF and a cKDTree
+every step. All three quantities depend only on the airfoil shape, never on the
+flow, so `build_cache.py` now stores them (`CACHE_VERSION = 2`):
+
+| Key | Shape / dtype | Built by |
+|---|---|---|
+| `grid_sdf` | (64, 64) float32 | `src.geometry.sdf.make_grid` + `sdf_on_grid`, bbox [-0.5,1.5]x[-1,1] |
+| `edge_index` | (2, E) int32, E = Ns*16 | `src.models.common.knn_edges(pos, k=16)` |
+| `curvature` | (Ns,) float32 | `src.geometry.quadrature.curvature` (signed Menger) |
+
+All three are **optional**: a pre-D-017 cache simply lacks them and the models
+fall back (`common.get_edge_index` rebuilds the kNN, `sdf_fno` recomputes the
+SDF, `SurrogateBase.get_curvature` zero-fills). `--no-geometry` skips them.
+
+### Trap 1 — grid orientation is a transpose
+
+`src/geometry/sdf.make_grid(bbox, (nx, ny))` returns `grid[ix, iy] = (x_ix, y_iy)`
+with **x on the first axis**. M2's `make_latent_grid` is **row-major**
+`iy * nx + ix`, so that reshaping to `(n_y, n_x)` gives the `(H, W)` image its
+FNO expects. The two layouts differ by a transpose, and M2 consumes
+`batch['grid_sdf']` via `.reshape(n_graphs, -1)` — so an untransposed array is
+accepted without complaint and silently wrong. Measured discrepancy on a
+unit-chord airfoil: **0.38 in absolute SDF**, i.e. the conditioning field is
+mirrored about the diagonal. The cache therefore stores `sdf_on_grid(...).T`,
+and `tests/test_loader.py::test_cached_grid_sdf_is_bit_identical_to_m2` asserts
+exact `float32` equality against M2's own path rather than a tolerance.
+
+### Trap 2 — precompute from the float32 positions, not the float64 originals
+
+The models recompute geometry from the **cached float32** `surf_pos`. Building
+the cache from the float64 originals produces arrays that are *almost* right:
+
+* `edge_index` — on a near-uniform contour many neighbours are equidistant, and
+  float32 rounding flips cKDTree's tie-breaks, so a handful of edges differ;
+* `grid_sdf` — differs in the last bit.
+
+`geometry_extras` therefore takes the float32 array that is actually stored and
+widens it to float64 internally, mirroring the model path exactly. With that fix
+`collate`'s `edge_index` is `torch.equal` to
+`knn_edges(batch_pos, 16, batch_idx)` and `grid_sdf` is `np.array_equal` to
+`compute_grid_sdf`, both asserted in the tests.
+
+### Trap 3 — batched `edge_index` must be offset by the loader
+
+`common.get_edge_index` uses `batch['edge_index']` **verbatim** — it does no
+offsetting. Edges are cached per sim in *local* indices, so `collate` adds each
+sample's point offset (`ptr[i]`) before concatenating along dim 1. Because
+`knn_edges` itself maps local indices back through `sel = arange(ptr[g],
+ptr[g+1])`, the offset reproduces its output exactly, including edge ordering
+(graphs in batch order, `dst = repeat(arange(Ns), k)` within each). Getting this
+wrong wires messages between the wrong nodes without raising.
+
+### `curvature` is not a pure optimisation
+
+`edge_index` and `grid_sdf` are caches of derived quantities: predictions with
+and without them are identical (asserted). `curvature` is different — before
+D-017 `SurrogateBase.get_curvature` returned a **constant-zero** channel, so
+caching it feeds the models information they previously did not have and
+predictions change by design. **Checkpoints trained against a pre-D-017 cache
+are therefore not comparable to ones trained now**; any mixed-vintage ensemble
+or data-efficiency curve must be rebuilt.
+
+Curvature statistics are written to `norm_stats.json` (so a config can opt in)
+but curvature is **not** in `DEFAULT_NORMALIZE_FIELDS`, matching the raw channel
+`get_curvature` expects.

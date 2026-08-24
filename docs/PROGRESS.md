@@ -399,3 +399,90 @@ digit must be 0 when `m = 0`).
 it differs — `freestream_from_re(..., speed=...)` already allows bypassing it. (2) Real
 ensembles/conformal need trained checkpoints (Phase 3 items 2–3); everything here is tested
 on synthetic data only, as scoped. (3) Not blocking anyone.
+
+## 2026-08-24 — A1 (data) — D-017 precomputed static geometry — DONE
+
+Cache bumped to **`CACHE_VERSION = 2`**; existing `.npz` files are treated as
+stale and rebuilt automatically.
+
+### What changed
+
+- `scripts/build_cache.py`: new `geometry_extras(surf_pos, k, bbox, res)`
+  producing `grid_sdf` (64,64) float32, `edge_index` (2,E) int32 and
+  `curvature` (Ns,) float32, wired into `build_one` behind `--no-geometry` /
+  `--knn-k`. Constants `GRID_BBOX`, `GRID_RES`, `KNN_K` mirror M2's/M1's
+  defaults. Manifest rows gained `has_geometry` and `n_edges`.
+- `src/data/airfrans_loader.py`: `GEOMETRY_KEYS`, a `load_geometry` flag, and
+  pass-through with shape validation. `collate` concatenates `curvature`,
+  stacks `grid_sdf` to `(B,64,64)`, and offsets `edge_index` per sample.
+- `tests/test_loader.py`: 23 new tests (26 -> 49).
+- `docs/DATA_NOTES.md`: new section A1.11.
+
+### Test results
+
+`pytest tests/test_splits_no_leakage.py tests/test_loader.py tests/test_models.py -q`
+-> **140 passed, 2 skipped**.
+
+Full suite: **347 passed, 1 failed, 3 skipped**. The single failure is
+`tests/test_uq.py::test_uq_report_also_satisfies_eval_schema`
+(`src.eval.schema.validate_uq` returns `None` instead of `[]`) — A5/A4 code,
+unrelated to D-017. The 7 failures I reported earlier have been fixed by their
+owners in the meantime.
+
+Models are proven to *consume* the cached keys, not merely tolerate them:
+`test_gnn_uses_the_cached_edge_index_not_a_fresh_kdtree` and
+`test_sdf_fno_uses_the_cached_grid_sdf` monkeypatch `knn_edges` /
+`compute_grid_sdf` to raise, and all three models still complete a forward pass
+on a batch straight out of the loader.
+
+### Three traps found and closed (details in DATA_NOTES A1.11)
+
+1. **Grid orientation is a transpose.** `src/geometry/sdf.make_grid` puts x on
+   the first axis; M2's `make_latent_grid` is row-major `iy*nx+ix`. M2 consumes
+   `grid_sdf` via `.reshape(n_graphs, -1)`, so an untransposed array is accepted
+   silently — measured error **0.38 in absolute SDF**, a diagonal mirror of the
+   conditioning field. Cache stores `sdf_on_grid(...).T`; the test asserts
+   *exact* float32 equality against M2's own path, not a tolerance.
+2. **Precompute from the float32 positions.** Models recompute geometry from the
+   cached float32 `surf_pos`. Building from the float64 originals gave
+   `edge_index` that differed on tie-broken neighbours (a near-uniform contour
+   has many equidistant pairs, and float32 rounding flips cKDTree's tie-break)
+   and `grid_sdf` off in the last bit. `geometry_extras` now takes the float32
+   array that is actually stored. After the fix, cached edges are `torch.equal`
+   to `knn_edges(batch_pos, 16, batch_idx)` and `grid_sdf` is `np.array_equal`
+   to `compute_grid_sdf`.
+3. **`get_edge_index` does no offsetting** — it returns `batch['edge_index']`
+   verbatim. `collate` therefore adds `ptr[i]` per sample before concatenating.
+   Because `knn_edges` maps local indices back through
+   `sel = arange(ptr[g], ptr[g+1])`, this reproduces its output exactly,
+   ordering included.
+
+### ⚠ PROPOSAL / heads-up for A3 + A4
+
+**`curvature` is not a pure optimisation and it invalidates old checkpoints.**
+`edge_index` and `grid_sdf` are caches of derived quantities — predictions with
+and without them are bit-comparable (asserted in
+`test_cached_and_on_the_fly_geometry_give_identical_predictions`). `curvature`
+is not: before D-017 `SurrogateBase.get_curvature` returned a **constant-zero**
+channel, so the cache now feeds models a real input they never saw. A test
+asserts predictions change. Consequently **any checkpoint trained against a
+pre-D-017 cache is not comparable to one trained now** — mixed-vintage ensembles
+(Phase 3 step 2) and data-efficiency curves (step 4) must be rebuilt from
+scratch, not topped up. Worth a DECISIONS note if any runs already exist.
+
+### Cost
+
+Cache build went from 0.39 s/sim to 1.39 s/sim on the synthetic 96-point /
+1.3k-node mesh; the SDF sweep dominates and scales with grid nodes (4096, fixed)
+times contour points, so on real airfoils (~10^3 surface points) expect roughly
++1-2 s/sim. Against A3's measured 2.45 s **per forward pass** for M2, this pays
+for itself within the first training step of the first epoch.
+
+### Still open
+
+- Unchanged from my previous entry: dataset still downloading; all
+  `[verify after download]` items in DATA_NOTES stand.
+- `verify_cache.py` still reports the same 2 known synthetic-circle cd
+  cancellation failures out of 64 checks (analysed in A1.10) — unchanged by
+  D-017, and an artefact of the test geometry, not the cache.
+- No packages were installed by A1.
