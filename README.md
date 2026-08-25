@@ -13,9 +13,14 @@ Design document: [`05_geometry_aware_neural_operator_surrogate_uq.md`](05_geomet
 
 ## Status
 
-Under active development. See [docs/PLAN.md](docs/PLAN.md) (execution plan),
-[docs/PROGRESS.md](docs/PROGRESS.md) (status), [docs/DECISIONS.md](docs/DECISIONS.md)
-(decision log), [docs/CONTEXT.md](docs/CONTEXT.md) (frozen engineering interfaces).
+Under active development. **New here? Read [docs/OVERVIEW.md](docs/OVERVIEW.md) — the living
+master document** that explains the whole project in plain language: what it is, every concept
+behind the paper, everything built, every problem faced, the results so far, and where we are.
+
+Deeper detail: [docs/PLAN.md](docs/PLAN.md) (execution plan),
+[docs/PROGRESS.md](docs/PROGRESS.md) (dated log), [docs/DECISIONS.md](docs/DECISIONS.md)
+(decision log), [docs/CONTEXT.md](docs/CONTEXT.md) (frozen engineering interfaces),
+[docs/HANDOFF.md](docs/HANDOFF.md) (cold-resume state).
 
 ## Setup
 
