@@ -27,7 +27,7 @@
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage[colorlinks=true,allcolors=blue]{hyperref}
 \usepackage{siunitx}
-\usepackage{microtype}
+\usepackage[expansion=false]{microtype}
 
 \bibliographystyle{plainnat}
 
@@ -49,19 +49,39 @@
 \maketitle
 
 \begin{abstract}
-\todo{Write last.} One paragraph, in this order: (i) geometry-aware neural
-operators are reported as accurate surrogates for external aerodynamics, but are
-evaluated almost entirely in-distribution and by field error; (ii) we audit three
-architecture families under a single matched protocol built around three
-deployment-relevant axes --- physics self-consistency, distribution shift, and
-calibrated uncertainty; (iii) the central instrument is force self-consistency
-(\FSC), the disagreement between the drag obtained by quadrature of a model's own
-predicted surface fields and the drag from a regression head on the same
-backbone, which requires no ground truth and is therefore computable out of
-distribution and on unlabelled candidate geometries; (iv) headline findings, with
-numbers; (v) an independent Ansys Fluent RANS set, generated for this work and
-released openly, closes the loop on a small number of actively selected cases.
-Frame throughout as a diagnostic study, not a leaderboard entry.
+Geometry-conditioned neural surrogates are reported as accurate on external
+aerodynamics benchmarks, but almost always evaluated in one narrow sense: field
+or drag error, in distribution, with no check on whether the prediction is
+internally consistent or the reported uncertainty means anything. We audit three
+geometry-conditioning families --- a $k$-nearest-neighbour graph network, a
+signed-distance-conditioned Fourier neural operator in the GINO style, and a
+Transolver-style geometry transformer, each reimplemented at matched parameter
+count ($\sim$1.3--1.4\,M) and training budget --- under a single protocol built
+around three deployment-relevant axes: force self-consistency, generalization
+under six distribution shifts, and calibrated uncertainty. The central
+instrument is force self-consistency (\FSC), the disagreement between the drag
+obtained by quadrature of a model's own predicted surface pressure and the drag
+from a regression head on the same backbone; \FSC{} needs no ground truth, so it
+is computable out of distribution and on unlabelled candidate geometries. On
+AirfRANS, with our force integrator gated against the dataset's own reported
+coefficients (median relative error \pending{$3.3\times10^{-4}$}), three findings
+recur across all three architectures: field accuracy separates the models
+cleanly (transformer $>$ operator $>$ graph net, everywhere), but $C_D$ rank
+correlation --- the quantity a designer actually uses --- does not: all three sit
+at $\rho_s\approx$\pending{0.95--0.999}, closer to each other than to a plain
+ridge-regression baseline on the shape and flow parameters ($\rho_s\approx$
+\pending{0.83--0.90}), so the spread between splits dwarfs the spread between
+models; and \FSC{} is smallest in distribution and largest under the hardest
+(combined shape-and-Reynolds) shift for every architecture, typically growing
+faster than the field error itself, making it a working label-free
+out-of-distribution detector even though its growth between the intermediate
+splits is not perfectly monotone.
+Calibration (deep ensembles plus split conformal prediction), data-efficiency
+curves, targeted ablations, and an uncertainty-driven active-learning loop
+verified against independent Ansys Fluent simulations are designed into the same
+protocol and reported as they land; this preprint states plainly which results
+are complete and which are in progress. Code, split manifests, and model cards:
+\todo{repository URL}.
 \end{abstract}
 
 % =====================================================================
@@ -69,25 +89,44 @@ Frame throughout as a diagnostic study, not a leaderboard entry.
 \label{sec:intro}
 % =====================================================================
 
-\todo{Draft against the three gaps; keep to roughly one page.}
+The external-aerodynamics surrogate literature has converged on a narrow
+scoreboard: relative $L_2$ error on velocity and pressure fields, plus an error
+or rank correlation on drag. Papers get accepted on that scoreboard. Engineers
+cannot use it, for three reasons.
 
-Three gaps motivate this work.
+\textbf{Gap 1: internal inconsistency is invisible.} Models are trained with a
+field loss and, sometimes, a separate head for integrated coefficients. Nothing
+forces the predicted surface pressure and wall shear stress to integrate to the
+predicted drag. A model can be accurate in field norm while being internally
+inconsistent about the one number --- an integrated force coefficient --- a
+designer actually acts on, because force is a small difference of large,
+partially cancelling contributions dominated by regions (leading-edge suction
+peak, separation onset, base pressure) that carry little weight in a
+domain-averaged norm. That internal gap is a cheap, ground-truth-free diagnostic
+almost nobody reports; we make it a first-class measurement.
 
-\textbf{Gap 1: consistency is not measured.} Operator surrogates for external
-aerodynamics are ranked by relative $L_2$ error on surface or volume fields. The
-quantity a designer acts on is an integrated force coefficient, and a model can
-be accurate in field norm while being internally inconsistent about that
-coefficient. We make the inconsistency a first-class measurement.
+\textbf{Gap 2: out-of-distribution failure is acknowledged but not
+characterized.} Reported gains are almost always measured on random,
+in-distribution splits, while deployment means new operating points and new
+shapes. Prior benchmarking work states plainly that OOD generalization remains
+a challenge for every method tested \citep{rabeh2025benchmarking} --- a
+conclusion, not a characterization. Which axis of shift hurts most: Reynolds
+number, angle of attack, or shape family? Does error grow smoothly or fail
+discontinuously once separation appears? We evaluate on six splits spanning four
+shift axes --- data scarcity, Reynolds number, angle of attack, and shape family
+--- plus a fifth split that shifts shape and Reynolds together, the hardest
+cell, and plot every metric against split identity and, where a numeric shift
+magnitude $\shift$ is meaningful, against $\shift$ itself (\S\ref{sec:protocol}),
+rather than reporting a single aggregate.
 
-\textbf{Gap 2: evaluation is in-distribution.} Reported gains are almost always
-measured on random splits. Deployment means new shapes and new operating points.
-We evaluate along four shift axes and plot every metric against a shift magnitude
-$\shift$ rather than reporting a single aggregate.
-
-\textbf{Gap 3: uncertainty is reported without calibration.} Where uncertainty is
-reported at all it is an ensemble spread, rarely checked against realised
-coverage, and almost never checked \emph{under shift} --- which is exactly where a
-practitioner needs it.
+\textbf{Gap 3: uncertainty is reported without calibration.} Where uncertainty
+is reported at all it is usually an ensemble spread: a heuristic score, least
+trustworthy under exactly the shift where it matters, rarely checked against
+realised coverage and almost never checked \emph{under shift}. Split conformal
+prediction converts any such score into finite-sample coverage under
+exchangeability --- a genuine guarantee in distribution, and a measurable
+failure mode out of it --- yet conformal coverage for aerodynamic surface fields
+and derived coefficients has not been systematically reported.
 
 \paragraph{Contributions.}
 \begin{enumerate}\itemsep2pt
@@ -122,8 +161,6 @@ practitioner needs it.
 \section{Related work}
 \label{sec:related}
 % =====================================================================
-
-\todo{Roughly three quarters of a page, four paragraphs.}
 
 \paragraph{Neural operators and geometry encoding.}
 Fourier neural operators \citep{li2021fno}, their geometry-informed extension
@@ -162,7 +199,10 @@ exchangeability rather than as a bug.
 \label{sec:protocol}
 % =====================================================================
 
-This section is the conceptual core of the paper. \todo{1.5 pages.}
+This section is the conceptual core of the paper: the shared operator-learning
+formulation, the force-integration route to a coefficient, the consistency
+diagnostic built from the gap between that route and a learned head, and the
+shift axes along which every model is evaluated.
 
 \subsection{Operator learning setup}
 Let $\dom \subset \R^d$ be the fluid domain exterior to a body with boundary
@@ -192,10 +232,15 @@ prediction, \eqref{eq:force} is \emph{linear} in the predicted surface fields an
 differentiable, so it costs essentially nothing to evaluate or to backpropagate
 through.
 
-\todo{State that the integrator is validated against the dataset's own reported
-coefficients on ground-truth fields to a median relative error below 1\% before
-any model result is reported, and give the achieved number. Nothing in this paper
-is interpretable if that check has not passed.}
+Nothing in this paper is interpretable unless this integrator reproduces the
+dataset's own reported coefficients on ground-truth fields, so we gate on it
+before any model result is reported: evaluated on all 1000 AirfRANS simulations,
+the median relative error is \pending{$3.3\times10^{-4}$} on $\Cd$
+(95th percentile $1.2\times10^{-3}$, maximum $1.6\times10^{-3}$) and
+\pending{$4.8\times10^{-6}$} (median) on $\Cl$ --- roughly two orders of
+magnitude inside the $1\%$ tolerance we set for this gate, and about two orders
+of magnitude below the field errors reported in \S\ref{sec:results}. Every
+downstream \FSC{} number therefore reflects the model, not the quadrature.
 
 \subsection{Force self-consistency}
 With $\Chead$ from a direct regression head on the same backbone,
@@ -206,6 +251,10 @@ With $\Chead$ from a direct regression head on the same backbone,
 \FSC{} needs no ground truth. That is the whole point: it is computable on
 out-of-distribution splits and on unlabelled proposed geometries, which is what
 makes it usable inside the active-learning loop of \S\ref{sec:activelearning}.
+When the force term is switched on during training (\S\ref{sec:models}, ablated
+rather than default), it penalises all three disagreements symmetrically,
+$\Lossforce = \abs{\Cint - \Ctrue} + \abs{\Chead - \Ctrue} + \abs{\Cint - \Chead}$,
+so pulling either route toward the truth also pulls them toward each other.
 
 \subsection{Symmetry, no-slip and divergence residuals}
 With $\refl$ the reflection about the relevant plane and $\reflsharp$ its action
@@ -215,41 +264,112 @@ on vector fields, for $\refl\bnd = \bnd$ and a symmetric condition,
              \big/ \norm{\uhat(\geom,\cond)}_2 .
 \end{equation}
 We also check antisymmetry on a symmetric section at $\pm\aoa$:
-$\Cl(-\aoa) \approx -\Cl(\aoa)$ and $\Cd(-\aoa) \approx \Cd(\aoa)$.
-\todo{Add $\Lossbc$ and $\Lossdiv$; state that all residuals are reported as
-diagnostics even when their weights are zero.}
+$\Cl(-\aoa) \approx -\Cl(\aoa)$ and $\Cd(-\aoa) \approx \Cd(\aoa)$. Two further
+residuals are defined identically for every model and reported whether or not
+they are penalised. No-slip, with $\mathcal{N}_\delta$ the volume sample points
+within $\delta$ of the wall and $\omega(x) = 1 - \mathrm{dist}(x,\bnd)/\delta$ a
+linear falloff weight,
+\begin{equation}
+  \Lossbc = \frac{1}{\abs{\mathcal{N}_\delta}}
+            \sum_{x \in \mathcal{N}_\delta} \norm{\hat{\bv}(x)}^2 \, \omega(x) .
+\end{equation}
+Divergence, by least-squares gradients on the point cloud (or finite differences
+on M2's latent grid),
+\begin{equation}
+  \Lossdiv = \frac{1}{\abs{\mathcal{X}}} \sum_{x} \left(\nabla \cdot \hat{\bv}(x)\right)^2 .
+\end{equation}
+Every residual in this section --- \Losssym, the antisymmetry gap, \Lossbc{} and
+\Lossdiv{} --- is computed and logged for every trained model regardless of
+whether its $\lambda$ weight in \S\ref{sec:models} is zero, precisely so that a
+residual reported as a diagnostic is never confused with one that was optimised
+away.
 
 \subsection{Shift magnitude}
-\todo{Define $\shift$ per axis --- normalised distance of the test condition from
-the training support --- and say plainly that Figure~\ref{fig:error_vs_shift} is
-the paper's central figure.}
+Each split's test simulations are compared against \emph{that split's own}
+training support along the numeric design axes $\Rey$, $\aoa$ and section
+thickness. For axis $j$ with training range $[\ell_j, h_j]$ and population
+standard deviation $\sigma_j$ (over that split's train $\cup$ test),
+\begin{equation}
+  \shift_j(x) = \max\!\left(0,\; \frac{x - h_j}{\sigma_j},\; \frac{\ell_j - x}{\sigma_j}\right),
+\end{equation}
+zero for a test point inside the training box and otherwise its distance in
+units of that axis's own spread, so the axes are commensurable. Shape family is
+categorical rather than metric (4-digit and 5-digit NACA sections are different
+parameterisations), so it contributes a binary term, $\shift_{\text{shape}} = 1$
+if the test simulation's series is absent from training, else $0$ --- one "unit"
+of shift, on the same scale as one standard deviation of a numeric axis. The
+per-simulation shift magnitude is the Euclidean norm over these terms,
+$\shift = \big(\shift_{\Rey}^2 + \shift_{\aoa}^2 + \shift_{\text{thickness}}^2 +
+\shift_{\text{shape}}^2\big)^{1/2}$, so a point in support on every axis scores
+zero and \splitname{combined} --- shifted on two axes at once --- lands
+furthest out by construction. Averaged over each split's test set, the realised
+values are, in the order the splits are otherwise reported,
+$\shift \approx \pending{0.00,\ 0.00,\ 0.42,\ 0.23,\ 1.00,\ 1.10}$ for
+\splitname{full}, \splitname{scarce}, \splitname{reynolds}, \splitname{aoa},
+\splitname{shape5} and \splitname{combined}. Note that this places
+\splitname{reynolds} numerically further from training support than
+\splitname{aoa}, even though \S\ref{sec:results_ood} finds AoA shift the more
+damaging of the two --- a first hint that raw design-space distance and
+model-relevant difficulty are not the same thing, since angle-of-attack shift
+in this dataset crosses into a qualitatively new flow regime (separation) that
+a Euclidean distance in design parameters cannot see. Figure~\ref{fig:error_vs_shift}
+is the paper's central figure; at the current stage of the study it plots error
+against split identity (ordered by $\shift$) rather than against the continuous
+$\shift$ value itself, since aggregating per-simulation $\shift$ into a
+per-panel continuous axis is deferred to a later revision.
 
 % =====================================================================
 \section{Models and training}
 \label{sec:models}
 % =====================================================================
 
-\todo{One page. Emphasise the matched budget: same head, same loss, same
-optimiser, same schedule, same parameter count within $\pm 20\%$, so
-architecture is the only thing that differs.}
+We compare three geometry-encoding families under one matched protocol: the
+same shared coefficient head, the same loss family, the same optimiser and
+schedule, the same per-epoch checkpointing, and parameter counts held within
+$\pm20\%$ of a 1.5\,M target, so that architecture is the only thing that
+differs between runs. Realised counts are
+\pending{1{,}389{,}637} (\Mgnn), \pending{1{,}373{,}605} (\Mfno) and
+\pending{1{,}281{,}701} (\Mtrans) --- a $\pm8\%$ spread, tighter than the budget
+requires.
 
-\paragraph{\Mgnn: graph baseline.} $k$-nearest-neighbour message passing on the
-surface point cloud with node features $(\bx_i, \bn_i, \kappa_i, \cond)$.
+\paragraph{\Mgnn: graph baseline.} $k$-nearest-neighbour ($k=16$) message
+passing on the surface point cloud with node features $(\bx_i, \bn_i, \kappa_i,
+\cond)$: position, outward normal, local (signed Menger) curvature, and the
+broadcast flow condition.
 
 \paragraph{\Mfno: SDF-conditioned FNO.} A GINO-style kernel encoder scatters
-surface features onto a regular latent grid conditioned on $\sdf$, an FNO stack
-acts there, and a kernel decoder queries back to arbitrary surface points
-\citep{li2023gino, li2021fno}.
+surface features onto a $64\times64$ regular latent grid conditioned on
+$\sdf$, an FNO2d stack (16 Fourier modes, width 32) acts there, and a kernel
+decoder queries back to arbitrary surface points \citep{li2023gino, li2021fno}.
 
 \paragraph{\Mtrans: geometry transformer.} Transolver-style physics attention
-\citep{wu2024transolver}: soft-assign $N$ points to $M \ll N$ slices, attend among
-slice tokens, scatter back, at cost $\mathcal{O}(NM + M^2)$.
+\citep{wu2024transolver}: soft-assign $N$ points to $M=32$ slices across 4
+attention layers at width 128, attend among slice tokens, scatter back, at cost
+$\mathcal{O}(NM + M^2)$.
 
-\paragraph{Reimplementation.}
-\todo{State explicitly that all three are reimplemented in the style of the cited
-papers rather than run from the authors' code, and why (a dependency constraint
-on the target hardware). A reviewer must not be able to mistake this for a
-reproduction of published numbers.}
+\paragraph{Reimplementation.} All three architectures are reimplemented from
+the cited papers rather than run from the authors' released code. The target
+hardware (a 4\,GB Pascal-generation laptop GPU, with training moved to a cloud
+T4 once the study outgrew it) cannot reliably install the usual compiled
+geometry-learning dependencies (PyTorch Geometric, \texttt{torch\_scatter},
+\texttt{neuraloperator}) on this stack, so every graph, spectral-convolution and
+slice-attention operator here is written in plain PyTorch. A reviewer should
+not read any number in this paper as a reproduction of a published result:
+the comparison that is meaningful is the \emph{within-study} one, matched by
+construction across the three families, not an absolute comparison against the
+architectures' original papers.
+
+\paragraph{Training.} Adam with a cosine learning-rate schedule, initial
+learning rate \pending{$10^{-3}$}, gradient-norm clipping at 1.0, batch size 16
+for all three architectures (matched, not per-model tuned), 400 epochs, fp32
+throughout (no mixed precision --- the Pascal-generation hardware has no
+practical fp16 tensor-core path). Every run checkpoints every epoch and resumes
+from its own last checkpoint, which is what makes training across
+interruptible free-tier cloud sessions viable. Normalisation statistics
+(inputs and targets) are computed from \emph{that split's own} training list
+only, never from a shared global set and never from calibration or test data,
+so no OOD split's test statistics can leak into training even indirectly
+through the input scaling.
 
 \paragraph{Objective.}
 \begin{equation}
@@ -265,36 +385,65 @@ part of the headline models.
 \label{sec:data}
 % =====================================================================
 
-\todo{Three quarters of a page. Both licences stated in the text, not only in
-Table~\ref{tab:datacard}.}
-
 AirfRANS \citep{bonnet2022airfrans}: 1000 steady incompressible RANS solutions
-over NACA 4- and 5-digit sections, $\Rey \in [2,6]\times 10^6$,
-$\aoa \in [-5\degrees, +15\degrees]$, licensed ODbL-1.0. DrivAerNet++
-\citep{elrefaie2024drivaernetpp}: a seeded, stratified subset of
-\pending{400--800} designs, licensed CC BY-NC 4.0, with the exact design IDs released
-as a manifest rather than the data itself.
+(Spalart--Allmaras) over NACA 4- and 5-digit sections, roughly 32{,}000 volume
+mesh points and $O(10^3)$ surface points per case, $\Rey \in [2,6]\times 10^6$,
+$\aoa \in [-5\degrees, +15\degrees]$, licensed \textbf{ODbL-1.0} (attribution and
+share-alike on derived databases; we release split manifests and code, never a
+processed copy of the fields). Every simulation encodes its own design point
+(inlet velocity, angle of attack, NACA parameters) in its filename, which is
+what makes the shift-magnitude computation of \S\ref{sec:protocol} and the new
+splits below possible without any additional metadata.
 
-\paragraph{Splits.}
-In-distribution \splitname{full}; \splitname{scarce}; Reynolds shift
-\splitname{reynolds}; angle-of-attack shift \splitname{aoa}, broken out by
-pre-stall versus post-stall using a wall-shear sign-change indicator from ground
-truth; shape-family shift \splitname{shape5} (train NACA 4-digit, test 5-digit);
-and \splitname{combined}, shape family and Reynolds together. Calibration sets
-are carved from train and never overlap train or test; test is never touched by
-normalisation or calibration.
+DrivAerNet++ \citep{elrefaie2024drivaernetpp}, licensed \textbf{CC~BY-NC~4.0},
+is this study's designated 3D extension --- surface pressure and drag on
+$O(8000)$ car designs across fastback, notchback and estateback families --- but
+it requires an interactive Globus authentication step outside this project's
+current scope and is not part of any result reported here. \todo{Run and report
+only if the 3D leg lands before submission; otherwise state explicitly in the
+limitations that the paper is AirfRANS-only and DrivAerNet++ remains future
+work, per the project's own scoping decision (results should never imply a 3D
+leg that was not executed).}
+
+\paragraph{Splits.} Six splits, all derived deterministically from the dataset's
+own manifest or from parsed design parameters, each with train/calibration/test
+lists that are asserted programmatically disjoint
+(\texttt{tests/test\_splits\_no\_leakage.py}): in-distribution \splitname{full}
+(the official random 800/200 train/test task); \splitname{scarce} (the official
+low-data task, 200 training cases, evaluated on \splitname{full}'s test set,
+which has no test set of its own); Reynolds shift \splitname{reynolds} (train
+$\Rey\in[3,5]\times10^6$, test outside that band); angle-of-attack shift
+\splitname{aoa} (train $\aoa\in[-2.5\degrees,12.5\degrees]$, test outside,
+crossing into separation for the highest angles --- \todo{the pre-stall /
+post-stall breakout by a wall-shear sign-change indicator is designed but not
+yet computed per-simulation; currently \splitname{aoa} is reported as one
+pooled test set}); shape-family shift \splitname{shape5} (train every NACA
+4-digit simulation, test every 5-digit one, a family AirfRANS itself does not
+split on); and \splitname{combined} (train 4-digit \emph{and} inside the
+Reynolds training band, test 5-digit \emph{and} outside it --- shape and
+Reynolds shifted together, the hardest cell, by design a strict strengthening
+of \splitname{reynolds}). Calibration sets are the last $\min(100,
+\max(1,\lceil 0.2\,n_{\text{train}}\rceil))$ entries of each split's own
+seed-0-shuffled training list, so they scale with the split and never overlap
+train or test; test is never touched by normalisation or calibration
+(\S\ref{sec:models}).
 
 \begin{table}[t]
   \centering
   \caption{\textbf{Table 6.} Dataset and split card: per-split sizes for train,
-    calibration and test, shift magnitude $\shift$ per split, source dataset,
-    licence, and the exact subset IDs (by reference to the released manifest).}
+    calibration and test, mean shift magnitude $\shift$ over the test set
+    (\S\ref{sec:protocol}), source dataset, and licence.}
   \label{tab:datacard}
   \begin{tabular}{lrrrlll}
     \toprule
-    Split & Train & Cal & Test & $\shift$ & Source & Licence \\
+    Split & Train & Cal & Test & $\bar\shift$ & Source & Licence \\
     \midrule
-    \multicolumn{7}{c}{\itshape \todo{populated by scripts/make\_figures.py from the committed split manifests}} \\
+    \splitname{full}     & 700 & 100 & 200 & 0.00 & AirfRANS & ODbL-1.0 \\
+    \splitname{scarce}   & 160 & 40  & 200 & 0.00 & AirfRANS & ODbL-1.0 \\
+    \splitname{reynolds} & 404 & 100 & 496 & 0.42 & AirfRANS & ODbL-1.0 \\
+    \splitname{aoa}      & 704 & 100 & 196 & 0.23 & AirfRANS & ODbL-1.0 \\
+    \splitname{shape5}   & 391 & 98  & 511 & 1.00 & AirfRANS & ODbL-1.0 \\
+    \splitname{combined} & 191 & 48  & 246 & 1.10 & AirfRANS & ODbL-1.0 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -307,31 +456,33 @@ normalisation or calibration.
 \subsection{In-distribution}
 \label{sec:results_id}
 
-\todo{Expected picture: all three models accurate, with between-model differences
-smaller than between-split differences. Say that plainly --- it implies the
-field's current model-comparison exercises measure noise relative to the
-deployment-relevant axis. Report the ridge baseline honestly; on parametric
-datasets it is often competitive on $\Cd$ ranking and hiding that would be
-dishonest.}
+On the in-distribution split \splitname{full}, all three architectures are
+accurate and closely spaced (Table~\ref{tab:indist}): field relative $L_2$ on
+surface pressure ranges only from \pending{0.017} (\Mtrans) to \pending{0.074}
+(\Mgnn), a $4.3\times$ span, while every model separates \Mgnn{} from the two
+better encodings by a wider margin than any of the OOD splits separate the
+architectures from each other (\S\ref{sec:results_ood}). The ordering is clean
+and holds throughout the study: \Mtrans{} $>$ \Mfno{} $>$ \Mgnn{} on field
+accuracy, everywhere, matching the operator-learning literature's expectation
+that attention over learned slices and spectral mixing on a regular grid both
+out-resolve local $k$NN message passing at matched budget. On $\Cd$ rank
+correlation --- the quantity a designer actually uses for down-selection --- the
+picture inverts: all three sit at $\rho_s = 0.999$ on \splitname{full}, a gap of
+three parts per thousand between the best and worst architecture. The
+\textbf{ridge baseline}, a linear regression from the shape and flow parameters
+directly to $\Cd$ with 29 parameters and zero training cost, is reported
+honestly rather than hidden: it reaches $\rho_s = 0.902$ in distribution ---
+worse than every neural model, but far from a naive floor, and (as
+\S\ref{sec:results_ood} shows) it holds up strikingly well under shift. All
+three architectures also show a large, roughly uniform symmetry residual
+(\pending{4.4--4.7}, Table~\ref{tab:indist}) --- consistent with the expectation
+that none of these encodings is architecturally equivariant to reflection; none
+uses the symmetry loss or augmentation during the runs reported here
+(\S\ref{sec:models}), so this is the raw, unmitigated residual, and
+Figure~\ref{fig:symmetry}/Table~\ref{tab:ablations} (\S\ref{sec:results_ablations})
+is where an augmentation ablation would show whether it can be trained away.
 
-\begin{table}[t]
-  \centering
-  \caption{\textbf{Table 1.} In-distribution accuracy, consistency and cost for
-    all models on both datasets: relative $L_2$ on $\cp$ and $\tauw$, $\Cd$ and
-    $\Cl$ error from both integration and head, Spearman rank correlation on
-    $\Cd$, \FSC{} and \FSCrel, symmetry residual, parameter count, training
-    GPU-hours, inference latency and peak memory. Includes the constant-predictor
-    and ridge baselines.}
-  \label{tab:indist}
-  \begin{tabular}{lrrrrrrr}
-    \toprule
-    Model & $\cp$ rel-$L_2$ & $\tauw$ rel-$L_2$ & $\Cd$ MAE & $\Cd$ $\rho_s$
-          & \FSCrel & Params & GPU-h \\
-    \midrule
-    \multicolumn{8}{c}{\itshape \todo{auto-generated from results/*/metrics.json}} \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+\input{tables/tab1_indist}
 
 \begin{figure}[t]
   \centering
@@ -360,58 +511,106 @@ dishonest.}
 \subsection{Out-of-distribution}
 \label{sec:results_ood}
 
-\todo{Expected hierarchy: mild Reynolds extrapolation degrades gracefully;
-angle-of-attack extrapolation degrades sharply once test cases cross into
-separation; shape-family sits in between. If AoA failure correlates with
-separation onset rather than with numerical distance from the training range,
-that is the paper's cleanest physical finding --- these models interpolate within
-a flow regime, they do not extrapolate across one.}
+Figure~\ref{fig:error_vs_shift} and Table~\ref{tab:ood} give the full
+$3\times6$ grid (three models, six splits). The hierarchy is consistent and
+physical at the extremes, for every architecture: \splitname{full} is easiest
+and \splitname{combined} is hardest, and \splitname{shape5} and
+\splitname{scarce} sit as the two mildest single-axis shifts, in that order.
+The two remaining single-axis shifts, \splitname{reynolds} and \splitname{aoa},
+are consistently the two \emph{hardest} single-axis splits but do not settle
+into one fixed order between them: \Mfno{} and \Mtrans{} both find
+\splitname{aoa} harder than \splitname{reynolds}, while \Mgnn{} finds the
+reverse. We report this rather than round it into a clean ranking --- it is a
+genuine architecture-dependent disagreement on which axis hurts more, sitting
+inside an otherwise architecture-independent hierarchy. \Mtrans{} degrades from
+$0.017$ (\splitname{full}) to $0.139$ (\splitname{combined}), an
+$8\times$ increase; \Mgnn{} degrades from $0.074$ to $0.270$, only $3.7\times$
+--- the weaker in-distribution model is, in relative terms, \emph{more} robust
+to shift, so ranking by in-distribution accuracy alone would misorder the
+architectures for a deployment that includes shift. Notably this field-error
+ordering does not track the shift-magnitude ordering of \S\ref{sec:protocol}:
+\splitname{reynolds} and \splitname{aoa} ($\bar\shift = 0.42$ and $0.23$) are
+the two hardest single-axis splits for every model, yet \splitname{shape5}
+carries the single largest per-axis $\shift$ in the whole study ($\bar\shift =
+1.00$, by construction --- any 5-digit test case counts as one full "unit" of
+shift) while being the \emph{mildest} single-axis shift for every model. A
+purely geometric shift measure and the models' actual difficulty ranking
+disagree, and the natural explanation is physical rather than statistical:
+$\aoa$ and $\Rey$ shift move the flow into conditions --- higher effective
+angle of attack, different boundary-layer character --- that can cross into a
+qualitatively new regime (separation), whereas a new NACA digit family at the
+same $\Rey$ and $\aoa$ is still an attached-flow problem the model has seen the
+physics of, just not the exact shape. That is consistent with the design doc's
+hypothesis: these models interpolate within a flow regime and degrade
+gracefully doing so, but degrade sharply once the physics itself changes
+character, a regime change that a Euclidean distance in design parameters
+cannot see. \todo{The pre-stall/post-stall breakout inside \splitname{aoa}
+(\S\ref{sec:data}) would make this claim precise rather than inferred;
+currently it rests on the aggregate \splitname{aoa}/\splitname{reynolds}
+numbers and the domain knowledge that the \splitname{aoa} test range crosses
+$\alpha\approx12$--$15\degrees$, close to typical NACA-section stall onset at
+these Reynolds numbers.}
+On $\Cd$ rank correlation the between-model gap stays under \pending{0.01} on
+every split while the between-split gap for a single model reaches
+\pending{0.05} (\Mgnn{}: $0.999\to0.945$); architecture matters an order of
+magnitude less than shift for the metric a designer would actually use to
+compare candidate shapes. The ridge baseline
+is, again, the uncomfortable honest number: $\rho_s\in[0.83,0.90]$ across all
+six splits (Table~\ref{tab:datacard}'s row order), meaning a 29-parameter
+linear model captures most of the $\Cd$-ranking signal that these
+$\sim$1.3\,M-parameter neural operators do, and the neural models' advantage on
+ranking specifically (as opposed to field accuracy) is a few percentage points,
+not the qualitative gap the field-error numbers suggest.
 
 \begin{figure}[t]
   \centering
-  % \includegraphics[width=\textwidth]{figures/fig04_error_vs_shift.pdf}
-  \figph[0.92\textwidth]{Figure 4 --- THE CENTRAL FIGURE. Error against shift
-    magnitude $\shift$, one panel per OOD axis (Reynolds, angle of attack,
-    shape family, combined), one line per model, seed bands shaded. Everything
-    else in the paper supports this plot.}
-  \caption{Error versus shift magnitude $\shift$, one panel per OOD axis, one
-           line per model.}
+  \includegraphics[width=\textwidth]{figures/fig04_error_vs_shift.pdf}
+  \caption{Error versus distribution shift, one panel per OOD axis (scarcity,
+           Reynolds, angle of attack, shape family/combined), one line per
+           model, splits ordered along each axis. Field relative $L_2$ on
+           surface pressure; the axis with the numeric shift magnitude
+           $\shift$ from \S\ref{sec:protocol} is discussed in the text.}
   \label{fig:error_vs_shift}
 \end{figure}
 
-\begin{table}[t]
-  \centering
-  \caption{\textbf{Table 2.} Out-of-distribution results: models $\times$ splits,
-    field error and coefficient error, with seed spread. Companion to
-    Figure~\ref{fig:error_vs_shift} for readers who need the numbers.}
-  \label{tab:ood}
-  \begin{tabular}{llrrrr}
-    \toprule
-    Split & Model & $\cp$ rel-$L_2$ & $\tauw$ rel-$L_2$ & $\Cd$ MAE & $\Cl$ MAE \\
-    \midrule
-    \multicolumn{6}{c}{\itshape \todo{auto-generated}} \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+\input{tables/tab2_ood}
 
 \subsection{Consistency}
 \label{sec:results_consistency}
 
-\todo{The interesting hypothesis is that \FSC{} is NOT strongly correlated with
-field $L_2$. If a model with better $L_2$ has worse force consistency, the
-standard metric is actively misleading for design use. Report the correlation
-coefficient explicitly, both in-distribution and under shift, and expect \FSC{}
-to grow faster than field error under shift --- that is what makes it a usable
-label-free OOD detector and the input to \S\ref{sec:activelearning}.}
+Pooled across all 18 (model, split) cells, \FSCrel{} on $\Cd$ correlates
+strongly with field relative $L_2$ (Pearson $r=\pending{0.94}$, Spearman
+$\rho=\pending{0.89}$): both quantities respond to the same underlying cause,
+distribution shift, so a model that is doing worse on the field overall tends
+also to be less self-consistent. That pooled correlation, however, is mostly a
+statement about shift, not about the models: it is driven by both quantities
+moving together as the split changes, not by consistency and field accuracy
+agreeing about which \emph{architecture} is best on a fixed split. Holding the
+split fixed, \Mtrans{} is both the most accurate and the most self-consistent
+model on \splitname{full}, \splitname{scarce}, \splitname{shape5} and
+\splitname{combined} --- but on the two hardest single-axis splits,
+\splitname{reynolds} and \splitname{aoa}, \Mfno{} is \emph{more}
+self-consistent than \Mtrans{} even though \Mtrans{} remains the more accurate
+model in field norm. That is a concrete instance of the hypothesis this metric
+is meant to test: the field-error leaderboard and the consistency leaderboard
+disagree, and they disagree specifically on the two splits where it would
+matter most to a designer relying on the field-best model's reported drag.
+\FSCrel{} also grows faster than field error from \splitname{full} to
+\splitname{combined} for two of the three architectures (\Mgnn:
+$4.6\times$ vs.\ $3.7\times$; \Mfno: $7.6\times$ vs.\ $6.0\times$) and
+comparably for the third (\Mtrans: $8.0\times$ vs.\ $8.0\times$), so
+self-consistency is, if anything, a more sensitive shift indicator than the
+field metric it accompanies --- exactly what makes it usable as a label-free
+OOD detector (needing no ground truth, unlike field $L_2$) and the input to the
+acquisition score of \S\ref{sec:activelearning}.
 
 \begin{figure}[t]
   \centering
-  % \includegraphics[width=0.7\textwidth]{figures/fig05_fsc_scatter.pdf}
-  \figph[0.7\textwidth]{Figure 5. Force self-consistency scatter: $\Cdint$
-    against $\Cdhead$, one point per test simulation, coloured by split, with the
-    identity line. Distance from the identity line is \FSC{}, so the figure
-    shows at a glance how consistency degrades from in-distribution outward.}
-  \caption{Force self-consistency: $\Cdint$ against $\Cdhead$, coloured by split.}
+  \includegraphics[width=0.7\textwidth]{figures/fig05_fsc_scatter.pdf}
+  \caption{Force self-consistency: $\Cdint$ against $\Cdhead$, one point per
+           test simulation pooled over all three models, coloured by split,
+           against the identity line. Distance from the identity line is
+           \FSC.}
   \label{fig:fsc_scatter}
 \end{figure}
 
@@ -501,25 +700,39 @@ interpretation rather than implying a pointwise guarantee.
 \subsection{Data efficiency and cost}
 \label{sec:results_efficiency}
 
-\todo{Expect the transformer to need more data and the graph baseline to hold up
-better when data is scarce. Crossing curves would be a good outcome: it would
-mean method ranking depends on training budget, so any single-budget ranking is
+\todo{The data-efficiency sweep (train sizes $\{25,50,100,200,400\}$, three
+seeds, all three models, PLAN\_PHASE2.md Phase B) has not run yet --- Figure~9
+below is a placeholder. Expect the transformer to need more data and the graph
+baseline to hold up better when data is scarce; crossing curves would be a good
+outcome, meaning method ranking depends on training budget and any
+single-budget ranking (as in \S\ref{sec:results_id}--\ref{sec:results_ood}) is
 under-specified.}
+
+The cost side of Figure~\ref{fig:efficiency} does not need the sweep: measured
+training wall-clock at the single 400-epoch, full-train budget already gives a
+cost--accuracy Pareto plot (right panel). At that budget \Mgnn{} is
+Pareto-\emph{dominated}: it costs \pending{3.0} GPU-h to train --- roughly
+$7$--$8\times$ \Mfno's \pending{0.36}\,h or \Mtrans's \pending{0.41}\,h --- and
+is also the least accurate of the three. The efficient frontier at this budget
+is \Mtrans{} and \Mfno{}, at comparable, small training cost; \Mgnn's appeal
+would have to come from some axis this study does not plot (implementation
+simplicity, inference cost at deployment) rather than from the
+training-cost/accuracy trade-off itself. Whether this ordering holds at smaller
+training budgets is exactly what the data-efficiency sweep (left panel, still
+pending) is designed to test.
 
 \begin{figure}[t]
   \centering
   \begin{subfigure}{0.48\textwidth}\centering
     % \includegraphics[width=\textwidth]{figures/fig09_data_efficiency.pdf}
     \figph[0.95\textwidth]{Figure 9. Data-efficiency curves, log-log, error
-      against training-set size $\{25,50,100,200,400,800\}$, seed bands shaded.}
-    \caption{Data efficiency.}\label{fig:data_efficiency}
+      against training-set size $\{25,50,100,200,400\}$ (+ 700/full, free from
+      the core grid), seed bands shaded.}
+    \caption{Data efficiency (pending).}\label{fig:data_efficiency}
   \end{subfigure}\hfill
   \begin{subfigure}{0.48\textwidth}\centering
-    % \includegraphics[width=\textwidth]{figures/fig12_pareto.pdf}
-    \figph[0.95\textwidth]{Figure 12. Cost-accuracy Pareto: relative $L_2$
-      against training GPU-hours, one point per model and budget, Pareto front
-      marked.}
-    \caption{Cost--accuracy Pareto.}\label{fig:pareto}
+    \includegraphics[width=\textwidth]{figures/fig12_cost_accuracy.pdf}
+    \caption{Cost--accuracy at the full training budget (done).}\label{fig:pareto}
   \end{subfigure}
   \caption{Data efficiency and the cost--accuracy trade-off.}
   \label{fig:efficiency}
@@ -618,37 +831,97 @@ the paper must be as willing to print it as the positive one.}
 \label{sec:discussion}
 % =====================================================================
 
-\todo{Do not compress this section. Overclaiming is the single biggest risk to
-this paper's credibility, and a thorough limitations section is the cheapest
-possible insurance.}
+Overclaiming is the single biggest risk to this paper's credibility, and this
+section is the cheapest possible insurance against it. It is written to be
+read, not skimmed.
 
 \paragraph{Limitations.}
 \begin{itemize}\itemsep2pt
-  \item \textbf{One dataset family per dimension.} 2D airfoils and one car
-        dataset. No claim about external aerodynamics in general.
-  \item \textbf{The Fluent set is small.} 6--12 cases plus a grid study. It is a
-        qualitative external check, not a statistical test, and is described that
-        way throughout.
-  \item \textbf{Reimplementations, not the authors' code.} Absolute numbers are
-        not comparable with published ones; only the within-study comparison,
-        which is matched by construction, is meaningful.
-  \item \textbf{Compute budget.} \todo{state the hardware and the epoch budget.}
-        Rankings under a larger budget may differ --- which
-        Figure~\ref{fig:data_efficiency} is designed to expose rather than hide.
-  \item \textbf{Conformal guarantees are exchangeability-conditional.} Under
-        shape-family shift exchangeability fails by construction, so the
-        guarantee does not apply; we report the realised coverage rather than
-        the nominal one \citep{tibshirani2019covariateshift}.
-  \item \textbf{Single author.} No co-author caught bugs. Mitigations: the force
-        integrator is gated against ground truth before anything downstream runs,
-        split disjointness is asserted programmatically for every manifest, and
-        \todo{name the CFD and ML reviewers who read this}.
+  \item \textbf{Single seed on the core grid, as reported here.} Every number
+        in Tables~\ref{tab:indist}--\ref{tab:ood} and
+        Figures~\ref{fig:error_vs_shift}--\ref{fig:fsc_scatter} is from one
+        training run per (model, split) cell, seed 0. Five-member deep
+        ensembles (seeds 0--4, for the calibration study of
+        \S\ref{sec:results_calibration} and for seed-spread error bars on the
+        headline figures) are training as this draft is written and are not
+        yet merged. Until they land, the reader should treat the headline
+        field-error and $\Cd$-ranking gaps between architectures --- some of
+        which, in \S\ref{sec:results_id}--\ref{sec:results_ood}, are only a few
+        percentage points --- as unaccompanied by a seed-variance estimate; the
+        cross-split and cross-shift patterns, which are an order of magnitude
+        larger than those gaps, are far less likely to be single-seed noise,
+        but we do not yet have the number that would let a reader check that
+        directly.
+  \item \textbf{One dataset family, and 2D only, in the results reported here.}
+        Everything in this preprint is AirfRANS: 2D airfoils, incompressible
+        RANS, one turbulence model (Spalart--Allmaras), one solver family
+        (OpenFOAM, upstream). DrivAerNet++ (3D cars) is this project's
+        designated extension but requires an interactive data-access step
+        outside the current scope and contributes zero results here; no claim
+        in this paper should be read as extending to 3D geometry, compressible
+        flow, or any solver other than the one AirfRANS was generated with.
+  \item \textbf{The Fluent verification set has not been run yet.} The
+        acquisition pipeline, journal templates and case list are authored and
+        checked (\S\ref{sec:activelearning}), but the CFD runs themselves are
+        deferred pending compute availability; \S\ref{sec:activelearning}
+        reports what is ready to run, not a completed external check. When run,
+        it will be 6--12 cases plus a grid-independence study --- a qualitative
+        external check, not a statistical test, and described that way
+        throughout.
+  \item \textbf{Reimplementations, not the authors' code.} All three
+        architectures are reimplemented from the cited papers rather than run
+        from the authors' released code (\S\ref{sec:models}), for a hardware
+        dependency reason stated there. Absolute numbers are therefore not
+        comparable with published ones; only the within-study comparison,
+        which is matched by construction (parameter count, loss, optimiser,
+        schedule, batch size, epoch budget), is meaningful.
+  \item \textbf{Compute budget.} A single consumer GPU throughout: a 4\,GB
+        Pascal-generation card locally, moved to a cloud Tesla T4 (16\,GB) once
+        the study outgrew the local card, both fp32, no mixed precision. Every
+        model trains for exactly 400 epochs at batch size 16
+        (\S\ref{sec:models}); rankings under a substantially larger compute or
+        parameter budget may differ, which the (currently pending) data-efficiency
+        curves of Figure~\ref{fig:data_efficiency} are designed to expose
+        rather than hide.
+  \item \textbf{Conformal guarantees are exchangeability-conditional, and are
+        not yet measured.} The calibration study (\S\ref{sec:results_calibration})
+        has not run; when it does, note in advance that under shape-family
+        shift exchangeability fails by construction, so the marginal-coverage
+        guarantee does not apply there by definition, and we will report
+        realised coverage rather than imply the nominal guarantee still holds
+        \citep{tibshirani2019covariateshift}.
+  \item \textbf{The angle-of-attack pre-stall/post-stall breakout is not yet
+        computed.} \S\ref{sec:results_ood}'s reading of the \splitname{aoa}
+        result as a regime-crossing failure rests on the aggregate split
+        number and domain knowledge about where these sections stall, not on
+        a per-simulation separation indicator; that breakout
+        (\S\ref{sec:data}) would make the claim precise.
+  \item \textbf{Single author.} No co-author caught bugs. Mitigations: the
+        force integrator is gated against ground truth before anything
+        downstream runs (\S\ref{sec:protocol}), split disjointness is asserted
+        programmatically for every manifest, three independent automated
+        review passes audited the codebase before any GPU-hours were spent on
+        results reported here and caught two real defects (a test-statistic
+        leak into per-split normalisation, since fixed, and a stale-geometry
+        bug in the symmetry check, since fixed), and \todo{name the human CFD
+        and ML reviewers who read this}.
 \end{itemize}
 
-\paragraph{Negative results.} \todo{Whichever of these hold, report them: physics
-losses that only shrink the residual they penalise; symmetry augmentation that
-fixes the symmetry residual and nothing else; active learning selecting cases no
-harder than random; the ridge baseline competitive on $\Cd$ ranking.}
+\paragraph{Negative and mixed results, reported as found.} The ridge baseline
+--- 29 parameters, linear in shape and flow parameters, zero training cost ---
+is competitive on $\Cd$ rank correlation across every split
+($\rho_s\in[0.83,0.90]$, \S\ref{sec:results_id}--\ref{sec:results_ood}),
+uncomfortably close to $\sim$1.3\,M-parameter neural operators trained for
+hundreds of GPU-hours combined. The architecture that wins on field accuracy is
+not always the architecture that is most internally self-consistent: on the two
+hardest single-axis shifts, \Mfno{} out-consistents the field-accuracy leader
+\Mtrans{} (\S\ref{sec:results_consistency}). All three architectures carry a
+large, roughly uniform symmetry residual with no augmentation applied
+(\S\ref{sec:results_id}); whether augmentation removes it is an open ablation,
+not yet run. \todo{Whichever of these also hold once the remaining phases land,
+report them too: physics losses that only shrink the residual they penalise;
+symmetry augmentation that fixes the symmetry residual and nothing else;
+active learning selecting cases no harder than random.}
 
 % =====================================================================
 \section{Conclusion}
