@@ -150,6 +150,120 @@ def table2_ood(df: pd.DataFrame, outdir: Path) -> list[Path]:
     return paths
 
 
+# --------------------------------------------------------------------------- #
+# Table 3 -- calibration (reads results/uq, not the run metrics)
+# --------------------------------------------------------------------------- #
+_UQ_SPLIT_ORDER = ("full", "scarce", "shape5", "reynolds", "aoa", "combined")
+
+
+def _uq_mode(ensemble_id: str) -> str:
+    return "transfer" if str(ensemble_id).endswith("_calfull") else "matched"
+
+
+def _largest_k(reports, mode: str) -> dict:
+    """``{(model, split): report}`` keeping the largest-K report for ``mode``."""
+    best: dict[tuple[str, str], dict] = {}
+    for rep in reports:
+        if _uq_mode(rep.get("ensemble_id", "")) != mode:
+            continue
+        key = (str(rep.get("model", "")), str(rep.get("split", "")))
+        cur = best.get(key)
+        if cur is None or float(rep.get("k", 0) or 0) > float(cur.get("k", 0) or 0):
+            best[key] = rep
+    return best
+
+
+def _pick_record(rep, target: str, granularity: str):
+    recs = [
+        r for r in (rep.get("records", []) if rep else [])
+        if isinstance(r, dict)
+        and str(r.get("target")) == target
+        and str(r.get("granularity")) == granularity
+    ]
+    if not recs:
+        return None
+    recs.sort(key=lambda r: 0 if r.get("score") == "normalized" else 1)
+    return recs[0]
+
+
+def _lv(rec, nominal: float, key: str):
+    if rec is None:
+        return None
+    for lv in rec.get("levels", []):
+        if abs(float(lv.get("nominal", -1)) - nominal) < 1e-9:
+            return lv.get(key)
+    return None
+
+
+def table3_calibration(results: str, outdir: Path) -> list[Path]:
+    """Coverage / width / ECE for the C_D^int band, per model x split.
+
+    Columns: matched coverage at 0.8/0.9/0.95, transfer coverage at 0.9, matched
+    mean width at 0.9, matched ECE.  Reads ``results/uq/*.json`` (produced by
+    ``scripts/run_uq.py``); missing cells render as ``--``.
+    """
+    reports = vdata.load_uq_reports(Path(results) / "uq")
+    if not reports:
+        print("TODO table3: no results/uq calibration data")
+        return []
+    matched = _largest_k(reports, "matched")
+    transfer = _largest_k(reports, "transfer")
+    def _order(ms: tuple[str, str]) -> tuple[int, int]:
+        model, split = ms
+        mi = style.MODEL_ORDER.index(model) if model in style.MODEL_ORDER else 99
+        si = _UQ_SPLIT_ORDER.index(split) if split in _UQ_SPLIT_ORDER else 99
+        return (mi, si)
+
+    keys = sorted(set(matched) | set(transfer), key=_order)
+    if not keys:
+        print("TODO table3: no calibration records")
+        return []
+
+    headers = ["model", "split", "cov@.8", "cov@.9", "cov@.95",
+               "cov@.9 (tr)", "width@.9", "ECE"]
+    rows = []
+    for model, split in keys:
+        m_rep = matched.get((model, split))
+        t_rep = transfer.get((model, split))
+        m_rec = _pick_record(m_rep, "cd_int", "coefficient")
+        t_rec = _pick_record(t_rep, "cd_int", "coefficient")
+        rows.append([
+            style.model_label(model),
+            style.split_label(split),
+            _fmt(_lv(m_rec, 0.8, "coverage"), 3),
+            _fmt(_lv(m_rec, 0.9, "coverage"), 3),
+            _fmt(_lv(m_rec, 0.95, "coverage"), 3),
+            _fmt(_lv(t_rec, 0.9, "coverage"), 3),
+            _fmt(_lv(m_rec, 0.9, "mean_width"), 3),
+            _fmt(None if m_rec is None else m_rec.get("ece"), 3),
+        ])
+
+    caption = (r"Split-conformal calibration of the integrated drag band "
+               r"($C_D^{\mathrm{int}}$): empirical coverage, mean interval width and "
+               r"ECE. Matched calibrates on the split's own cal set; transfer (tr) "
+               r"calibrates on \texttt{full}'s cal.")
+    paths = []
+    for ext, latex in (("tex", True), ("md", False)):
+        if latex:
+            lines = [r"\begin{table}[t]", r"\centering", f"\\caption{{{caption}}}",
+                     r"\label{tab:calibration}",
+                     r"\begin{tabular}{ll" + "r" * (len(headers) - 2) + "}",
+                     r"\toprule", " & ".join(headers) + r" \\", r"\midrule"]
+            lines += [" & ".join(r) + r" \\" for r in rows]
+            lines += [r"\bottomrule", r"\end{tabular}", r"\end{table}", ""]
+            txt = "\n".join(lines)
+        else:
+            lines = ["| " + " | ".join(headers) + " |",
+                     "| " + " | ".join("---" for _ in headers) + " |"]
+            lines += ["| " + " | ".join(r) + " |" for r in rows]
+            txt = "\n".join(lines) + "\n"
+        outdir.mkdir(parents=True, exist_ok=True)
+        p = outdir / f"tab3_calibration.{ext}"
+        p.write_text(txt, encoding="utf-8")
+        paths.append(p)
+    return paths
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--results", default="results")
@@ -161,6 +275,7 @@ def main(argv: list[str] | None = None) -> int:
     written: list[Path] = []
     written += table1_indist(df, outdir)
     written += table2_ood(df, outdir)
+    written += table3_calibration(args.results, outdir)
 
     print(f"\n{len(written)} table file(s) written to {outdir}:")
     for p in written:

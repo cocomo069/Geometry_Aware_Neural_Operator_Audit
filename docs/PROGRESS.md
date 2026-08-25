@@ -749,3 +749,98 @@ Findings: OOD hierarchy full<shape5<scarce<aoa<reynolds; **FSC grows with shift*
 label-free OOD detector, visible in model 1); GNN cd_spearman beats ridge (0.83-0.90)
 on every split. Fig4/5/12 + Tables 1-2 regenerated with real data. Session 2 launched
 with --runs-dataset resume (fixed path): finishes combined + transolver + sdf_fno.
+
+## 2026-08-25 — Paper draft: sections needing only the core grid (Sonnet, PLAN_PHASE2 Phase E/1b)
+
+Drafted `paper/main.tex` abstract, introduction, related work (cleanup only, content
+was already complete), problem setup (§5: G1 number filled in, $\Lossbc$/$\Lossdiv$
+added, shift-magnitude $\shift$ subsection written against the real
+`src/viz/shift.py` definition with computed per-split means), models and training
+(§6: matched-budget paragraph, reimplementation note, training details), datasets and
+splits (§7: split paragraph with real train/cal/test counts, Table 6 datacard
+populated from `data/splits/*.json`, DrivAerNet++ reframed as not-yet-run per D-005),
+results in-distribution + OOD + consistency (§8.1-8.3: prose against Tables 1-2 and
+Figs 4-5, which are `\input`/`\includegraphics`d from the committed
+`paper/tables/tab{1,2}_*.tex` and `paper/figures/fig{04,05}_*.pdf` rather than
+hand-copied; Fig 12 cost-accuracy also activated since it needs only the core grid),
+and limitations (single-seed-on-core-grid, DrivAerNet++/Fluent not run, compute
+budget, aoa pre/post-stall breakout not computed — all flagged explicitly rather than
+implied). Calibration, data-efficiency (Fig 9), ablations and active-learning stay
+`\todo` stubs with correct figure/table numbers, per scope. One real finding surfaced
+while writing: field-error hardest-single-axis ordering is NOT stable across
+architectures (GNN finds `reynolds` harder than `aoa`; SDF-FNO/Transolver find the
+reverse) — written up honestly rather than rounded into one clean ranking. Also: the
+$\shift$ magnitude ordering (`shape5` largest at 1.00) does not track empirical
+difficulty (`reynolds`/`aoa`, $\shift$=0.42/0.23, are the two hardest splits for every
+model) — used as the "these models interpolate within a regime, not across one"
+evidence. Citation check: every `\cite{}` key resolves in `refs.bib` and every
+`refs.bib` entry is cited — no gaps. Compile check: `microtype` needed
+`[expansion=false]` to work around a MiKTeX font-expansion fatal error in this
+environment (unrelated to content); with that, `pdflatex`+`bibtex`+`pdflatex`×2
+produces an 18-page PDF, zero undefined refs/citations, two minor over/underfull-box
+warnings only. Did not run git per instructions.
+
+## 2026-08-25 — Phase A UQ glue: run_uq.py + Figs 6–8 + Table 3 (Opus, PLAN_PHASE2 1a)
+
+Built the missing glue that turns ensemble checkpoints into the C3 calibration results.
+No training, no GPU training, no git, no Kaggle; inference on the local P2000. CPU-light
+(single-process, `num_workers=0`, small batches) to coexist with the user Fluent job.
+
+**`scripts/run_uq.py`** (new). Per `(model, split)`: reads `results/{model}_{split}_s0/
+config.yaml`, recomputes per-split **train-only** norm stats (D-021) locally, loads the K
+available `best.pt` via `src.uq.ensembles.load_ensemble_checkpoints`, runs inference over
+cal+test, and reduces each ensemble to per-sim coefficient members (`cd_int`/`cl_int` via
+the frozen `integrate_forces`, integrate-then-average per spec 5.6; `cd_head`/`cl_head`
+from `coef_head`) and per-point field members (denormalized `p`). Each member is run once
+per batch (`member_outputs(raw=True)`); member arrays are stored once and sliced for the
+K-subset ablation (no re-inference). Fits split conformal on the cal set, sweeps levels
+{0.8,0.9,0.95} on test, writes schema-valid `results/uq/*.json` via
+`coverage.write_uq_report` (satisfies both `uq-1` and `src/eval/schema.py::UQ_SCHEMA`).
+- Two calibration modes: **matched** (`{model}_{split}_k{K}.json`, cal = split's own cal)
+  and **transfer** (`..._calfull.json`, cal = `full`'s cal, served *through* the split-X
+  model with split-X normalization so inputs match how it trained). For `full` the two
+  coincide by construction.
+- Zero-GPU ablation knobs all folded in for free: K∈{1,3,5} (member subsets, one file
+  each; K=1 → `absolute` score only since σ≡0), score `normalized`∨`absolute` (both fitted
+  per file, distinguished by each record's `score`), field aggregation `max`∨`quantile`
+  (granularities `field_max`/`field_quantile`).
+- CLI: `--model/--split` or `--all` (default 3 models × {full,reynolds,aoa,shape5}),
+  `--seeds`, `--modes`, `--levels`, `--k-subsets`, `--agg-q`, `--device`, path overrides.
+  Config's Kaggle `processed_dir`/`norm_stats` are overridden to local paths.
+
+**Figures** (`scripts/make_figures.py`): added **fig7** (coverage vs shift @0.9 for
+`cd_int`; solid=transfer, dashed=matched, hline at nominal) and **fig8** (interval width
+ID vs OOD, coef `cd_int` + field `p`, grouped bars per model, log-y). Rewrote **fig6** to
+read `results/uq` correctly — it previously mixed all coefficient records into one zigzag;
+now selects matched, largest-K, `cd_int`, preferred score, one reliability curve per
+(model,split). All three gate cleanly (return None) on an empty `results/uq`.
+
+**Table 3** (`scripts/make_tables.py`): `table3_calibration` — rows = model×split, cols =
+matched coverage@{.8,.9,.95}, transfer coverage@.9, mean width@.9, ECE (LaTeX + MD).
+
+**Tests** (`tests/test_run_uq.py`, new, CPU-only, 8 tests): pure record-assembly on a
+controlled K=5 synthetic ensemble (matched coverage lands inside the Wilson CI of nominal;
+coverage/width monotone in level), K=1→absolute-only, both field granularities/scores,
+full-report schema roundtrip, and a genuine end-to-end through `infer_dataset` with a fake
+3-member callable ensemble + the real `integrate_forces` → schema-valid JSON. `pytest
+tests/test_uq.py tests/test_run_uq.py -q` → 65 passed. `run_uq --help` OK.
+
+**Demo (K=1, seed-0 core checkpoints), committed to `results/uq/`:** 24 reports (3 models
+× 4 splits × {matched,transfer}), all schema-valid. Figs 6/7/8 + Tab 3 regenerated from
+them. The intended C3 story is already visible at K=1: on `full`, matched≈transfer≈nominal
+(cd_int cov@.9 = 0.93/0.96/0.96 for GNN/SDF-FNO/Transolver); under shift, coverage falls
+well below nominal (e.g. matched cd_int cov@.9: reynolds 0.70/0.62/0.46, aoa 0.79/0.62/0.48
+for GNN/SDF-FNO/Transolver) — "conformal delivers nominal coverage only when exchangeable;
+the guarantee breaks under shift." Transfer (cal=full) partially recovers on some splits.
+
+**Waiting on real ensembles** (seeds 1–4 training on Kaggle): re-run
+`run_uq --all --seeds 0,1,2,3,4` after `pull_results.py` merges them to get K∈{1,3,5} files
+(σ>0 → `normalized` score activates, fig7/tab3 auto-pick the largest K and normalized
+score). Everything downstream already handles K>1 — verified by the K=5 synthetic tests.
+The single-member (K=1) demo uses the `absolute` conformal score throughout.
+
+**Gaps / notes:** (1) matched↔transfer mode is carried in the `ensemble_id` suffix
+(`_calfull`) and mirrored into a `mode` field in the report; figures/tables derive it from
+the suffix rather than a new `src.viz.data` column (kept viz/data untouched). (2) Integrator
+called with the harness defaults (`rho=1, a_ref=1, pressure_mode="static"`) so `cd_int`
+matches the committed `metrics.json`. (3) Did not run git.

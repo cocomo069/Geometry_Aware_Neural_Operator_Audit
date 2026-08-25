@@ -29,6 +29,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
+from matplotlib.lines import Line2D  # noqa: E402
 
 from src.viz import data as vdata  # noqa: E402
 from src.viz import style  # noqa: E402
@@ -166,23 +167,202 @@ def fig12_cost_accuracy(df: pd.DataFrame, outdir: Path) -> Path | None:
 
 
 # ---- UQ figures (gated on results/uq) ------------------------------------- #
+#: The split axis of Figs 7/8, ordered by increasing distribution shift.
+UQ_SPLIT_ORDER = ("full", "shape5", "reynolds", "aoa", "combined")
+
+
+def _uq_mode(ensemble_id: str) -> str:
+    """``transfer`` for a ``*_calfull`` report, else ``matched``."""
+    return "transfer" if str(ensemble_id).endswith("_calfull") else "matched"
+
+
+def _select_uq_reports(reports, *, mode: str | None = None):
+    """Keep, per ``(model, split, mode)``, only the largest-K report.
+
+    The ensemble-size ablation writes one file per K; the headline figures use
+    the fullest ensemble available (K=1 in the demo, K=5 once ensembles land).
+    """
+    best: dict[tuple[str, str, str], dict] = {}
+    for rep in reports:
+        m = _uq_mode(rep.get("ensemble_id", ""))
+        if mode is not None and m != mode:
+            continue
+        key = (str(rep.get("model", "")), str(rep.get("split", "")), m)
+        cur = best.get(key)
+        if cur is None or float(rep.get("k", 0) or 0) > float(cur.get("k", 0) or 0):
+            best[key] = rep
+    return list(best.values())
+
+
+def _pick_record(rep, target: str, granularity: str):
+    """One record for ``(target, granularity)``, preferring the normalized score."""
+    recs = [
+        r for r in rep.get("records", [])
+        if isinstance(r, dict)
+        and str(r.get("target")) == target
+        and str(r.get("granularity")) == granularity
+    ]
+    if not recs:
+        return None
+    recs.sort(key=lambda r: 0 if r.get("score") == "normalized" else 1)
+    return recs[0]
+
+
+def _level_row(rec, nominal: float):
+    for lv in rec.get("levels", []):
+        if abs(float(lv.get("nominal", -1)) - nominal) < 1e-9:
+            return lv
+    return None
+
+
 def fig6_reliability(outdir: Path, results: str) -> Path | None:
+    """Empirical vs nominal coverage for the matched ``cd_int`` band."""
     uq_dir = Path(results) / "uq"
-    reports = vdata.load_uq_reports(uq_dir)
-    rel = vdata.reliability_frame(reports) if reports else None
-    if rel is None or rel.empty:
+    reports = _select_uq_reports(vdata.load_uq_reports(uq_dir), mode="matched")
+    curves = []
+    for rep in reports:
+        rec = _pick_record(rep, "cd_int", "coefficient")
+        if rec is None:
+            continue
+        rel = rec.get("reliability") or {}
+        nom, emp = rel.get("nominal"), rel.get("empirical")
+        if nom and emp and len(nom) == len(emp):
+            curves.append((str(rep.get("model", "")), str(rep.get("split", "")), nom, emp))
+    if not curves:
         print("TODO fig6: no results/uq reliability data")
         return None
-    fig, ax = plt.subplots(figsize=(4.2, 4.0))
+    fig, ax = plt.subplots(figsize=(4.4, 4.2))
     ax.plot([0, 1], [0, 1], "k--", lw=1, alpha=0.7, label="ideal")
-    for key, sub in rel.groupby([c for c in ("model", "split") if c in rel.columns]):
-        label = " ".join(str(k) for k in (key if isinstance(key, tuple) else (key,)))
-        ax.plot(sub["nominal"], sub["empirical"], marker="o", label=label)
+    for model, split, nom, emp in curves:
+        ax.plot(nom, emp, marker="o", ms=3.5, lw=1.3,
+                color=style.model_color(model), alpha=0.9,
+                label=f"{style.model_label(model)} / {style.split_label(split)}")
     ax.set_xlabel("nominal coverage")
     ax.set_ylabel("empirical coverage")
-    ax.set_title("Reliability")
-    ax.legend(frameon=False, fontsize=7)
+    ax.set_title(r"Reliability ($C_D^{\mathrm{int}}$, matched)")
+    ax.legend(frameon=False, fontsize=6, loc="upper left")
+    ax.set_aspect("equal", adjustable="box")
     return _save(fig, outdir, "fig06_reliability")
+
+
+def fig7_coverage_vs_shift(outdir: Path, results: str) -> Path | None:
+    """Empirical coverage at nominal 0.9 vs shift; matched (dashed) vs transfer (solid)."""
+    uq_dir = Path(results) / "uq"
+    reports = vdata.load_uq_reports(uq_dir)
+    if not reports:
+        print("TODO fig7: no results/uq data")
+        return None
+    nominal = 0.9
+    per_mode = {m: _select_uq_reports(reports, mode=m) for m in ("matched", "transfer")}
+    splits_present = sorted(
+        {str(r.get("split", "")) for reps in per_mode.values() for r in reps},
+        key=lambda s: UQ_SPLIT_ORDER.index(s) if s in UQ_SPLIT_ORDER else 99,
+    )
+    if not splits_present:
+        print("TODO fig7: no splits in results/uq")
+        return None
+    models = style.sort_models(
+        {str(r.get("model", "")) for reps in per_mode.values() for r in reps}
+    )
+    xpos = {s: i for i, s in enumerate(splits_present)}
+
+    fig, ax = plt.subplots(figsize=(5.0, 3.6))
+    ax.axhline(nominal, color="k", lw=1, ls=":", alpha=0.7, label=f"nominal {nominal:g}")
+    plotted = False
+    for mode, ls in (("matched", "--"), ("transfer", "-")):
+        for model in models:
+            xs, ys = [], []
+            for rep in per_mode[mode]:
+                if str(rep.get("model")) != model:
+                    continue
+                rec = _pick_record(rep, "cd_int", "coefficient")
+                lv = _level_row(rec, nominal) if rec else None
+                if lv is None:
+                    continue
+                xs.append(xpos[str(rep.get("split", ""))])
+                ys.append(float(lv.get("coverage", float("nan"))))
+            if not xs:
+                continue
+            order = np.argsort(xs)
+            xs = np.asarray(xs)[order]
+            ys = np.asarray(ys)[order]
+            ax.plot(xs, ys, ls=ls, marker=style.model_marker(model),
+                    color=style.model_color(model), lw=1.6,
+                    label=(style.model_label(model) if mode == "transfer" else None))
+            plotted = True
+    if not plotted:
+        print("TODO fig7: no cd_int coverage records")
+        plt.close(fig)
+        return None
+    ax.set_xticks(range(len(splits_present)))
+    ax.set_xticklabels([style.split_label(s) for s in splits_present], rotation=20, ha="right")
+    ax.set_ylabel(f"empirical coverage @ {nominal:g}")
+    ax.set_title(r"Coverage vs shift ($C_D^{\mathrm{int}}$)")
+    handles = (style.model_legend(models, with_marker=True)
+               + [Line2D([], [], color="k", ls="--", label="matched cal"),
+                  Line2D([], [], color="k", ls="-", label="transfer (cal=full)"),
+                  Line2D([], [], color="k", ls=":", label=f"nominal {nominal:g}")])
+    ax.legend(handles=handles, frameon=False, fontsize=7, loc="lower left")
+    ax.grid(True, alpha=0.3)
+    return _save(fig, outdir, "fig07_coverage_vs_shift")
+
+
+def fig8_interval_width(outdir: Path, results: str) -> Path | None:
+    """Interval width ID vs OOD: matched bands, coef C_D^int and field p, per model."""
+    uq_dir = Path(results) / "uq"
+    reports = _select_uq_reports(vdata.load_uq_reports(uq_dir), mode="matched")
+    if not reports:
+        print("TODO fig8: no results/uq data")
+        return None
+    nominal = 0.9
+    splits_present = sorted(
+        {str(r.get("split", "")) for r in reports},
+        key=lambda s: UQ_SPLIT_ORDER.index(s) if s in UQ_SPLIT_ORDER else 99,
+    )
+    models = style.sort_models({str(r.get("model", "")) for r in reports})
+    lut = {(str(r.get("model")), str(r.get("split"))): r for r in reports}
+
+    panels = (
+        (r"$C_D^{\mathrm{int}}$ interval width", "cd_int", "coefficient"),
+        (r"$p$ field-band width", "p", "field_quantile"),
+    )
+    fig, axes = plt.subplots(1, len(panels), figsize=(4.4 * len(panels), 3.6))
+    if len(panels) == 1:
+        axes = [axes]
+    any_bar = False
+    nsp = max(1, len(splits_present))
+    width = 0.8 / max(1, len(models))
+    for ax, (title, target, gran) in zip(axes, panels):
+        for mi, model in enumerate(models):
+            heights, xs = [], []
+            for si, split in enumerate(splits_present):
+                rep = lut.get((model, split))
+                rec = _pick_record(rep, target, gran) if rep else None
+                lv = _level_row(rec, nominal) if rec else None
+                if lv is None:
+                    continue
+                w = float(lv.get("mean_width", float("nan")))
+                if not np.isfinite(w):
+                    continue
+                xs.append(si + (mi - (len(models) - 1) / 2) * width)
+                heights.append(w)
+            if heights:
+                ax.bar(xs, heights, width=width, color=style.model_color(model),
+                       label=style.model_label(model), alpha=0.9)
+                any_bar = True
+        ax.set_xticks(range(nsp))
+        ax.set_xticklabels([style.split_label(s) for s in splits_present], rotation=20, ha="right")
+        ax.set_yscale("log")
+        ax.set_title(title)
+        ax.grid(True, which="both", axis="y", alpha=0.3)
+    if not any_bar:
+        print("TODO fig8: no width records")
+        plt.close(fig)
+        return None
+    axes[0].set_ylabel(f"mean interval width @ {nominal:g}")
+    axes[-1].legend(frameon=False, fontsize=7)
+    fig.suptitle("Interval width, ID vs OOD (matched)", y=1.02)
+    return _save(fig, outdir, "fig08_interval_width")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -200,9 +380,10 @@ def main(argv: list[str] | None = None) -> int:
         p = fn(df, outdir)
         if p:
             written.append(p)
-    p = fig6_reliability(outdir, args.results)
-    if p:
-        written.append(p)
+    for fn in (fig6_reliability, fig7_coverage_vs_shift, fig8_interval_width):
+        p = fn(outdir, args.results)
+        if p:
+            written.append(p)
 
     print(f"\n{len(written)} figure(s) written to {outdir}:")
     for p in written:
