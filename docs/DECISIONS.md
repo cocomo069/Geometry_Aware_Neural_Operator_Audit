@@ -187,3 +187,12 @@ paper-critical diagnostic). Fix: reflection now drops `grid_sdf`/`grid_mask`/`gr
 the model rebuilds them from the mirrored `surf_pos`; `edge_index`/`curvature` are kept
 (provably reflection-invariant). Harness `_reflect` now calls the canonical
 `reflect_x_batch` (was silently falling back to a local copy via a stale name lookup).
+
+**D-023 · 2026-08-25 · Standing division of labor: Fable plans, Opus/Sonnet execute**
+User directive (reaffirmed). All PLANNING — phase design, experiment design, sequencing,
+scope/scientific decisions — is delegated to a Fable 5 agent. All EXECUTION —
+implementation, launching/monitoring sweeps, pulling results, figures, debugging,
+mechanical edits — is done by Opus (the session default) and Sonnet (lighter mechanical
+work). Applies to every remaining phase. Planning outputs land as docs/PLAN_*.md; Opus
+executes against them. This mirrors Phase 1 (Fable froze interfaces/gates in CONTEXT.md;
+Opus/Sonnet agents implemented).
