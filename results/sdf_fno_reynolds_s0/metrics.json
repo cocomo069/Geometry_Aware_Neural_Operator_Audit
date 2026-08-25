@@ -1,0 +1,41 @@
+{
+  "run_id": "sdf_fno_reynolds_s0",
+  "model": "sdf_fno",
+  "split": "reynolds",
+  "seed": 0,
+  "tag": null,
+  "params": 1373605,
+  "train_time_s": 838.713831645,
+  "epochs": 400,
+  "device": "cuda",
+  "field": {
+    "p_rel_l2": 0.09790743432189403,
+    "tau_rel_l2": 0.1012776820643989,
+    "p_mae": 153.77133203164533,
+    "tau_mae": 0.7344589094737349
+  },
+  "coef": {
+    "cl_head_mae": 0.05812195266011141,
+    "cd_head_mae": 0.0006048415145356088,
+    "cl_int_mae": 0.034224302786770425,
+    "cd_int_mae": 0.004995875059267424,
+    "cd_spearman": 0.4349356156489278,
+    "cd_head_spearman": 0.9822132206730116,
+    "cd_int_spearman": 0.4349356156489278,
+    "cl_rel": 0.04502209944518052,
+    "cd_rel": 0.39073793930857276
+  },
+  "consistency": {
+    "fsc_cl": 0.08140250504291016,
+    "fsc_cd": 0.005242996198156165,
+    "fsc_rel_cl": 0.08181488011459279,
+    "fsc_rel_cd": 0.23833794818688642,
+    "sym_residual": 7.823260228725677,
+    "antisym_cl_gap": 0.2140696425922215
+  },
+  "cost": {
+    "infer_ms_per_sim": 3.4003885484121237,
+    "peak_mem_mb": 82.70166015625
+  },
+  "n_sims": 496
+}
