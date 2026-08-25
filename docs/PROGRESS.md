@@ -732,3 +732,20 @@ T4 kernel → cache located by manifest search → train → checkpoint → resu
 pull. Nine smoke iterations fixed: secret attach, tar-extract, output path, log capture,
 data path override (processed_dir + norm_stats), mount path discovery, T4 vs P100 (D-020).
 Launching core grid (3 models × 6 splits).
+
+## 2026-08-25 — Core grid session 1 results (Fable/Opus)
+
+Session 1 (T4, ~11h) completed 5 GNN runs @400ep + partial 6th (resumes). First real
+neural numbers, per-split train-only norm (D-021) applied:
+| split | p_relL2 | cd_head_sp | fsc_cd | sym |
+|---|---|---|---|---|
+| full | 0.074 | 0.999 | 0.0053 | 4.49 |
+| scarce | 0.154 | 0.996 | 0.0086 | 5.02 |
+| reynolds | 0.223 | 0.977 | 0.0164 | 7.22 |
+| aoa | 0.188 | 0.945 | 0.0104 | 8.21 |
+| shape5 | 0.130 | 0.983 | 0.0089 | 6.76 |
+
+Findings: OOD hierarchy full<shape5<scarce<aoa<reynolds; **FSC grows with shift** (C1
+label-free OOD detector, visible in model 1); GNN cd_spearman beats ridge (0.83-0.90)
+on every split. Fig4/5/12 + Tables 1-2 regenerated with real data. Session 2 launched
+with --runs-dataset resume (fixed path): finishes combined + transolver + sdf_fno.
