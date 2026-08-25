@@ -1,0 +1,41 @@
+{
+  "run_id": "transolver_reynolds_s3",
+  "model": "transolver",
+  "split": "reynolds",
+  "seed": 3,
+  "tag": null,
+  "params": 1281701,
+  "train_time_s": 898.3553744030005,
+  "epochs": 400,
+  "device": "cuda",
+  "field": {
+    "p_rel_l2": 0.08814016684387832,
+    "tau_rel_l2": 0.0703707105494703,
+    "p_mae": 150.30463012886133,
+    "tau_mae": 0.5909098267439515
+  },
+  "coef": {
+    "cl_head_mae": 0.038409742094846745,
+    "cd_head_mae": 0.0006428001901029699,
+    "cl_int_mae": 0.029415324078077138,
+    "cd_int_mae": 0.007059817808406097,
+    "cd_spearman": 0.598745257468565,
+    "cd_head_spearman": 0.9544251825714796,
+    "cd_int_spearman": 0.598745257468565,
+    "cl_rel": 0.03869588386084908,
+    "cd_rel": 0.5521632606150612
+  },
+  "consistency": {
+    "fsc_cl": 0.0465525235393861,
+    "fsc_cd": 0.006980336495138134,
+    "fsc_rel_cl": 0.033835666902517506,
+    "fsc_rel_cd": 0.3115888138909251,
+    "sym_residual": 6.356280559409834,
+    "antisym_cl_gap": 0.40815808763727546
+  },
+  "cost": {
+    "infer_ms_per_sim": 1.8579591834652327,
+    "peak_mem_mb": 92.13720703125
+  },
+  "n_sims": 496
+}
