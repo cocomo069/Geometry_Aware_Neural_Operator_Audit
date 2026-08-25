@@ -1,0 +1,61 @@
+seed: 0
+tag: null
+device: auto
+model:
+  name: gnn
+  hidden_dim: 128
+  mlp_hidden: 192
+  n_rounds: 8
+  k: 16
+  n_freqs: 6
+  activation: gelu
+  aggr: mean
+  layer_norm: true
+  trunk_dim: 128
+  coef_hidden: 256
+  coef_layers: 2
+  coef_pooling: ds_mean_max
+train:
+  epochs: 400
+  lr: 0.001
+  batch_size: 16
+  weight_decay: 0.0
+  optimizer: adam
+  scheduler: cosine
+  min_lr: 1.0e-06
+  grad_clip: 1.0
+  num_workers: 0
+  val_every: 1
+  val_metric: val_loss
+  val_metric_mode: min
+  weights:
+    head: 0.1
+    force: 0.0
+    sym: 0.0
+    bc: 0.0
+    div: 0.0
+  warmup_epochs: 0
+data:
+  split: scarce
+  splits_dir: data/splits
+  processed_dir: /kaggle/input/datasets/cocomo069/airfrans-cache/processed/airfrans
+  norm_stats: /kaggle/input/datasets/cocomo069/airfrans-cache/processed/airfrans/norm_stats.json
+  load_volume: false
+  cache_in_ram: true
+paths:
+  results_root: results
+  checkpoints_root: checkpoints
+eval:
+  batch_size: 8
+  compute_symmetry: true
+  symmetry_max_sims: 64
+_meta:
+  config_path: configs/gnn.yaml
+  overrides:
+  - train.batch_size=16
+  - split=scarce
+  - seed=0
+  - data.processed_dir=/kaggle/input/datasets/cocomo069/airfrans-cache/processed/airfrans
+  - data.norm_stats=/kaggle/input/datasets/cocomo069/airfrans-cache/processed/airfrans/norm_stats.json
+  - paths.results_root=results
+  run_id: gnn_scarce_s0
