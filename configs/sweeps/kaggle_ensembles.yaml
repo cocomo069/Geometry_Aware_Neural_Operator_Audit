@@ -1,0 +1,11 @@
+# Deep-ensemble members on Kaggle T4 (PLAN.md Phase 3.2): seeds 1-4 on top of
+# the core seed-0 runs -> K=5. batch 16 (D-019). Model-major so GNN (slow) rows
+# complete first. 3 models x {full,reynolds,aoa,shape5} x seed{1,2,3,4} = 48 runs.
+name: kaggle_ensembles
+defaults:
+  overrides: [train.batch_size=16]
+matrix:
+  config: [configs/transolver.yaml, configs/sdf_fno.yaml, configs/gnn.yaml]
+  overrides:
+    split: [full, reynolds, aoa, shape5]
+    seed: [1, 2, 3, 4]
