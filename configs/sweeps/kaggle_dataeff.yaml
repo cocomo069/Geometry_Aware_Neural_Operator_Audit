@@ -1,0 +1,106 @@
+# Data-efficiency sweep (PLAN_PHASE2 Phase B) -> Figure 9.
+# 3 models x sizes {25,50,100,200,400} x seeds {0,1,2} = 45 runs.
+# The 700-point (= full train) is FREE: reuse the core/ensemble
+# {model}_full_s{0,1,2} runs; it is deliberately not listed here.
+#
+# The seed axis IS the sub-sampling seed: each run trains on a
+# different random subset (data/splits/full_n{size}_s{seed}.json) with
+# the training seed matched to it, so run_id = {model}_full_n{size}_s{seed}.
+# We must pin data.split_file per (size, seed) -- the matrix product
+# cannot pair the manifest file with the seed, so this uses the
+# explicit `runs:` list. batch_size=16 (D-019); cal/test == full's.
+# Model-major order: a truncated Kaggle session yields complete model rows.
+name: kaggle_dataeff
+defaults:
+  overrides: [train.batch_size=16]
+runs:
+  - config: configs/gnn.yaml
+    overrides: [split=full_n25, data.split_file=data/splits/full_n25_s0.json, seed=0]
+  - config: configs/gnn.yaml
+    overrides: [split=full_n25, data.split_file=data/splits/full_n25_s1.json, seed=1]
+  - config: configs/gnn.yaml
+    overrides: [split=full_n25, data.split_file=data/splits/full_n25_s2.json, seed=2]
+  - config: configs/gnn.yaml
+    overrides: [split=full_n50, data.split_file=data/splits/full_n50_s0.json, seed=0]
+  - config: configs/gnn.yaml
+    overrides: [split=full_n50, data.split_file=data/splits/full_n50_s1.json, seed=1]
+  - config: configs/gnn.yaml
+    overrides: [split=full_n50, data.split_file=data/splits/full_n50_s2.json, seed=2]
+  - config: configs/gnn.yaml
+    overrides: [split=full_n100, data.split_file=data/splits/full_n100_s0.json, seed=0]
+  - config: configs/gnn.yaml
+    overrides: [split=full_n100, data.split_file=data/splits/full_n100_s1.json, seed=1]
+  - config: configs/gnn.yaml
+    overrides: [split=full_n100, data.split_file=data/splits/full_n100_s2.json, seed=2]
+  - config: configs/gnn.yaml
+    overrides: [split=full_n200, data.split_file=data/splits/full_n200_s0.json, seed=0]
+  - config: configs/gnn.yaml
+    overrides: [split=full_n200, data.split_file=data/splits/full_n200_s1.json, seed=1]
+  - config: configs/gnn.yaml
+    overrides: [split=full_n200, data.split_file=data/splits/full_n200_s2.json, seed=2]
+  - config: configs/gnn.yaml
+    overrides: [split=full_n400, data.split_file=data/splits/full_n400_s0.json, seed=0]
+  - config: configs/gnn.yaml
+    overrides: [split=full_n400, data.split_file=data/splits/full_n400_s1.json, seed=1]
+  - config: configs/gnn.yaml
+    overrides: [split=full_n400, data.split_file=data/splits/full_n400_s2.json, seed=2]
+  - config: configs/transolver.yaml
+    overrides: [split=full_n25, data.split_file=data/splits/full_n25_s0.json, seed=0]
+  - config: configs/transolver.yaml
+    overrides: [split=full_n25, data.split_file=data/splits/full_n25_s1.json, seed=1]
+  - config: configs/transolver.yaml
+    overrides: [split=full_n25, data.split_file=data/splits/full_n25_s2.json, seed=2]
+  - config: configs/transolver.yaml
+    overrides: [split=full_n50, data.split_file=data/splits/full_n50_s0.json, seed=0]
+  - config: configs/transolver.yaml
+    overrides: [split=full_n50, data.split_file=data/splits/full_n50_s1.json, seed=1]
+  - config: configs/transolver.yaml
+    overrides: [split=full_n50, data.split_file=data/splits/full_n50_s2.json, seed=2]
+  - config: configs/transolver.yaml
+    overrides: [split=full_n100, data.split_file=data/splits/full_n100_s0.json, seed=0]
+  - config: configs/transolver.yaml
+    overrides: [split=full_n100, data.split_file=data/splits/full_n100_s1.json, seed=1]
+  - config: configs/transolver.yaml
+    overrides: [split=full_n100, data.split_file=data/splits/full_n100_s2.json, seed=2]
+  - config: configs/transolver.yaml
+    overrides: [split=full_n200, data.split_file=data/splits/full_n200_s0.json, seed=0]
+  - config: configs/transolver.yaml
+    overrides: [split=full_n200, data.split_file=data/splits/full_n200_s1.json, seed=1]
+  - config: configs/transolver.yaml
+    overrides: [split=full_n200, data.split_file=data/splits/full_n200_s2.json, seed=2]
+  - config: configs/transolver.yaml
+    overrides: [split=full_n400, data.split_file=data/splits/full_n400_s0.json, seed=0]
+  - config: configs/transolver.yaml
+    overrides: [split=full_n400, data.split_file=data/splits/full_n400_s1.json, seed=1]
+  - config: configs/transolver.yaml
+    overrides: [split=full_n400, data.split_file=data/splits/full_n400_s2.json, seed=2]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full_n25, data.split_file=data/splits/full_n25_s0.json, seed=0]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full_n25, data.split_file=data/splits/full_n25_s1.json, seed=1]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full_n25, data.split_file=data/splits/full_n25_s2.json, seed=2]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full_n50, data.split_file=data/splits/full_n50_s0.json, seed=0]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full_n50, data.split_file=data/splits/full_n50_s1.json, seed=1]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full_n50, data.split_file=data/splits/full_n50_s2.json, seed=2]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full_n100, data.split_file=data/splits/full_n100_s0.json, seed=0]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full_n100, data.split_file=data/splits/full_n100_s1.json, seed=1]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full_n100, data.split_file=data/splits/full_n100_s2.json, seed=2]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full_n200, data.split_file=data/splits/full_n200_s0.json, seed=0]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full_n200, data.split_file=data/splits/full_n200_s1.json, seed=1]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full_n200, data.split_file=data/splits/full_n200_s2.json, seed=2]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full_n400, data.split_file=data/splits/full_n400_s0.json, seed=0]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full_n400, data.split_file=data/splits/full_n400_s1.json, seed=1]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full_n400, data.split_file=data/splits/full_n400_s2.json, seed=2]

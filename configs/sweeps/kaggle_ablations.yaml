@@ -1,0 +1,36 @@
+# Ablations sweep (PLAN_PHASE2 Phase C, Tier 1) -- 6 tagged GPU runs.
+#
+# Every run sets a distinct `tag=` so its run_id does NOT collide with the core
+# grid: run_id = {model}_{split}_s{seed}_{tag} (PLAN_PHASE2 ablation-run rule).
+# batch_size=16 (D-019), matched to the core budget.
+#
+# Axis 1 -- M2 (sdf_fno) surface conditioning, on the geometry axis {full, shape5},
+#   seed 0. Variants vs the existing `sdf` baseline (= core runs):
+#     * mask         -> tag=cond_mask
+#     * sdf+normals  -> tag=cond_sdfnrm
+#   VERIFIED against src/models/sdf_fno.py::CONDITIONINGS = ("sdf","mask","sdf+normals").
+#   The correct string is `sdf+normals` (with a '+'); the `sdf_normals` in the
+#   configs/sdf_fno.yaml comment was WRONG and has been corrected.
+#
+# Axis 2 -- M1 (gnn) physics force-loss lambda_F on, on {full, combined}, seed 0
+#   (the OFF case is the core baseline with train.weights.force=0.0):
+#     * train.weights.force=1.0 -> tag=lamF
+name: kaggle_ablations
+defaults:
+  overrides: [train.batch_size=16]
+runs:
+  # --- M2 conditioning: mask ---
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full, model.conditioning=mask, seed=0, tag=cond_mask]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=shape5, model.conditioning=mask, seed=0, tag=cond_mask]
+  # --- M2 conditioning: sdf+normals ---
+  - config: configs/sdf_fno.yaml
+    overrides: [split=full, "model.conditioning=sdf+normals", seed=0, tag=cond_sdfnrm]
+  - config: configs/sdf_fno.yaml
+    overrides: [split=shape5, "model.conditioning=sdf+normals", seed=0, tag=cond_sdfnrm]
+  # --- M1 physics force-loss lambda_F on ---
+  - config: configs/gnn.yaml
+    overrides: [split=full, train.weights.force=1.0, seed=0, tag=lamF]
+  - config: configs/gnn.yaml
+    overrides: [split=combined, train.weights.force=1.0, seed=0, tag=lamF]

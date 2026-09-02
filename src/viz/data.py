@@ -206,7 +206,19 @@ def _flatten_metrics(payload: Mapping[str, Any], run_dir: Path) -> dict[str, Any
 
 
 def _train_size_from(row: Mapping[str, Any], config: Mapping[str, Any] | None) -> float:
-    """Training-set size for the data-efficiency figure, or NaN if unknown."""
+    """Training-set size for the data-efficiency figure, or NaN if unknown.
+
+    Resolution order (first hit wins):
+
+    1. an ``n<digits>`` token in the run ``tag`` (e.g. ``n400``);
+    2. the same token in the ``run_id`` (data-efficiency runs are named
+       ``{model}_full_n{size}_s{seed}``, so this covers them directly);
+    3. an explicit size key under ``config["data"]``
+       (``n_train``/``train_size``/``subset_n``/``max_train``);
+    4. the ``n_train`` recorded in the run's own split manifest -- this is what
+       lets the *free* ``full`` runs (700-sim train, no ``n`` token anywhere)
+       land at the right x on Figure 9.
+    """
     tag = row.get("tag")
     if tag:
         match = _TRAIN_SIZE_RE.search(str(tag))
@@ -222,7 +234,42 @@ def _train_size_from(row: Mapping[str, Any], config: Mapping[str, Any] | None) -
             for key in ("n_train", "train_size", "subset_n", "max_train"):
                 if data_cfg.get(key) is not None:
                     return _num(data_cfg[key])
+            n_split = _n_train_from_split(data_cfg)
+            if n_split is not None:
+                return n_split
     return float("nan")
+
+
+def _n_train_from_split(data_cfg: Mapping[str, Any]) -> float | None:
+    """``n_train`` read from the run's split manifest, or ``None`` if unavailable.
+
+    Prefers an explicit ``data.split_file`` (what the data-efficiency runs set),
+    else ``data.splits_dir / <data.split>.json``.  All I/O errors are swallowed
+    into ``None`` per this module's robustness contract -- a run whose manifest
+    cannot be found simply has an unknown train size.
+    """
+    split_file = data_cfg.get("split_file")
+    if not split_file:
+        split = data_cfg.get("split")
+        if not split:
+            return None
+        splits_dir = data_cfg.get("splits_dir") or "data/splits"
+        split_file = Path(splits_dir) / f"{split}.json"
+    try:
+        with Path(split_file).open("r", encoding="utf-8") as fh:
+            payload = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, Mapping):
+        return None
+    n = payload.get("n_train")
+    if n is None:
+        train = payload.get("train")
+        n = len(train) if isinstance(train, (list, tuple)) else None
+    if n is None:
+        return None
+    value = _num(n)
+    return value if value == value else None  # drop NaN
 
 
 def _read_config(run_dir: Path) -> dict[str, Any] | None:

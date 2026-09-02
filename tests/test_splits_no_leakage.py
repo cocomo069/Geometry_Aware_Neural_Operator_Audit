@@ -13,15 +13,19 @@ Two layers:
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
 
 from src.data.splits import (
+    DATA_EFFICIENCY_SEEDS,
+    DATA_EFFICIENCY_SIZES,
     NU_DATASET,
     OFFICIAL_TASKS,
     RE_BAND_MID,
     SPLIT_NAMES,
+    build_data_efficiency_splits,
     build_splits_from,
     carve_cal,
     load_split,
@@ -268,6 +272,72 @@ def test_derived_splits_draw_from_the_whole_universe(
 
 
 # ---------------------------------------------------------------------------
+# data-efficiency sub-splits (PLAN_PHASE2 Phase B) -- synthetic logic
+# ---------------------------------------------------------------------------
+_DE_SYNTH_SIZES = (10, 20, 40)
+
+
+@pytest.fixture(scope="module")
+def dataeff(built: dict[str, dict]) -> dict[str, dict]:
+    return build_data_efficiency_splits(
+        built["full"], sizes=_DE_SYNTH_SIZES, seeds=(0, 1, 2)
+    )
+
+
+def test_dataeff_emits_every_size_seed(dataeff: dict[str, dict]) -> None:
+    expected = {
+        f"full_n{size}_s{seed}"
+        for size in _DE_SYNTH_SIZES
+        for seed in (0, 1, 2)
+    }
+    assert set(dataeff) == expected
+
+
+@pytest.mark.parametrize("size", _DE_SYNTH_SIZES)
+@pytest.mark.parametrize("seed", (0, 1, 2))
+def test_dataeff_train_is_subset_with_shared_cal_test(
+    dataeff: dict[str, dict], built: dict[str, dict], size: int, seed: int
+) -> None:
+    full = built["full"]
+    payload = dataeff[f"full_n{size}_s{seed}"]
+    assert set(payload["train"]).issubset(set(full["train"]))
+    assert payload["cal"] == full["cal"]
+    assert payload["test"] == full["test"]
+    assert payload["n_train"] == size == len(payload["train"])
+    assert payload["seed"] == seed
+    _assert_no_leakage(payload["name"], payload)
+
+
+@pytest.mark.parametrize("seed", (0, 1, 2))
+def test_dataeff_sizes_are_nested_within_a_seed(
+    dataeff: dict[str, dict], seed: int
+) -> None:
+    prev: set[str] = set()
+    for size in _DE_SYNTH_SIZES:
+        cur = set(dataeff[f"full_n{size}_s{seed}"]["train"])
+        assert prev.issubset(cur), f"n{size} not nested (seed {seed})"
+        prev = cur
+
+
+def test_dataeff_seeds_draw_different_subsets(dataeff: dict[str, dict]) -> None:
+    a = set(dataeff["full_n10_s0"]["train"])
+    b = set(dataeff["full_n10_s1"]["train"])
+    assert a != b, "different seeds must not reproduce the same subset"
+
+
+def test_dataeff_is_deterministic(built: dict[str, dict]) -> None:
+    a = build_data_efficiency_splits(built["full"], sizes=(10, 20), seeds=(0, 1))
+    b = build_data_efficiency_splits(built["full"], sizes=(10, 20), seeds=(0, 1))
+    assert a == b
+
+
+def test_dataeff_rejects_oversized_request(built: dict[str, dict]) -> None:
+    n_full = len(built["full"]["train"])
+    with pytest.raises(ValueError, match="exceeds full-train"):
+        build_data_efficiency_splits(built["full"], sizes=(n_full + 1,), seeds=(0,))
+
+
+# ---------------------------------------------------------------------------
 # round trip through disk
 # ---------------------------------------------------------------------------
 def test_write_and_load_roundtrip(
@@ -341,6 +411,53 @@ def test_real_manifests_cover_the_frozen_names() -> None:
     have = {p.stem for p in _REAL}
     missing = set(SPLIT_NAMES) - have
     assert not missing, f"missing split manifests: {sorted(missing)}"
+
+
+# ---------------------------------------------------------------------------
+# the real data-efficiency manifests, once they exist
+# ---------------------------------------------------------------------------
+def _real_dataeff_files() -> list[Path]:
+    if not SPLITS_DIR.is_dir():
+        return []
+    return sorted(SPLITS_DIR.glob("full_n*_s*.json"))
+
+
+_REAL_DE = _real_dataeff_files()
+_DE_STEM_RE = re.compile(r"^full_n(\d+)_s(\d+)$")
+
+
+@pytest.mark.skipif(not _REAL_DE, reason="no data-efficiency manifests built yet")
+@pytest.mark.parametrize(
+    "path", _REAL_DE, ids=[p.stem for p in _REAL_DE] or ["none"]
+)
+def test_real_dataeff_matches_full(path: Path) -> None:
+    """Each full_nXX_sSEED: train ⊆ full-train; cal/test == full's; disjoint."""
+    full = load_split(SPLITS_DIR / "full.json")
+    payload = load_split(path)
+    _assert_no_leakage(path.stem, payload)
+    assert set(payload["train"]).issubset(set(full["train"])), (
+        f"{path.stem}: train is not a subset of full's train"
+    )
+    assert payload["cal"] == full["cal"], f"{path.stem}: cal differs from full's"
+    assert payload["test"] == full["test"], f"{path.stem}: test differs from full's"
+    m = _DE_STEM_RE.match(path.stem)
+    assert m, f"{path.stem}: unexpected data-efficiency filename"
+    size, seed = int(m.group(1)), int(m.group(2))
+    assert len(payload["train"]) == size, f"{path.stem}: n_train != {size}"
+    assert payload["seed"] == seed, f"{path.stem}: seed field != {seed}"
+
+
+@pytest.mark.skipif(not _REAL_DE, reason="no data-efficiency manifests built yet")
+def test_real_dataeff_covers_every_size_seed() -> None:
+    """If any data-efficiency manifest exists, the full grid must be present."""
+    have = {p.stem for p in _REAL_DE}
+    expected = {
+        f"full_n{size}_s{seed}"
+        for size in DATA_EFFICIENCY_SIZES
+        for seed in DATA_EFFICIENCY_SEEDS
+    }
+    missing = expected - have
+    assert not missing, f"missing data-efficiency manifests: {sorted(missing)}"
 
 
 # ---------------------------------------------------------------------------

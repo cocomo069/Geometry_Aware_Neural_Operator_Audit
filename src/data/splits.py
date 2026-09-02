@@ -48,12 +48,16 @@ __all__ = [
     "OFFICIAL_TASKS",
     "NU_DATASET",
     "RE_BAND_MID",
+    "DATA_EFFICIENCY_SIZES",
+    "DATA_EFFICIENCY_SEEDS",
     "SimName",
     "parse_sim_name",
     "read_raw_manifest",
     "carve_cal",
     "build_all_splits",
     "write_all_splits",
+    "build_data_efficiency_splits",
+    "write_data_efficiency_splits",
 ]
 
 SPLIT_NAMES: tuple[str, ...] = (
@@ -85,6 +89,17 @@ RE_BAND_MID: tuple[float, float] = (3.0e6, 5.0e6)
 
 _CAL_FRACTION = 0.20
 _CAL_MAX = 100
+
+#: Training-set sizes for the data-efficiency sweep (PLAN_PHASE2 Phase B). The
+#: 700-point (= full train after the cal carve) is free: it reuses the existing
+#: ``{model}_full_s{0,1,2}`` runs, so it is deliberately NOT emitted here.
+DATA_EFFICIENCY_SIZES: tuple[int, ...] = (25, 50, 100, 200, 400)
+
+#: Sub-sampling seeds. Each seed draws a *different* random subset of full-train
+#: (nested within a seed: n25 subset of n50 subset of ... n400), so the three
+#: seeds give an honest spread of the small-data regime rather than re-running
+#: the same subset three times.
+DATA_EFFICIENCY_SEEDS: tuple[int, ...] = (0, 1, 2)
 
 
 class SimName:
@@ -483,6 +498,99 @@ def load_split(split_file: Path) -> dict:
     return payload
 
 
+# --------------------------------------------------------------------------
+# Data-efficiency sub-splits (PLAN_PHASE2 Phase B)
+# --------------------------------------------------------------------------
+def build_data_efficiency_splits(
+    full_payload: dict,
+    sizes: Sequence[int] = DATA_EFFICIENCY_SIZES,
+    seeds: Sequence[int] = DATA_EFFICIENCY_SEEDS,
+) -> dict[str, dict]:
+    """Build every ``full_n{size}_s{seed}`` sub-split from the ``full`` manifest.
+
+    Each output manifest keeps ``full``'s ``cal`` and ``test`` verbatim (so the
+    data-efficiency curves are directly comparable) and shrinks only ``train``
+    to a deterministic, seed-controlled random subset of full-train. For a given
+    seed the subsets are *nested*: the size-25 train is a prefix of the size-50
+    train, and so on, taken from a single ``rng(seed)`` shuffle of
+    ``sorted(full_train)``.
+
+    Parameters
+    ----------
+    full_payload : dict
+        A loaded ``full`` split manifest (``build_all_splits()["full"]`` or the
+        contents of ``data/splits/full.json``).
+    sizes, seeds : sequences of int
+        Train sizes and sub-sampling seeds; defaults match PLAN_PHASE2.
+
+    Returns
+    -------
+    dict[str, dict]
+        ``"full_n{size}_s{seed}" -> manifest dict`` (same schema as ``_pack``).
+    """
+    train_pool = sorted(set(full_payload["train"]))
+    cal = list(full_payload["cal"])
+    test = list(full_payload["test"])
+    n_full = len(train_pool)
+    out: dict[str, dict] = {}
+    for seed in seeds:
+        rng = np.random.default_rng(int(seed))
+        order = rng.permutation(n_full)
+        shuffled = [train_pool[i] for i in order]
+        for size in sizes:
+            size = int(size)
+            if size > n_full:
+                raise ValueError(
+                    f"data-efficiency size {size} exceeds full-train size "
+                    f"{n_full}"
+                )
+            sub_train = sorted(shuffled[:size])
+            stem = f"full_n{size}_s{seed}"
+            _assert_disjoint(stem, sub_train, cal, test)
+            out[stem] = {
+                "name": stem,
+                "train": sub_train,
+                "cal": cal,
+                "test": test,
+                "seed": int(seed),
+                "description": (
+                    f"DATA-EFFICIENCY sub-split of 'full': train = a "
+                    f"deterministic rng(seed={seed}) random subset of "
+                    f"{size} of full's {n_full} train sims (nested across "
+                    f"sizes within a seed); cal and test are IDENTICAL to "
+                    f"full's, so the size-vs-accuracy curve is comparable."
+                ),
+                "n_train": len(sub_train),
+                "n_cal": len(cal),
+                "n_test": len(test),
+                "derived_from": "full",
+                "subset_n": size,
+            }
+    return out
+
+
+def write_data_efficiency_splits(
+    splits_dir: Path = Path("data/splits"),
+    sizes: Sequence[int] = DATA_EFFICIENCY_SIZES,
+    seeds: Sequence[int] = DATA_EFFICIENCY_SEEDS,
+) -> dict[str, Path]:
+    """Read ``<splits_dir>/full.json`` and write every ``full_n*_s*.json``.
+
+    Returns ``stem -> written path``.
+    """
+    splits_dir = Path(splits_dir)
+    full = load_split(splits_dir / "full.json")
+    built = build_data_efficiency_splits(full, sizes=sizes, seeds=seeds)
+    written: dict[str, Path] = {}
+    for stem, payload in built.items():
+        path = splits_dir / f"{stem}.json"
+        with path.open("w", encoding="utf-8") as fh:
+            json.dump(payload, fh, indent=2)
+            fh.write("\n")
+        written[stem] = path
+    return written
+
+
 def _main(argv: Sequence[str] | None = None) -> int:
     import argparse
 
@@ -508,15 +616,37 @@ def _main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--seed", type=int, default=0, help="calibration carve seed"
     )
+    parser.add_argument(
+        "--data-efficiency",
+        action="store_true",
+        help="ALSO write the full_n{size}_s{seed}.json data-efficiency "
+        "sub-splits (needs full.json already present in --out-dir).",
+    )
+    parser.add_argument(
+        "--data-efficiency-only",
+        action="store_true",
+        help="write ONLY the data-efficiency sub-splits (skip the six base "
+        "manifests; reads full.json from --out-dir).",
+    )
     args = parser.parse_args(argv)
 
-    written = write_all_splits(args.raw_root, args.out_dir, seed=args.seed)
-    for name, path in written.items():
-        payload = load_split(path)
-        print(
-            f"{name:9s} train={payload['n_train']:4d} "
-            f"cal={payload['n_cal']:4d} test={payload['n_test']:4d} -> {path}"
-        )
+    if not args.data_efficiency_only:
+        written = write_all_splits(args.raw_root, args.out_dir, seed=args.seed)
+        for name, path in written.items():
+            payload = load_split(path)
+            print(
+                f"{name:9s} train={payload['n_train']:4d} "
+                f"cal={payload['n_cal']:4d} test={payload['n_test']:4d} -> {path}"
+            )
+
+    if args.data_efficiency or args.data_efficiency_only:
+        de_written = write_data_efficiency_splits(args.out_dir)
+        for name, path in de_written.items():
+            payload = load_split(path)
+            print(
+                f"{name:16s} train={payload['n_train']:4d} "
+                f"cal={payload['n_cal']:4d} test={payload['n_test']:4d} -> {path}"
+            )
     return 0
 
 

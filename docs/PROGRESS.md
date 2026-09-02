@@ -844,3 +844,55 @@ The single-member (K=1) demo uses the `absolute` conformal score throughout.
 the suffix rather than a new `src.viz.data` column (kept viz/data untouched). (2) Integrator
 called with the harness defaults (`rho=1, a_ref=1, pressure_mode="static"`) so `cd_int`
 matches the committed `metrics.json`. (3) Did not run git.
+
+---
+
+## 2026-09-03 — Data-efficiency + ablation sweep infrastructure (Phase B/C glue, Opus)
+
+Built the CPU-light glue so the data-efficiency and ablation sweeps can launch on Kaggle.
+No GPU, no training, no Kaggle launches, no git.
+
+**Split manifests (Task 1).** Added `build_data_efficiency_splits` + `write_data_efficiency_splits`
+to `src/data/splits.py` (constants `DATA_EFFICIENCY_SIZES={25,50,100,200,400}`,
+`DATA_EFFICIENCY_SEEDS={0,1,2}`). Each `data/splits/full_n{size}_s{seed}.json` keeps full's
+cal (100) and test (200) verbatim and shrinks only train to a deterministic `rng(seed)`
+subset of full-train (700); subsets are nested within a seed (n25 ⊂ n50 ⊂ … ⊂ n400) and
+differ across seeds. Wrote all **15** manifests via a new `--data-efficiency[-only]` flag on
+`python -m src.data.splits`. Verified nesting, subset⊆full-train, and cal/test identity.
+
+**Leak test (Task 2).** Extended `tests/test_splits_no_leakage.py`: synthetic logic tests
+(subset/shared-cal-test/nesting/determinism/oversize-reject) and real-manifest tests over
+`full_n*_s*.json` (train⊆full-train, cal/test == full's, disjoint, size-from-filename ==
+n_train, full grid present). Passes (100 passed across split+viz files).
+
+**viz train_size (Task 3).** `src/viz/data.py::_train_size_from` gained a 4th fallback:
+read `n_train` from the run's split manifest (`data.split_file`, else `splits_dir/<split>.json`)
+via new helper `_n_train_from_split`. This is what lets the FREE `{model}_full_s{0,1,2}` runs
+land at x=700 on Fig 9 (previously NaN). Data-eff runs resolve via the `_n\d+_` token in the
+run_id, unchanged. `test_fig9_...` stays green.
+
+**Sweep specs (Task 4).** `configs/sweeps/kaggle_dataeff.yaml` — 45 runs (3 models × 5 sizes
+× 3 seeds), `runs:` list (matrix cannot pair `data.split_file` with seed), model-major,
+`train.batch_size=16`, `split=full_n{size}` + `data.split_file=…_s{seed}.json` + `seed={seed}`
+so run_id = `{model}_full_n{size}_s{seed}`. `configs/sweeps/kaggle_ablations.yaml` — 6 tagged
+runs: M2 conditioning `mask` (tag=cond_mask) and `sdf+normals` (tag=cond_sdfnrm) on {full,
+shape5} seed 0; M1 `train.weights.force=1.0` (tag=lamF) on {full, combined} seed 0.
+
+**Code correction.** The M2 conditioning string is `sdf+normals` (with `+`), verified against
+`src/models/sdf_fno.py::CONDITIONINGS=("sdf","mask","sdf+normals")`. The `sdf_normals`
+(underscore) in the `configs/sdf_fno.yaml` line-15 comment was WRONG — corrected to `sdf+normals`.
+Confirmed the `+` survives config parsing and is accepted by the model.
+
+**Smoke checks (Task 5).** `expand_spec` + `run_id_for` on both specs → 45 and 6 unique
+run_ids, none colliding with the core grid. Built the `gnn_full_n25_s0` dataset
+(cache_in_ram=false, missing=skip, no training): train=25, cal=100, test=200.
+
+**Pre-existing failure (NOT introduced here, flagged):** `tests/test_viz.py::test_tables_write_latex_and_markdown`
+fails with `ValueError: truth value of a Series is ambiguous` in `scripts/make_tables.py::_render`.
+Cause: the committed K=5 ensembles put 5 `sdf_fno_full_s*` (and transolver) rows in `results/`;
+`table1_indist` groups by model on the full split without aggregating seeds, so `best[col]`
+has a duplicate `sdf_fno` index. Independent of this task — verified it still fails with
+`_train_size_from` forced to all-NaN, and nothing here touches `make_tables.py` or adds run dirs.
+Needs a seed-aggregation fix in `make_tables.py`.
+
+Did not run git.

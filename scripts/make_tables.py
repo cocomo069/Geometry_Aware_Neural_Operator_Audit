@@ -55,7 +55,15 @@ TABLE1_COLS = [
 
 def _render(df: pd.DataFrame, cols, row_key: str, *, caption: str, label: str,
             latex: bool) -> str:
-    """Render a model/row table with per-column best bolded."""
+    """Render a model/row table with per-column best bolded.
+
+    Multiple rows per ``row_key`` (e.g. ensemble seeds on the same split) are
+    averaged to one row first, so seed-0 core runs and their seed-1..4 ensemble
+    members collapse to a single per-model number instead of colliding.
+    """
+    num_cols = [c for c, _, _, _ in cols if c in df.columns]
+    df = (df.groupby(row_key, as_index=False)[num_cols].mean()
+          if num_cols else df.drop_duplicates(subset=[row_key]))
     rows = style.sort_models(df[row_key].unique()) if row_key == "model" else sorted(df[row_key].unique())
     best = {c: _best_mask(df.set_index(row_key)[c], lo) for c, _, lo, _ in cols if c in df.columns}
 

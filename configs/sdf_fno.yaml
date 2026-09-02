@@ -12,7 +12,7 @@ model:
   grid_res: [64, 64]     # (n_y, n_x)
   bbox: [-0.5, 1.5, -1.0, 1.0]
   bbox_mode: fixed
-  conditioning: sdf      # ablation axis: sdf | mask | sdf_normals
+  conditioning: sdf      # ablation axis: sdf | mask | sdf+normals
   k_enc: 8
   k_dec: 8
   enc_radius_cells: 4.0
