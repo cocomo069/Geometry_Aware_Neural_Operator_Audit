@@ -196,3 +196,16 @@ mechanical edits — is done by Opus (the session default) and Sonnet (lighter m
 work). Applies to every remaining phase. Planning outputs land as docs/PLAN_*.md; Opus
 executes against them. This mirrors Phase 1 (Fable froze interfaces/gates in CONTEXT.md;
 Opus/Sonnet agents implemented).
+
+**D-024 · 2026-08-25 · Autonomous chaining via Windows scheduled task running cycle.py**
+User directive: keep going to completion without interference, survive Claude usage-limit
+resets. Mechanism: a Windows Task Scheduler task `GeoOpCycle` runs `kaggle/cycle_tick.cmd`
+every 30 min (14-day duration, IgnoreNew so ticks never overlap, 2 h limit). Each tick runs
+`kaggle/cycle.py` once (idempotent one-step state machine): if the current queued sweep's
+kernel is RUNNING it no-ops; if COMPLETE it pulls (lean, results-first) -> merges -> run_uq
+(ensemble items) -> regenerates figures/tables -> commits + pushes (cocomo069) -> republishes
+geo-op-runs -> advances or relaunches. Queue: dataeff (bootstrap on geo-op-session) ->
+ablations -> gnnens. This drives the GPU pipeline with ZERO dependence on any Claude session,
+so limit resets don't even pause it. Claude-side finite work (paper/figures) done by
+executor agents. Stop condition: PLAN_PHASE3 definition-of-done. Fluent stays user-CPU-gated.
+To pause: `schtasks /change /tn GeoOpCycle /disable`. Log: logs/cycle.log.
