@@ -14,11 +14,15 @@ RUNS_SLUG = "{{RUNS_SLUG}}"           # "" or the runs dataset slug name (e.g. g
 MAX_SECONDS = 11 * 3600
 # =========================================
 
+import datetime
+import hashlib
+import json
 import os
 import shutil
 import subprocess
 import sys
 import time
+import uuid
 import zipfile
 from pathlib import Path
 
@@ -27,6 +31,67 @@ WORK = Path("/kaggle/working")
 # Repo lives OFF the output path (/kaggle/working) so kernel-output pulls stay
 # small -- only the zips + session.log below are exported.
 REPO = Path("/kaggle/tmp/repo")
+
+# One id per kernel run, printed and written into STATUS.txt and the export
+# manifest so pull_results.py can dedupe already-merged sessions (D-023 cycle).
+SESSION_ID = uuid.uuid4().hex[:12]
+STARTED_UTC = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+
+def _utcnow() -> str:
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+
+def _sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def select_export_set(results_dir, ckpt_dir, pre_done) -> dict:
+    """Pick which per-run checkpoints to export this session.
+
+    Returns ``{run_id: {"done": bool, "files": [...]}}`` for every
+    ``checkpoints/<run_id>/`` that was NOT already finished when the session
+    started (i.e. ``run_id`` not in ``pre_done``). This is what stops the
+    cumulative-growth failure: runs restored-and-already-finished are skipped.
+
+    ``done`` is True when ``results/<run_id>/metrics.json`` exists. A finished
+    run exports ``best.pt`` only (fallback ``last.pt`` if best is missing) --
+    a run with metrics.json never resumes, so its optimizer/RNG state is dead
+    weight. An unfinished run exports every ``*.pt`` present (``last.pt`` is what
+    resumes it next session; ``best.pt`` first if it exists too).
+    """
+    results_dir = Path(results_dir)
+    ckpt_dir = Path(ckpt_dir)
+    pre_done = set(pre_done)
+    out: dict = {}
+    if not ckpt_dir.exists():
+        return out
+    for run_dir in sorted(ckpt_dir.iterdir()):
+        if not run_dir.is_dir():
+            continue
+        rid = run_dir.name
+        if rid in pre_done:
+            continue
+        pts = {p.name for p in run_dir.glob("*.pt")}
+        if not pts:
+            continue
+        done = (results_dir / rid / "metrics.json").is_file()
+        if done:
+            if "best.pt" in pts:
+                files = ["best.pt"]
+            elif "last.pt" in pts:
+                files = ["last.pt"]
+            else:
+                files = sorted(pts)
+        else:
+            files = [f for f in ("last.pt", "best.pt") if f in pts]
+            files += sorted(pts - set(files))
+        out[rid] = {"done": done, "files": files}
+    return out
 
 
 def sh(cmd, **kw):
@@ -106,6 +171,12 @@ def main():
                         len(list(src.glob("*/last.pt")))
                     print(f"[diag] RUNS resume: restored {sub} from {root} ({n} items)")
 
+    # Record the finished set BEFORE the sweep runs. Any run already carrying a
+    # metrics.json at this point was restored from the runs-dataset, not trained
+    # this session, so its checkpoints must NOT be re-exported (lean export).
+    pre_done = {p.parent.name for p in (REPO / "results").glob("*/metrics.json")}
+    print(f"[driver] session_id={SESSION_ID} pre_done={len(pre_done)} finished runs restored")
+
     # 3b. Environment diagnostics (Kaggle logs are unreliable on failure, so we
     #     print these and also tee the sweep output into an always-exported file).
     proc = cache_processed
@@ -125,10 +196,16 @@ def main():
     session_log = WORK / "session.log"
     budget = int(MAX_SECONDS - (time.time() - T0))
     sweep_rc = 0
+    # SWEEP may be a comma-separated list of specs; sweep.py drains them in
+    # order within the one session (--spec is repeatable). One session can then
+    # cover e.g. data-eff then ablations without a relaunch (PLAN_PHASE3 1.3).
+    spec_args = []
+    for spec in [s.strip() for s in SWEEP.split(",") if s.strip()]:
+        spec_args += ["--spec", spec]
     try:
         with open(session_log, "w", encoding="utf-8") as lf:
             p = subprocess.Popen(
-                [sys.executable, "-u", "-m", "scripts.sweep", "--spec", SWEEP,
+                [sys.executable, "-u", "-m", "scripts.sweep", *spec_args,
                  "--max-seconds", str(budget),
                  "--extra", f"data.processed_dir={cache_processed}",
                  f"data.norm_stats={cache_processed / 'norm_stats.json'}"],
@@ -143,20 +220,56 @@ def main():
                                f"DRIVER EXCEPTION: {exc}\n")
         print(f"[driver] sweep raised: {exc}")
 
-    # 5. Always export state (results/checkpoints + the session log), pass or fail.
-    for name, folder in (("results", REPO / "results"), ("checkpoints", REPO / "checkpoints")):
-        zpath = WORK / f"{name}.zip"
-        with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
-            if folder.exists():
-                for f in folder.rglob("*"):
-                    if f.is_file():
-                        z.write(f, f.relative_to(REPO))
-        print(f"exported {zpath} ({zpath.stat().st_size/1e6:.1f} MB)")
+    # 5. Export LEAN, pass or fail (PLAN_PHASE3 1.2). results.zip is small and
+    #    always exported. Checkpoints are exported per-run, only for runs trained
+    #    or advanced THIS session, as ckpt_<run_id>.zip (ZIP_STORED: torch files
+    #    do not compress, and stored members make HTTP-Range member reads trivial
+    #    for pull_results.py). EXPORT_MANIFEST.json indexes them with size+sha256.
+    results_zip = WORK / "results.zip"
+    with zipfile.ZipFile(results_zip, "w", zipfile.ZIP_DEFLATED) as z:
+        rdir = REPO / "results"
+        if rdir.exists():
+            for f in rdir.rglob("*"):
+                if f.is_file():
+                    z.write(f, f.relative_to(REPO))
+    print(f"exported {results_zip} ({results_zip.stat().st_size/1e6:.1f} MB)")
+
+    export_set = select_export_set(REPO / "results", REPO / "checkpoints", pre_done)
+    manifest_runs: dict = {}
+    total_bytes = 0
+    for rid, spec in export_set.items():
+        zpath = WORK / f"ckpt_{rid}.zip"
+        with zipfile.ZipFile(zpath, "w", zipfile.ZIP_STORED) as z:
+            for fname in spec["files"]:
+                src = REPO / "checkpoints" / rid / fname
+                if src.is_file():
+                    z.write(src, f"checkpoints/{rid}/{fname}")
+        size = zpath.stat().st_size
+        total_bytes += size
+        manifest_runs[rid] = {
+            "done": spec["done"], "zip": zpath.name, "files": spec["files"],
+            "bytes": size, "sha256": _sha256(zpath),
+        }
+        print(f"[driver] exported {zpath.name} ({size/1e6:.1f} MB, {spec['files']})")
+
+    manifest = {
+        "session_id": SESSION_ID,
+        "sweep": SWEEP,
+        "commit": COMMIT,
+        "started_utc": STARTED_UTC,
+        "finished_utc": _utcnow(),
+        "sweep_rc": sweep_rc,
+        "pre_done_count": len(pre_done),
+        "runs": manifest_runs,
+    }
+    (WORK / "EXPORT_MANIFEST.json").write_text(json.dumps(manifest, indent=2))
+    print(f"[driver] exported {len(manifest_runs)} run zips, {total_bytes/1e6:.1f} MB total")
+
     # Record the outcome in the exported log, but let the kernel finish
     # "complete" (not raise) so Kaggle preserves its output and log for pulling.
     with open(session_log, "a", encoding="utf-8") as lf:
         lf.write(f"\n[driver] sweep rc={sweep_rc}\n")
-    (WORK / "STATUS.txt").write_text(f"sweep_rc={sweep_rc}\n")
+    (WORK / "STATUS.txt").write_text(f"session_id={SESSION_ID}\nsweep_rc={sweep_rc}\n")
     print(f"[driver] sweep rc={sweep_rc}; session.log tail:")
     if session_log.exists():
         print("\n".join(session_log.read_text().splitlines()[-40:]))

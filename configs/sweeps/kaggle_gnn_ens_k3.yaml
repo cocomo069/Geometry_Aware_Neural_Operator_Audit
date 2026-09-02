@@ -1,0 +1,11 @@
+# GNN K=3 deep-ensemble members (PLAN_PHASE3): seeds 1-2 on top of core seed-0
+# -> K=3 for the GNN (K=5 for GNN is ~35 GPU-h, not worth v1). batch 16 (D-019).
+# gnn x {full,reynolds,aoa,shape5} x seed{1,2} = 8 runs (~16 GPU-h, spans sessions).
+name: kaggle_gnn_ens_k3
+defaults:
+  overrides: [train.batch_size=16]
+matrix:
+  config: [configs/gnn.yaml]
+  overrides:
+    split: [full, reynolds, aoa, shape5]
+    seed: [1, 2]

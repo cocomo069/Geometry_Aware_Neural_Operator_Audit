@@ -5,6 +5,7 @@ Usage:
       [--repo-url URL] [--runs-dataset user/geo-op-runs] [--kernel-slug user/geo-op-session]
 """
 import argparse
+import datetime
 import json
 import subprocess
 import sys
@@ -24,11 +25,17 @@ from _common import kaggle_username  # noqa: E402
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--sweep", required=True)
+    ap.add_argument("--sweep", required=True, action="append",
+                    help="sweep spec YAML. Repeatable: several specs drain in order "
+                         "within the one session (PLAN_PHASE3 1.3).")
     ap.add_argument("--repo-url", default=None, help="defaults to `git remote get-url origin`")
     ap.add_argument("--runs-dataset", default="", help="dataset slug with prior results/checkpoints")
     ap.add_argument("--cache-dataset", default=None, help="defaults <user>/airfrans-cache")
-    ap.add_argument("--kernel-slug", default=None, help="defaults <user>/geo-op-session")
+    ap.add_argument("--kernel-slug", default=None,
+                    help="kernel slug; defaults <user>/geo-op-session. The cycle script "
+                         "always passes a per-sweep slug (geo-op-dataeff, ...) so the "
+                         "CLI, which only serves the latest version's output, never sees "
+                         "two sweeps overwrite each other's kernel output.")
     args = ap.parse_args()
 
     root = HERE.parent
@@ -39,12 +46,14 @@ def main():
     cache_ds = args.cache_dataset or f"{user}/airfrans-cache"
     code_ds = f"{user}/geo-op-code"
     slug = args.kernel_slug or f"{user}/geo-op-session"
+    sweep_arg = ",".join(args.sweep)
+    commit = git_head(root)
 
     driver = (HERE / "session_driver.py").read_text()
     driver = (driver
               .replace("{{REPO_URL}}", repo_url)
-              .replace("{{COMMIT}}", git_head(root))
-              .replace("{{SWEEP}}", args.sweep)
+              .replace("{{COMMIT}}", commit)
+              .replace("{{SWEEP}}", sweep_arg)
               .replace("{{RUNS_SLUG}}", args.runs_dataset.split('/')[-1] if args.runs_dataset else ""))
 
     with tempfile.TemporaryDirectory() as td:
@@ -65,7 +74,22 @@ def main():
             "competition_sources": [],
         }
         (tdp / "kernel-metadata.json").write_text(json.dumps(meta, indent=2))
-        subprocess.run([sys.executable, "-m", "kaggle", "kernels", "push", "-p", td], check=True)
+        proc = subprocess.run([sys.executable, "-m", "kaggle", "kernels", "push", "-p", td],
+                              capture_output=True, text=True, check=True)
+        push_out = (proc.stdout or "") + (proc.stderr or "")
+        print(push_out.strip())
+
+    # Append the orchestrator's memory of what is in flight (PLAN_PHASE3 1.4).
+    rec = {
+        "utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "slug": slug,
+        "specs": args.sweep,
+        "commit": commit,
+        "runs_dataset": args.runs_dataset or "",
+        "push_output": push_out.strip().splitlines()[-1] if push_out.strip() else "",
+    }
+    with (HERE / "launches.jsonl").open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(rec) + "\n")
     print(f"pushed {slug}; monitor: kaggle kernels status {slug}")
 
 

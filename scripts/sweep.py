@@ -137,7 +137,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         prog="scripts/sweep.py",
         description="Run a list of training runs sequentially, skipping finished ones.",
     )
-    p.add_argument("--spec", required=True, help="sweep spec YAML, e.g. configs/sweeps/core.yaml")
+    p.add_argument("--spec", required=True, action="append",
+                   help="sweep spec YAML, e.g. configs/sweeps/core.yaml. Repeatable: "
+                        "pass --spec twice to drain several specs in order in one run "
+                        "(PLAN_PHASE3 1.3, e.g. data-eff then ablations).")
     p.add_argument("--max-seconds", type=float, default=None,
                    help="wall-clock budget; stops cleanly before starting a run "
                         "that cannot fit, and times out a running child")
@@ -160,9 +163,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     train_flags = shlex.split(args.train_args) if args.train_args else []
-    spec = load_spec(args.spec)
-    runs = expand_spec(spec)
-    name = spec.get("name", Path(args.spec).stem)
+    specs = list(args.spec)
+    runs: list[dict[str, Any]] = []
+    for sp in specs:
+        runs.extend(expand_spec(load_spec(sp)))
+    if len(specs) == 1:
+        name = load_spec(specs[0]).get("name", Path(specs[0]).stem)
+    else:
+        name = "+".join(Path(sp).stem for sp in specs)
     t_start = time.perf_counter()
     budget = None if args.max_seconds is None else float(args.max_seconds) - float(args.reserve_seconds)
 

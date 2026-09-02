@@ -1,0 +1,47 @@
+{
+  "owner": "cocomo069",
+  "runs_dataset": "geo-op-runs",
+  "note": "Ordered sweep queue for kaggle/cycle.py (PLAN_PHASE3 section 2). One kernel slug per sweep so the CLI (which only serves the latest version's output) never sees two sweeps overwrite each other. cycle.py acts only on the first item with done=false. `specs` is a list: an item may drain several specs in one session (driver + sweep.py support multi --spec), e.g. put kaggle_ablations under the dataeff item to run both in one geo-op-dataeff session as PLAN_PHASE3 1.3 suggests.",
+  "queue": [
+    {
+      "slug": "geo-op-core",
+      "specs": [
+        "configs/sweeps/kaggle_core.yaml"
+      ],
+      "done": true,
+      "note": "18 core runs (3 models x 6 splits, s0) committed"
+    },
+    {
+      "slug": "geo-op-ensembles",
+      "specs": [
+        "configs/sweeps/kaggle_ensembles.yaml"
+      ],
+      "done": true,
+      "note": "K=5 transolver+sdf_fno ensembles committed; do NOT relaunch this split-major matrix (PLAN_PHASE3 2.2)"
+    },
+    {
+      "slug": "geo-op-session",
+      "specs": [
+        "configs/sweeps/kaggle_dataeff.yaml"
+      ],
+      "done": false,
+      "note": "45 data-eff runs -> Fig 9"
+    },
+    {
+      "slug": "geo-op-ablations",
+      "specs": [
+        "configs/sweeps/kaggle_ablations.yaml"
+      ],
+      "done": false,
+      "note": "6 tagged ablation runs -> Table 4 Tier-1"
+    },
+    {
+      "slug": "geo-op-gnnens",
+      "specs": [
+        "configs/sweeps/kaggle_gnn_ens_k3.yaml"
+      ],
+      "done": false,
+      "note": "GNN K=3 ensembles on {full,reynolds,aoa,shape5}; spec pending creation (PLAN_PHASE3 2.2 item 3)"
+    }
+  ]
+}
