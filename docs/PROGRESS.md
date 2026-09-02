@@ -947,3 +947,63 @@ Committed `fluent/cases_to_run.json`, `results/active/acquisition_ranking.csv`,
 
 Did NOT render `fluent/cases/` journals or run any Fluent/Ansys tool (user CPU green-light still
 gated, D-007). Did not run git.
+
+## 2026-09-03 — Kaggle infra fix + self-sustaining cycle (Opus, PLAN_PHASE3 1-2)
+
+Implemented the checkpoint-pull fix and the autonomous chaining loop. CPU-light only:
+no training, no git, no real Kaggle session launched (a data-eff session was RUNNING
+throughout; confirmed via read-only `kaggle kernels status`, so these driver edits take
+effect on the NEXT launch, which is correct).
+
+**Files changed / added**
+- `kaggle/session_driver.py`: LEAN export. Records `pre_done` (runs restored already
+  finished) before the sweep; new pure `select_export_set()` picks per-run checkpoints for
+  runs touched THIS session only. Exports small `results.zip` always, then one
+  `ckpt_<run_id>.zip` (ZIP_STORED) per run + `EXPORT_MANIFEST.json` (size+sha256, done flag,
+  session_id). Finished runs export `best.pt` only; the one unfinished run exports `last.pt`
+  (+best if present). `SWEEP` is now comma-separated -> multiple `--spec` to sweep.py. STATUS.txt
+  carries session_id. No more cumulative 2 GB `checkpoints.zip`.
+- `scripts/sweep.py`: `--spec` is repeatable (`action="append"`); specs drain in order, name =
+  `"+".join(stems)`. Skip/budget logic unchanged.
+- `kaggle/launch.py`: `--sweep` repeatable (joined with commas); prints the push output line and
+  appends `{utc,slug,specs,commit,runs_dataset}` to `kaggle/launches.jsonl`. Default slug still
+  `geo-op-session`; the cycle passes an explicit per-sweep slug.
+- `kaggle/pull_results.py`: full rewrite. `fetch_small()` grabs results.zip/session.log/STATUS/
+  EXPORT_MANIFEST first and merges results immediately (with a metrics.json clobber guard, D-019);
+  `needed_checkpoints()` fetches only core/ensemble best.pt (feeds UQ/AL) + unfinished last.pt,
+  skipping data-eff/tagged and already-local files; `fetch_zip()` pulls per-run zips one at a time
+  with retry + sha/bytes verify; `republish()` stages results/** + only unfinished last.pt (lean,
+  ~10-50 MB) and skips when unchanged (`kaggle/runs_dataset_state.json`). Dedupes merged sessions
+  via `kaggle/pulled_sessions.jsonl`. Flags: `--checkpoints {needed,all,none}`, `--no-republish`,
+  `--dest`, `--force`. Legacy (no-manifest) sessions: merge results only, never touch checkpoints.zip.
+- `kaggle/fetch_zip_members.py` (new): HTTP-Range member extractor. `HttpRangeFile` (seek/tell/read
+  via `Range: bytes=`) fed to `zipfile.ZipFile` reads only the central directory + requested members
+  from a kernel-output zip (e.g. one 16 MB best.pt out of a 2 GB archive). Recovery tool for the
+  legacy fat zip (PLAN_PHASE3 1.8) and CLI fallback. Best-effort; prints the curl -C - fallback.
+- `kaggle/cycle.py` (new): idempotent one-step loop. Reads `kaggle/cycle_queue.json`, acts on the
+  first not-done item: RUNNING/QUEUED -> exit 0 untouched; COMPLETE/ERROR -> pull (lean) then
+  `sweep --dry-run` decides advance (0 to run) vs relaunch; never launched -> push_code + launch.
+  Pure `classify_status`/`next_action`/`current_index` are unit-tested; verified `classify_status`
+  parses the real CLI form `... has status "KernelWorkerStatus.RUNNING"`. `--dry-run` prints the
+  queue with no kaggle/git call. Stops on any non-zero subprocess; push_code runs before every launch.
+- `kaggle/cycle_queue.json` (new): ordered queue. core + ensembles marked done; dataeff, ablations,
+  gnnens pending (owner cocomo069, runs_dataset geo-op-runs). gnnens spec `kaggle_gnn_ens_k3.yaml`
+  is pending creation (noted); cycle refuses to launch a missing spec.
+- `tests/test_cycle.py` (new, 14 tests, CPU, all kaggle/git mocked): select_export_set names/files,
+  needed_checkpoints policy + skip-if-local, status classification, next_action (advance only on
+  COMPLETE), current_index, step() no-op while RUNNING / launch when absent / advance vs relaunch on
+  COMPLETE / drained queue / dry-run makes no calls, and sweep multi-spec ordering.
+
+**Verification.** `py_compile` all kaggle/*.py + sweep.py OK; `pytest tests/test_cycle.py` 14 passed;
+`pytest tests/test_infra.py` 49 passed (multi-spec change is backward-compatible); `cycle.py --help`
+and `--dry-run` OK (current item = geo-op-dataeff).
+
+**Expected sizes after the fix.** Per session export: results.zip (small, unchanged) + one
+`ckpt_<rid>.zip` per NEW run (~16-33 MB each, ZIP_STORED) instead of one cumulative ~2.1 GB
+checkpoints.zip. Republished geo-op-runs drops from ~1.5 GB to ~10-50 MB (results/** + only unfinished
+last.pt). A stalled pull now costs one 16-33 MB retry, never the session.
+
+**How to run the cycle once per scheduler tick:** `.venv/Scripts/python.exe kaggle/cycle.py`
+(one step, safe while a session is mid-flight). `--dry-run` inspects state without any call.
+
+Did NOT run git.
