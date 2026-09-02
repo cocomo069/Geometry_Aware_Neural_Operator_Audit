@@ -15,7 +15,8 @@ Design document: [`05_geometry_aware_neural_operator_surrogate_uq.md`](05_geomet
 
 Under active development. **New here? Read [docs/OVERVIEW.md](docs/OVERVIEW.md) — the living
 master document** that explains the whole project in plain language: what it is, every concept
-behind the paper, everything built, every problem faced, the results so far, and where we are.
+behind the paper, everything built, every problem faced, and where we are. For the numbers and
+what they mean, read **[docs/RESULTS.md](docs/RESULTS.md)** (living results doc).
 
 Deeper detail: [docs/PLAN.md](docs/PLAN.md) (execution plan),
 [docs/PROGRESS.md](docs/PROGRESS.md) (dated log), [docs/DECISIONS.md](docs/DECISIONS.md)
