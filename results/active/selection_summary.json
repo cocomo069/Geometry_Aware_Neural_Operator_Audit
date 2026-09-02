@@ -1,0 +1,287 @@
+{
+  "generated": "2026-09-03",
+  "ensemble_id": "transolver_full_k5",
+  "model": "transolver",
+  "split": "full",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "k_members": 5,
+  "k_select": 8,
+  "beta": 1.0,
+  "gamma": 1.0,
+  "compute_sym": true,
+  "pool_size": 630,
+  "n_dropped_training": 0,
+  "re_grid": [
+    2000000.0,
+    3000000.0,
+    4000000.0,
+    5000000.0,
+    6000000.0,
+    7000000.0
+  ],
+  "aoa_grid": [
+    -6.0,
+    0.0,
+    6.0,
+    12.0,
+    18.0
+  ],
+  "mesh_level": 2,
+  "random_seed": 0,
+  "device": "cuda",
+  "source": "scripts/run_active.py",
+  "arms": {
+    "acquisition": [
+      {
+        "rank": 0,
+        "pool_index": 29,
+        "key": "naca40010_re7e+06_a+18",
+        "family": "naca4",
+        "naca_digits": "0010",
+        "re": 7000000.0,
+        "aoa_deg": 18.0,
+        "score": 7.532522532492928
+      },
+      {
+        "rank": 1,
+        "pool_index": 269,
+        "key": "naca44415_re7e+06_a+18",
+        "family": "naca4",
+        "naca_digits": "4415",
+        "re": 7000000.0,
+        "aoa_deg": 18.0,
+        "score": 3.0721560552845038
+      },
+      {
+        "rank": 2,
+        "pool_index": 109,
+        "key": "naca42410_re5e+06_a+18",
+        "family": "naca4",
+        "naca_digits": "2410",
+        "re": 5000000.0,
+        "aoa_deg": 18.0,
+        "score": 3.8577554008028256
+      },
+      {
+        "rank": 3,
+        "pool_index": 84,
+        "key": "naca40015_re6e+06_a+18",
+        "family": "naca4",
+        "naca_digits": "0015",
+        "re": 6000000.0,
+        "aoa_deg": 18.0,
+        "score": 2.9011729851462853
+      },
+      {
+        "rank": 4,
+        "pool_index": 539,
+        "key": "naca533012_re7e+06_a+18",
+        "family": "naca5",
+        "naca_digits": "33012",
+        "re": 7000000.0,
+        "aoa_deg": 18.0,
+        "score": 3.691955815793534
+      },
+      {
+        "rank": 5,
+        "pool_index": 9,
+        "key": "naca40010_re3e+06_a+18",
+        "family": "naca4",
+        "naca_digits": "0010",
+        "re": 3000000.0,
+        "aoa_deg": 18.0,
+        "score": 3.7138935847073653
+      },
+      {
+        "rank": 6,
+        "pool_index": 209,
+        "key": "naca44410_re7e+06_a+18",
+        "family": "naca4",
+        "naca_digits": "4410",
+        "re": 7000000.0,
+        "aoa_deg": 18.0,
+        "score": 3.8400458122517156
+      },
+      {
+        "rank": 7,
+        "pool_index": 449,
+        "key": "naca524015_re7e+06_a+18",
+        "family": "naca5",
+        "naca_digits": "24015",
+        "re": 7000000.0,
+        "aoa_deg": 18.0,
+        "score": 2.596935572296253
+      }
+    ],
+    "variance": [
+      {
+        "rank": 0,
+        "pool_index": 84,
+        "key": "naca40015_re6e+06_a+18",
+        "family": "naca4",
+        "naca_digits": "0015",
+        "re": 6000000.0,
+        "aoa_deg": 18.0,
+        "score": 3.002621394077913
+      },
+      {
+        "rank": 1,
+        "pool_index": 264,
+        "key": "naca44415_re6e+06_a+18",
+        "family": "naca4",
+        "naca_digits": "4415",
+        "re": 6000000.0,
+        "aoa_deg": 18.0,
+        "score": 2.2556018562064963
+      },
+      {
+        "rank": 2,
+        "pool_index": 9,
+        "key": "naca40010_re3e+06_a+18",
+        "family": "naca4",
+        "naca_digits": "0010",
+        "re": 3000000.0,
+        "aoa_deg": 18.0,
+        "score": 2.2872909860850736
+      },
+      {
+        "rank": 3,
+        "pool_index": 474,
+        "key": "naca532012_re6e+06_a+18",
+        "family": "naca5",
+        "naca_digits": "32012",
+        "re": 6000000.0,
+        "aoa_deg": 18.0,
+        "score": 2.2513677967061665
+      },
+      {
+        "rank": 4,
+        "pool_index": 439,
+        "key": "naca524015_re5e+06_a+18",
+        "family": "naca5",
+        "naca_digits": "24015",
+        "re": 5000000.0,
+        "aoa_deg": 18.0,
+        "score": 2.2561648678845696
+      },
+      {
+        "rank": 5,
+        "pool_index": 24,
+        "key": "naca40010_re6e+06_a+18",
+        "family": "naca4",
+        "naca_digits": "0010",
+        "re": 6000000.0,
+        "aoa_deg": 18.0,
+        "score": 2.3255920286960237
+      },
+      {
+        "rank": 6,
+        "pool_index": 179,
+        "key": "naca42415_re7e+06_a+18",
+        "family": "naca4",
+        "naca_digits": "2415",
+        "re": 7000000.0,
+        "aoa_deg": 18.0,
+        "score": 2.2233877150099755
+      },
+      {
+        "rank": 7,
+        "pool_index": 329,
+        "key": "naca522015_re7e+06_a+18",
+        "family": "naca5",
+        "naca_digits": "22015",
+        "re": 7000000.0,
+        "aoa_deg": 18.0,
+        "score": 2.3675594215790543
+      }
+    ],
+    "random": [
+      {
+        "rank": 0,
+        "pool_index": 530,
+        "key": "naca533012_re6e+06_a-6",
+        "family": "naca5",
+        "naca_digits": "33012",
+        "re": 6000000.0,
+        "aoa_deg": -6.0,
+        "score": 0.9995013522570269
+      },
+      {
+        "rank": 1,
+        "pool_index": 94,
+        "key": "naca42410_re2e+06_a+18",
+        "family": "naca4",
+        "naca_digits": "2410",
+        "re": 2000000.0,
+        "aoa_deg": 18.0,
+        "score": 0.9811950400663443
+      },
+      {
+        "rank": 2,
+        "pool_index": 241,
+        "key": "naca44415_re2e+06_a+0",
+        "family": "naca4",
+        "naca_digits": "4415",
+        "re": 2000000.0,
+        "aoa_deg": 0.0,
+        "score": 0.9630191401242673
+      },
+      {
+        "rank": 3,
+        "pool_index": 509,
+        "key": "naca532015_re7e+06_a+18",
+        "family": "naca5",
+        "naca_digits": "32015",
+        "re": 7000000.0,
+        "aoa_deg": 18.0,
+        "score": 0.9606648859302717
+      },
+      {
+        "rank": 4,
+        "pool_index": 239,
+        "key": "naca44412_re7e+06_a+18",
+        "family": "naca4",
+        "naca_digits": "4412",
+        "re": 7000000.0,
+        "aoa_deg": 18.0,
+        "score": 0.9886953333678197
+      },
+      {
+        "rank": 5,
+        "pool_index": 27,
+        "key": "naca40010_re7e+06_a+6",
+        "family": "naca4",
+        "naca_digits": "0010",
+        "re": 7000000.0,
+        "aoa_deg": 6.0,
+        "score": 0.9808353387762301
+      },
+      {
+        "rank": 6,
+        "pool_index": 171,
+        "key": "naca42415_re6e+06_a+0",
+        "family": "naca4",
+        "naca_digits": "2415",
+        "re": 6000000.0,
+        "aoa_deg": 0.0,
+        "score": 0.9949173481609178
+      },
+      {
+        "rank": 7,
+        "pool_index": 278,
+        "key": "naca522012_re3e+06_a+12",
+        "family": "naca5",
+        "naca_digits": "22012",
+        "re": 3000000.0,
+        "aoa_deg": 12.0,
+        "score": 0.9796887085096565
+      }
+    ]
+  }
+}

@@ -896,3 +896,54 @@ has a duplicate `sdf_fno` index. Independent of this task — verified it still 
 Needs a seed-aggregation fix in `make_tables.py`.
 
 Did not run git.
+
+## 2026-09-03 — Phase D now-part: active-learning scoring (Opus, executor)
+
+Built `scripts/run_active.py`, the glue that scores an unseen NACA pool with a trained
+ensemble's uncertainty and emits the Fluent case list (design doc 5.8, PLAN_PHASE2 Phase D).
+Inference only: no training, no Fluent execution, no Kaggle, no Ansys MCP. Single-process,
+`torch.no_grad`, GPU-guarded (used the free P2000 for the demo; CPU stayed light for the
+user's Fluent job).
+
+**What it does.** (1) Builds a parametric pool of NACA 4- and 5-digit airfoils
+(`src.active.pool.default_pool_shapes` = 21 sections) × an (Re, AoA) grid that deliberately
+overshoots the AirfRANS envelope — `re_grid=(2..7)e6`, `aoa_grid=(-6,0,6,12,18)` — so the
+score can pick genuinely OOD cases; excludes every training combination of the scorer's split
+via a new `training_exclusions()` (rounds each continuous training sim to a NACA code + Re/AoA
+with tolerances, feeds `ExclusionSet`). (2) Loads a K-member ensemble via
+`src.uq.ensembles.load_ensemble_checkpoints` and scores the pool: `sigma_CD` = ensemble std of
+the *integrated* C_D (integrate-then-average through the frozen `integrate_forces`), FSC =
+|mean C_D^int − mean C_D^head|, L_sym = mean mirror-symmetry residual (`src.geometry.symmetry`).
+Model is fed **normalized** cond (as trained), forces use **physical** cond; p/tau denormalized
+before integration. All three components z-normalized over the pool; `a = z(σ_CD) + β·z(FSC) +
+γ·z(L_sym)`, β=γ=1 default, CLI-overridable (`--skip-sym` drops the γ term). (3) Three arms of
+k=8 via `select_cases` farthest-point diversity: acquisition, variance-only, random. (4) Writes
+`fluent/cases_to_run.json` in make_cases.py's schema (case_id/naca_digits/re/aoa_deg/mesh_level +
+`arm` tag), **preserving the `gridstudy_*` trio and `defaults`**, replacing only the placeholders;
+plus `results/active/acquisition_ranking.csv` (full pool + components + z-scores + per-arm
+selection flags) and `results/active/selection_summary.json`.
+
+**Normalization note (D-021).** Uses per-split train-only stats recomputed via
+`scripts.build_cache.compute_norm_stats` (matches how the ensemble trained); for `full` this
+equals the committed `norm_stats.json`. Re→u_inf uses `NU_DATASET=1.56e-5` so cond magnitudes
+match the training distribution, not `pool.NU_AIR`.
+
+**Tests.** `tests/test_run_active.py` (7 tests, CPU, tiny fake K=3 ensemble + small pool +
+real integrator + real symmetry residual): components finite/shaped, `--skip-sym` zeroes L_sym,
+acquisition score scale-invariant under positive affine rescaling of each component, 3 arms each
+return k distinct diverse cases, acquisition arm keeps the argmax, and the emitted
+`cases_to_run.json` **validates against `fluent/make_cases.py::load_manifest`+`validate`** (imports
+the module). All 7 pass (~20 s).
+
+**Demo (real, transolver_full K=5, k=8, β=γ=1, P2000).** Pool = 630 entries, 0 dropped as
+training combos (legitimate: exact-million Re + integer AoA never land within tol of a continuous
+training sim; exclusion verified to fire on a fabricated on-training entry). Wrote 27 cases
+(3 gridstudy + 24 AL, unique ids, 8/arm); `make_cases.py` validation OK. The acquisition and
+variance arms concentrate at the OOD extreme (AoA=18 deg, Re 6–7e6, mix of 4- and 5-digit),
+while the random arm spreads across the whole envelope including low-AoA in-distribution cases —
+exactly the contrast the falsifiable claim ("selected cases are harder than random") needs.
+Committed `fluent/cases_to_run.json`, `results/active/acquisition_ranking.csv`,
+`results/active/selection_summary.json`.
+
+Did NOT render `fluent/cases/` journals or run any Fluent/Ansys tool (user CPU green-light still
+gated, D-007). Did not run git.
