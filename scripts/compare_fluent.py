@@ -72,6 +72,13 @@ MODEL_K_JSON = {
 ACCEPTED = ("converged", "quasi_steady")
 
 
+def _is_accepted(row: dict) -> bool:
+    """A usable steady point: (quasi-)steady classification AND the .cas.h5 was
+    written (the journal saves only at the end), so a still-running or crashed
+    solve with a transiently-flat CD is never mistaken for a converged one."""
+    return row.get("status") in ACCEPTED and str(row.get("has_cas", "")).lower() == "true"
+
+
 # --------------------------------------------------------------------------- #
 # inputs
 # --------------------------------------------------------------------------- #
@@ -114,7 +121,7 @@ def compute_offset(summary: list[dict]) -> dict:
     per_model: dict[str, dict[str, list]] = {"sa": {"dcd": [], "dcl": []},
                                              "sst": {"dcd": [], "dcl": []}}
     for r in summary:
-        if r["arm"] != "offset" or r["status"] not in ACCEPTED:
+        if r["arm"] != "offset" or not _is_accepted(r):
             continue
         sim = r["airfrans_sim"]
         if not sim:
@@ -296,7 +303,7 @@ def build_rows(model: str, summary: list[dict], offset: dict) -> list[dict]:
         # offset correction only where a Fluent steady value exists
         cd_corr = (cd_fl - dbar_cd) if math.isfinite(cd_fl) else float("nan")
         cl_corr = (cl_fl - dbar_cl) if math.isfinite(cl_fl) else float("nan")
-        accepted = status in ACCEPTED
+        accepted = _is_accepted(r)
         err_cd_int = pred["cd_int_mean"] - cd_corr if accepted else float("nan")
         err_cd_head = pred["cd_head_mean"] - cd_corr if accepted else float("nan")
         err_cl_int = pred["cl_int_mean"] - cl_corr if accepted else float("nan")

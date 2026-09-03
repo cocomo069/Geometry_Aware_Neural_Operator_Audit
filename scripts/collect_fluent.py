@@ -337,7 +337,7 @@ CSV_FIELDS = [
     "n_iter", "status", "cd", "cl", "cd_window_mean", "cd_window_std", "cd_p2p",
     "cl_window_mean", "cl_p2p", "cd_rel_change_150", "yplus_max", "yplus_avg",
     "min_orthogonality", "mach", "u_inf", "wall_min", "airfrans_sim",
-    "has_dat", "has_encas", "integrity_ok", "cells_trn", "cells_mesh",
+    "has_cas", "has_dat", "has_encas", "integrity_ok", "cells_trn", "cells_mesh",
 ]
 
 

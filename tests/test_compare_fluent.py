@@ -31,12 +31,15 @@ def test_offset_arithmetic(tmp_path, monkeypatch):
     _fake_npz(tmp_path, "simB", 0.020, 1.00)
     summary = [
         dict(case_id="offset_1", arm="offset", model="sa", status="converged",
-             airfrans_sim="simA", cd="0.011", cl="0.55"),
+             has_cas="True", airfrans_sim="simA", cd="0.011", cl="0.55"),
         dict(case_id="offset_2", arm="offset", model="sa", status="converged",
-             airfrans_sim="simB", cd="0.023", cl="1.06"),
+             has_cas="True", airfrans_sim="simB", cd="0.023", cl="1.06"),
         # a diverged replica must not enter the offset
         dict(case_id="offset_3", arm="offset", model="sa", status="diverged",
-             airfrans_sim="simA", cd="nan", cl="nan"),
+             has_cas="False", airfrans_sim="simA", cd="nan", cl="nan"),
+        # a still-RUNNING replica (flat CD but no .cas.h5) must not enter either
+        dict(case_id="offset_4", arm="offset", model="sa", status="converged",
+             has_cas="False", airfrans_sim="simB", cd="0.030", cl="1.20"),
     ]
     off = cf.compute_offset(summary)
     s = off["summary"]["sa"]
@@ -68,14 +71,14 @@ def test_conformal_halfwidths(tmp_path, monkeypatch):
 def test_build_rows_schema_and_arithmetic(monkeypatch):
     summary = [
         dict(case_id="al_rand_naca0010_re7e6_a6", arm="random", model="sa",
-             status="converged", naca="0010", re="7e6", aoa_deg="6",
+             status="converged", has_cas="True", naca="0010", re="7e6", aoa_deg="6",
              u_inf="109.0", cd="0.0100", cl="0.60", airfrans_sim=""),
         dict(case_id="offset_1_naca0016_a2p4", arm="offset", model="sa",
-             status="quasi_steady", naca="0016", re="3.9e6", aoa_deg="2.4",
+             status="quasi_steady", has_cas="True", naca="0016", re="3.9e6", aoa_deg="2.4",
              u_inf="60.54", cd="0.0110", cl="0.26",
              airfrans_sim="airFoil2D_SST_x"),
         dict(case_id="al_acq_naca0010_re7e6_a18", arm="acquisition", model="sa",
-             status="diverged", naca="0010", re="7e6", aoa_deg="18",
+             status="diverged", has_cas="False", naca="0010", re="7e6", aoa_deg="18",
              u_inf="109.0", cd="nan", cl="nan", airfrans_sim=""),
     ]
     offset = {"summary": {"sa": dict(n=1, dbar_cd=0.001, s_cd=0.0,
