@@ -1,0 +1,41 @@
+{
+  "run_id": "sdf_fno_shape5_s0_cond_mask",
+  "model": "sdf_fno",
+  "split": "shape5",
+  "seed": 0,
+  "tag": "cond_mask",
+  "params": 1373605,
+  "train_time_s": 803.4151923679999,
+  "epochs": 400,
+  "device": "cuda",
+  "field": {
+    "p_rel_l2": 0.07279230360101482,
+    "tau_rel_l2": 0.06442323941282858,
+    "p_mae": 94.31858310858493,
+    "tau_mae": 0.4537683649948505
+  },
+  "coef": {
+    "cl_head_mae": 0.028313729463695547,
+    "cd_head_mae": 0.00033063194741824836,
+    "cl_int_mae": 0.014463409120781956,
+    "cd_int_mae": 0.002670526438563107,
+    "cd_spearman": 0.5745067162138827,
+    "cd_head_spearman": 0.9841990905951419,
+    "cd_int_spearman": 0.5745067162138827,
+    "cl_rel": 0.021032528511186706,
+    "cd_rel": 0.2185151418172641
+  },
+  "consistency": {
+    "fsc_cl": 0.0234048400072421,
+    "fsc_cd": 0.002622524307017377,
+    "fsc_rel_cl": 0.0306826084826227,
+    "fsc_rel_cd": 0.1548977349669093,
+    "sym_residual": 7.146277542781679,
+    "antisym_cl_gap": 0.23319839453324676
+  },
+  "cost": {
+    "infer_ms_per_sim": 3.4301189119367037,
+    "peak_mem_mb": 84.53125
+  },
+  "n_sims": 511
+}

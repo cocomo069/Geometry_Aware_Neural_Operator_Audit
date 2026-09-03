@@ -1,0 +1,78 @@
+seed: 0
+tag: cond_mask
+device: auto
+model:
+  name: sdf_fno
+  width: 32
+  modes: 16
+  n_fno_layers: 4
+  spectral_groups: 4
+  fno_residual: true
+  grid_res:
+  - 64
+  - 64
+  bbox:
+  - -0.5
+  - 1.5
+  - -1.0
+  - 1.0
+  bbox_mode: fixed
+  conditioning: mask
+  k_enc: 8
+  k_dec: 8
+  enc_radius_cells: 4.0
+  kernel_hidden: 128
+  point_hidden: 128
+  n_freqs: 6
+  activation: gelu
+  use_external_sdf: true
+  trunk_dim: 256
+  coef_hidden: 256
+  coef_layers: 2
+  coef_pooling: ds_mean_max
+train:
+  epochs: 400
+  lr: 0.001
+  batch_size: 16
+  weight_decay: 0.0
+  optimizer: adam
+  scheduler: cosine
+  min_lr: 1.0e-06
+  grad_clip: 1.0
+  num_workers: 0
+  val_every: 1
+  val_metric: val_loss
+  val_metric_mode: min
+  weights:
+    head: 0.1
+    force: 0.0
+    sym: 0.0
+    bc: 0.0
+    div: 0.0
+  warmup_epochs: 0
+data:
+  split: full
+  splits_dir: data/splits
+  processed_dir: /kaggle/input/datasets/cocomo069/airfrans-cache/processed/airfrans
+  norm_stats: /kaggle/input/datasets/cocomo069/airfrans-cache/processed/airfrans/norm_stats.json
+  load_volume: false
+  cache_in_ram: true
+paths:
+  results_root: results
+  checkpoints_root: checkpoints
+eval:
+  batch_size: 4
+  compute_symmetry: true
+  symmetry_max_sims: 64
+_meta:
+  config_path: configs/sdf_fno.yaml
+  overrides:
+  - train.batch_size=16
+  - split=full
+  - model.conditioning=mask
+  - seed=0
+  - tag=cond_mask
+  - data.processed_dir=/kaggle/input/datasets/cocomo069/airfrans-cache/processed/airfrans
+  - data.norm_stats=/kaggle/input/datasets/cocomo069/airfrans-cache/processed/airfrans/norm_stats.json
+  - paths.results_root=results
+  run_id: sdf_fno_full_s0_cond_mask

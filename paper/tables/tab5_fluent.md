@@ -1,18 +1,18 @@
 # Table 5 -- Fluent verification (a selection+outcome, b offset, c verified)
 
-Caption: grid-converged at L2 (GCI_fine CD(SA)=0.00%); n = 12, qualitative external check. Surrogate CD is the input-robust cd_head.
+Caption: grid-converged at L2 (GCI_fine CD(SA)=0.00%); n = 6, qualitative external check. Surrogate CD is the input-robust cd_head.
 
 ## 5a Acquisition selection + steady outcome
 | case | NACA | Re | alpha | S0 | r1 | surrogate CD_head |
 | --- | --- | --- | --- | --- | --- | --- |
-| naca0010_re3e6_a18 | 0010 | 3e+06 | 18 | diverged | diverged | 0.04079 $\pm$ 0.0023 |
-| naca0010_re7e6_a18 | 0010 | 7e+06 | 18 | diverged | diverged | 0.03122 $\pm$ 0.003 |
-| naca0015_re6e6_a18 | 0015 | 6e+06 | 18 | diverged | diverged | 0.03166 $\pm$ 0.0022 |
-| naca24015_re7e6_a18 | 24015 | 7e+06 | 18 | diverged | diverged | 0.0323 $\pm$ 0.0022 |
-| naca2410_re5e6_a18 | 2410 | 5e+06 | 18 | diverged | diverged | 0.03739 $\pm$ 0.0011 |
-| naca33012_re7e6_a18 | 33012 | 7e+06 | 18 | diverged | diverged | 0.03252 $\pm$ 0.0023 |
-| naca4410_re7e6_a18 | 4410 | 7e+06 | 18 | diverged | diverged | 0.0349 $\pm$ 0.0024 |
-| naca4415_re7e6_a18 | 4415 | 7e+06 | 18 | diverged | diverged | 0.03498 $\pm$ 0.0018 |
+| naca0010_re3e6_a18 | 0010 | 3e+06 | 18 | diverged | not_run | 0.04079 $\pm$ 0.0023 |
+| naca0010_re7e6_a18 | 0010 | 7e+06 | 18 | diverged | not_run | 0.03122 $\pm$ 0.003 |
+| naca0015_re6e6_a18 | 0015 | 6e+06 | 18 | diverged | not_run | 0.03166 $\pm$ 0.0022 |
+| naca24015_re7e6_a18 | 24015 | 7e+06 | 18 | diverged | not_run | 0.0323 $\pm$ 0.0022 |
+| naca2410_re5e6_a18 | 2410 | 5e+06 | 18 | diverged | not_run | 0.03739 $\pm$ 0.0011 |
+| naca33012_re7e6_a18 | 33012 | 7e+06 | 18 | diverged | not_run | 0.03252 $\pm$ 0.0023 |
+| naca4410_re7e6_a18 | 4410 | 7e+06 | 18 | diverged | not_run | 0.0349 $\pm$ 0.0024 |
+| naca4415_re7e6_a18 | 4415 | 7e+06 | 18 | diverged | not_run | 0.03498 $\pm$ 0.0018 |
 
 ## 5b Solver offset (6 AirfRANS replicas)
 | replica | CD_AF | CL_AF | CD_SA | CD_SST | dCD | rel dCD | dCL |
@@ -20,25 +20,19 @@ Caption: grid-converged at L2 (GCI_fine CD(SA)=0.00%); n = 12, qualitative exter
 | offset_4_naca2710_am1p6 | 0.009226 | 0.0513 | 0.009719 | 0.009553 | 0.000493 | 0.0534 | 0.0122 |
 | offset_1_naca0016_a2p4 | 0.009702 | 0.251 | 0.01048 | 0.01019 | 0.00078 | 0.0804 | 0.00997 |
 | offset_2_naca0109_a8p6 | 0.01151 | 0.926 | 0.01301 | 0.01304 | 0.0015 | 0.13 | 0.0152 |
-| offset_6_naca5_17_a0p9 | 0.009805 | 0.219 | 0.01082 | 0.01032 | 0.00101 | 0.103 | 0.0112 |
+| offset_6_naca5_17_a0p9 | 0.009805 | 0.219 | 0.01082 | -- | 0.00101 | 0.103 | 0.0112 |
 | offset_3_naca2211_a3p3 | 0.009052 | 0.607 | 0.009919 | 0.009786 | 0.000867 | 0.0958 | 0.0175 |
 | offset_5_naca0010_a3p8 | 0.008058 | 0.419 | 0.00881 | 0.008599 | 0.000752 | 0.0933 | 0.00729 |
 - SA: dbar_CD=+0.0009006 (s=0.00034), dbar_CL=+0.0122 (s=0.0037), n=6
-- SST: dbar_CD=+0.0006898 (s=0.00043), dbar_CL=+0.00657 (s=0.0061), n=6
+- SST: dbar_CD=+0.0007248 (s=0.00047), dbar_CL=+0.00793 (s=0.0057), n=5
 
 ## 5c Verified surrogate-vs-Fluent comparison (accepted set)
 | case | arm | NACA | Re | alpha | status | CD_fl | CD_fl-dbar | Transolver | SDF-FNO | GNN | cov90 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| al_rand_naca0010_re7e6_a6 | random | 0010 | 7e+06 | 6 | converged | 0.009794 | 0.008894 | 0.0105$\pm$0.0004 | 0.009864$\pm$0.0003 | 0.009112$\pm$9e-05 | False |
-| al_rand_naca22012_re3e6_a12 | random | 22012 | 3e+06 | 12 | quasi_steady | 0.01943 | 0.01853 | 0.02463$\pm$0.003 | 0.021$\pm$0.001 | 0.01707$\pm$0.0004 | False |
-| al_rand_naca2415_re6e6_a0 | random | 2415 | 6e+06 | 0 | converged | 0.009461 | 0.00856 | 0.00923$\pm$0.0002 | 0.01053$\pm$0.0003 | 0.008781$\pm$4e-05 | False |
-| al_rand_naca33012_re6e6_am6 | random | 33012 | 6e+06 | -6 | converged | 0.0102 | 0.009301 | 0.009883$\pm$0.0005 | 0.01223$\pm$0.004 | 0.01041$\pm$0.001 | False |
-| al_rand_naca4415_re2e6_a0 | random | 4415 | 2e+06 | 0 | converged | 0.01167 | 0.01076 | 0.01272$\pm$0.0006 | 0.01338$\pm$0.0008 | 0.01092$\pm$0.0002 | False |
-| gridstudy_naca0012_re3e6_a5_L2 | gridstudy | 0012 | 3e+06 | 5 | converged | 0.01076 | 0.009855 | 0.01199$\pm$0.0005 | 0.01248$\pm$0.0004 | 0.01009$\pm$0.0002 | False |
-| offset_1_naca0016_a2p4 | offset | 0016 | 3.9e+06 | 2.4 | converged | 0.01048 | 0.009581 | 0.0097$\pm$4e-06 | 0.009697$\pm$1e-05 | 0.009697$\pm$0 | True |
-| offset_2_naca0109_a8p6 | offset | 1009 | 4e+06 | 8.58 | converged | 0.01301 | 0.01211 | 0.01154$\pm$5e-05 | 0.01151$\pm$0.0001 | 0.01154$\pm$0 | False |
-| offset_3_naca2211_a3p3 | offset | 2211 | 4.6e+06 | 3.33 | converged | 0.009919 | 0.009018 | 0.00905$\pm$2e-05 | 0.009078$\pm$3e-05 | 0.00905$\pm$0 | True |
-| offset_4_naca2710_am1p6 | offset | 2710 | 2.1e+06 | -1.58 | converged | 0.009719 | 0.008818 | 0.009199$\pm$2e-05 | 0.009234$\pm$7e-05 | 0.009346$\pm$0 | True |
-| offset_5_naca0010_a3p8 | offset | 0010 | 6e+06 | 3.79 | converged | 0.00881 | 0.007909 | 0.008064$\pm$1e-05 | 0.008059$\pm$3e-05 | 0.008146$\pm$0 | True |
-| offset_6_naca5_17_a0p9 | offset | 5_17 | 4.1e+06 | 0.932 | quasi_steady | 0.01082 | 0.009916 | 0.009775$\pm$9e-06 | 0.009764$\pm$2e-05 | 0.009799$\pm$0 | True |
+| al_rand_naca0010_re7e6_a6 | random | 0010 | 7e+06 | 6 | converged | 0.009794 | 0.009014 | 0.0105$\pm$0.0004 | -- | -- | False |
+| al_rand_naca2415_re6e6_a0 | random | 2415 | 6e+06 | 0 | converged | 0.009461 | 0.00868 | 0.00923$\pm$0.0002 | -- | -- | False |
+| al_rand_naca33012_re6e6_am6 | random | 33012 | 6e+06 | -6 | converged | 0.0102 | 0.009421 | 0.009883$\pm$0.0005 | -- | -- | False |
+| al_rand_naca4415_re2e6_a0 | random | 4415 | 2e+06 | 0 | converged | 0.01167 | 0.01089 | 0.01272$\pm$0.0006 | -- | -- | False |
+| gridstudy_naca0012_re3e6_a5_L2 | gridstudy | 0012 | 3e+06 | 5 | converged | 0.01076 | 0.009975 | 0.01199$\pm$0.0005 | -- | -- | False |
+| offset_1_naca0016_a2p4 | offset | 0016 | 3.9e+06 | 2.4 | converged | 0.01048 | 0.009702 | 0.0097$\pm$4e-06 | -- | -- | True |
 
