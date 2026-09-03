@@ -24,7 +24,7 @@
       "specs": [
         "configs/sweeps/kaggle_dataeff.yaml"
       ],
-      "done": false,
+      "done": true,
       "note": "45 data-eff runs -> Fig 9"
     },
     {
@@ -32,7 +32,7 @@
       "specs": [
         "configs/sweeps/kaggle_ablations.yaml"
       ],
-      "done": false,
+      "done": true,
       "note": "6 tagged ablation runs -> Table 4 Tier-1"
     },
     {

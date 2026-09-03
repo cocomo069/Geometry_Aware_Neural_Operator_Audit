@@ -210,6 +210,23 @@ transolver_shape5_s4
 | M3 Transolver | Reynolds shift | 0.76 | 0.938 | 0.978 | 0.915 | 0.021 | 0.0351 |
 | M3 Transolver | AoA shift | 0.821 | 0.949 | 0.959 | 0.949 | 0.0198 | 0.0265 |
 
+### Table 4 — ablations
+
+### M2 geometry conditioning (field p rel-L2)
+
+| conditioning | full | shape5 (OOD) |
+| --- | --- | --- |
+| SDF (baseline) | 0.0257 | 0.06414 |
+| binary mask | 0.02935 | 0.07279 |
+| SDF + normals | 0.03092 | 0.06127 |
+
+### M1 physics/force-consistency loss
+
+| GNN variant | full p rel-L2 | full FSC | combined p rel-L2 | combined FSC |
+| --- | --- | --- | --- | --- |
+| baseline (λ_F=0) | 0.07374 | 0.0053 | 0.2697 | 0.01761 |
+| + force loss | 0.1043 | 0.001333 | 0.259 | 0.005926 |
+
 ## Figure gallery
 
 All figures are in `paper/figures/` (PDF + PNG). Present now:

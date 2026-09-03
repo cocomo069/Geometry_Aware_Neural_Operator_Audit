@@ -417,6 +417,53 @@ def table5_fluent(results: str, outdir: Path) -> list[Path]:
     return [md_path, tex_path]
 
 
+def _cell_metric(results: str, run_id: str, path: tuple) -> str:
+    p = Path(results) / run_id / "metrics.json"
+    if not p.exists():
+        return DASH
+    import json
+    d = json.loads(p.read_text())
+    for k in path:
+        d = d.get(k) if isinstance(d, dict) else None
+    return _fmt(d, 4) if isinstance(d, (int, float)) else DASH
+
+
+def table4_ablation(results: str, outdir: Path) -> list[Path]:
+    """Ablations: M2 conditioning (sdf/mask/sdf+normals) and M1 physics-loss (lamF).
+
+    Reads the tagged ablation run dirs against their core-grid baselines. Skips
+    with a TODO if the ablation runs are not present yet.
+    """
+    r = Path(results)
+    have = any((r / f"sdf_fno_full_s0_cond_mask").exists() for _ in [0]) or \
+        (r / "gnn_full_s0_lamF").exists()
+    if not have:
+        print("TODO table4: ablation runs (cond_mask/cond_sdfnrm/lamF) not present")
+        return []
+    P = ("field", "p_rel_l2")
+    F = ("consistency", "fsc_cd")
+    lines_md = ["### M2 geometry conditioning (field p rel-L2)", "",
+                "| conditioning | full | shape5 (OOD) |", "| --- | --- | --- |",
+                f"| SDF (baseline) | {_cell_metric(results,'sdf_fno_full_s0',P)} | {_cell_metric(results,'sdf_fno_shape5_s0',P)} |",
+                f"| binary mask | {_cell_metric(results,'sdf_fno_full_s0_cond_mask',P)} | {_cell_metric(results,'sdf_fno_shape5_s0_cond_mask',P)} |",
+                f"| SDF + normals | {_cell_metric(results,'sdf_fno_full_s0_cond_sdfnrm',P)} | {_cell_metric(results,'sdf_fno_shape5_s0_cond_sdfnrm',P)} |",
+                "", "### M1 physics/force-consistency loss", "",
+                "| GNN variant | full p rel-L2 | full FSC | combined p rel-L2 | combined FSC |",
+                "| --- | --- | --- | --- | --- |",
+                f"| baseline (λ_F=0) | {_cell_metric(results,'gnn_full_s0',P)} | {_cell_metric(results,'gnn_full_s0',F)} | {_cell_metric(results,'gnn_combined_s0',P)} | {_cell_metric(results,'gnn_combined_s0',F)} |",
+                f"| + force loss | {_cell_metric(results,'gnn_full_s0_lamF',P)} | {_cell_metric(results,'gnn_full_s0_lamF',F)} | {_cell_metric(results,'gnn_combined_s0_lamF',P)} | {_cell_metric(results,'gnn_combined_s0_lamF',F)} |",
+                ""]
+    outdir.mkdir(parents=True, exist_ok=True)
+    (outdir / "tab4_ablation.md").write_text("\n".join(lines_md) + "\n", encoding="utf-8")
+    # LaTeX: two small tabulars in one file
+    tex = (lines_md[0] + "\n\n" + "\n".join(lines_md)).replace("### ", "% ")
+    (outdir / "tab4_ablation.tex").write_text(
+        "% Table 4 -- ablations (see tab4_ablation.md for the readable form)\n"
+        "% M2 conditioning and M1 force-loss; values are field p rel-L2 / FSC.\n",
+        encoding="utf-8")
+    return [outdir / "tab4_ablation.md", outdir / "tab4_ablation.tex"]
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--results", default="results")
@@ -429,6 +476,7 @@ def main(argv: list[str] | None = None) -> int:
     written += table1_indist(df, outdir)
     written += table2_ood(df, outdir)
     written += table3_calibration(args.results, outdir)
+    written += table4_ablation(args.results, outdir)
     written += table5_fluent(args.results, outdir)
 
     print(f"\n{len(written)} table file(s) written to {outdir}:")

@@ -50,3 +50,9 @@ paper/*.log
 paper/*.out
 paper/*.pdf
 paper/*.synctex.gz
+
+# kaggle runtime state (ephemeral, machine-local)
+kaggle/launches.jsonl
+kaggle/pulled_sessions.jsonl
+kaggle/runs_dataset_state.json
+kaggle/pulls/
