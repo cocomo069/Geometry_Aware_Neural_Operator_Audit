@@ -202,6 +202,8 @@ def score_pool(
     rho: float = 1.0,
     a_ref: float = 1.0,
     ddof: int = 1,
+    return_members: bool = False,
+    speeds: Sequence[float] | None = None,
     log: Callable[[str], None] = print,
 ) -> dict[str, np.ndarray]:
     """Run the ensemble over the pool; return the acquisition components.
@@ -226,13 +228,25 @@ def score_pool(
     cl_int_mean: list[np.ndarray] = []
     cl_head_mean: list[np.ndarray] = []
     l_sym: list[np.ndarray] = []
+    mem_cd_int: list[np.ndarray] = []
+    mem_cl_int: list[np.ndarray] = []
+    mem_cd_head: list[np.ndarray] = []
+    mem_cl_head: list[np.ndarray] = []
+
+    speeds_list = list(speeds) if speeds is not None else None
+    if speeds_list is not None and len(speeds_list) != len(entries):
+        raise ValueError(f"speeds has {len(speeds_list)} entries but pool has {len(entries)}")
 
     n_done = 0
     with torch.no_grad():
-        for chunk in _chunks(list(entries), int(batch_size)):
+        for start in range(0, len(entries), int(batch_size)):
+            chunk = list(entries)[start:start + int(batch_size)]
+            chunk_speeds = (speeds_list[start:start + int(batch_size)]
+                            if speeds_list is not None else [None] * len(chunk))
             batches = [
-                entry_to_batch(e, n_points=n_points, nu=nu, chord=chord, as_torch=False)
-                for e in chunk
+                entry_to_batch(e, n_points=n_points, nu=nu, chord=chord,
+                               as_torch=False, speed=sp)
+                for e, sp in zip(chunk, chunk_speeds)
             ]
             batch = collate_batches(batches, as_torch=True)
             batch["num_graphs"] = len(chunk)
@@ -272,6 +286,11 @@ def score_pool(
             cd_head_mean.append(cd_h.mean(axis=0))
             cl_int_mean.append(cl_i.mean(axis=0))
             cl_head_mean.append(cl_h.mean(axis=0))
+            if return_members:
+                mem_cd_int.append(cd_i.copy())
+                mem_cl_int.append(cl_i.copy())
+                mem_cd_head.append(cd_h.copy())
+                mem_cl_head.append(cl_h.copy())
 
             if compute_sym:
                 res = np.zeros((kk, b), dtype=np.float64)
@@ -299,6 +318,12 @@ def score_pool(
     for key in ("sigma_cd", "fsc", "l_sym"):
         if out[key].size and not np.all(np.isfinite(out[key])):
             raise ValueError(f"acquisition component {key!r} has non-finite values")
+    if return_members:
+        # (K, N) per-member coefficient arrays (K = ensemble size)
+        out["cd_int_members"] = np.concatenate(mem_cd_int, axis=1) if mem_cd_int else np.zeros((0, 0))
+        out["cl_int_members"] = np.concatenate(mem_cl_int, axis=1) if mem_cl_int else np.zeros((0, 0))
+        out["cd_head_members"] = np.concatenate(mem_cd_head, axis=1) if mem_cd_head else np.zeros((0, 0))
+        out["cl_head_members"] = np.concatenate(mem_cl_head, axis=1) if mem_cl_head else np.zeros((0, 0))
     return out
 
 
