@@ -60,7 +60,9 @@
 ; Re range at sea-level conditions, so the flow is incompressible and a
 ; density-based solver would only add stiffness and cost.
 /define/models/solver/pressure-based yes
-/define/models/steady yes
+; `/define/models/steady` takes no argument in v211 -- it enables the steady
+; model idempotently (a trailing `yes` is parsed as a separate, invalid command).
+/define/models/steady
 /define/models/energy no
 /define/models/viscous/spalart-allmaras yes
 
@@ -80,31 +82,42 @@
 ; Grouped `set` menus, not positional prompt chains -- short keyword/value
 ; pairs instead of a cascade of yes/no selectors that is easy to get wrong.
 ;
-; NOTE ON `velocity-spec`: it is a CYCLING selector, not a yes/no. It shows
-; "Magnitude, Normal to Boundary [yes]"; `no` advances to the next option
-; ("Components"), `yes` selects the current one. Hence the `no` then `yes`.
-; Every profile-capable VALUE field prompts "Use Profile? [no]" BEFORE the
-; value, which is what each bare `no` before a number is answering.
+; NOTE ON `velocity-spec`: it is a CYCLING selector. When invoked it steps
+; through the methods with yes/no prompts: "Magnitude and Direction [no]" (answer
+; `no`), then "Components [no]" (answer `yes` to select it). Hence the `no` then
+; `yes`. VERIFIED against Fluent 2021 R1 (v211), 2026-09-03.
+;
+; Once "Components" is selected, the two velocity components are set with the
+; keys `direction-0` (X-Velocity, m/s) and `direction-1` (Y-Velocity, m/s) --
+; NOT `u`/`v`, which do not exist in this build's grouped `set` menu. Each
+; profile-capable VALUE field first prompts "Use Profile? [no]", which is what
+; the bare `no` before every number answers.
+;
+; The SA inlet turbulence key in this build is `turb-viscosity-ratio-profile`
+; (make_cases.py fills the inlet-turbulence lines below). On the pressure-outlet
+; the backflow turbulence key is NOT settable from this menu and, with
+; prevent-reverse-flow walls on, its value is never used, so it is omitted.
 ;
 ; Angle of attack is baked into the MESH (the airfoil is rotated by -AoA about
 ; the quarter chord), so the freestream here is always 46.875000 along +x with
 ; 0 = 0. Drag is then Fx and lift is Fy -- no direction bookkeeping.
 ;
 ; >>> RUN fluent/templates/probe_bc_keywords.jou ONCE BEFORE THE FIRST REAL
-; >>> CASE. It dumps the real keyword names this Fluent build accepts. These
-; >>> templates were authored without a live solver; fix any mismatch there
-; >>> first rather than burning a solve finding out.
+; >>> CASE OF A NEW TURBULENCE MODEL. It dumps the real keyword names this
+; >>> Fluent build accepts. The SA path below is verified; the SST inlet-turb
+; >>> keywords still need the probe before the first SST solve.
 /define/boundary-conditions/set/velocity-inlet farfield ()
 velocity-spec
 no
 yes
-u
+direction-0
 no
 46.875000
-v
+direction-1
 no
 0
-turb-viscosity-ratio
+turb-viscosity-ratio-profile
+no
 3
 q
 
@@ -114,16 +127,15 @@ no
 0
 prevent-reverse-flow?
 yes
-turb-viscosity-ratio
-3
 q
 
-; airfoil: stationary no-slip smooth wall (Fluent's wall defaults), stated
-; explicitly so the case is self-documenting rather than default-dependent.
-/define/boundary-conditions/set/wall airfoil ()
-shear-bc
-no-slip
-q
+; airfoil: stationary no-slip smooth wall. This is Fluent's default for a wall
+; zone, so no command is issued. The `set/wall` `shear-bc` selector in v211
+; prompts "Change current value? [no]" (current value is already no-slip); an
+; answer of `no-slip` is not the yes/no it wants, and the repeating prompt then
+; EATS every following command line (reference values, report definitions, ...)
+; until a stray token errors out -- a silent, cascading corruption. Since the
+; default is exactly what we want, the block is intentionally omitted.
 
 ; ---------------------------------------------------------------------
 ; 5. Reference values -- these define CL and CD
@@ -143,13 +155,18 @@ q
 ; ---------------------------------------------------------------------
 /solve/report-definitions/add cd drag thread-names airfoil () force-vector 1 0 scaled? yes quit
 /solve/report-definitions/add cl lift thread-names airfoil () force-vector 0 1 scaled? yes quit
-/solve/report-definitions/add cm moment thread-names airfoil () about-point 0.25 0 scaled? yes quit
+; NOTE: the moment (cm) report-definition is intentionally omitted. In v211 the
+; `moment` report-def does NOT accept `about-point`; that token is rejected and
+; the failure cascades, silently eating the entire report-files block below (so
+; no *_coeffs.out is ever written). The v211 moment keywords are `mom-center`
+; <x y z> and `mom-axis` <x y z> -- probe and verify them before re-adding cm,
+; e.g. `... moment thread-names airfoil () mom-center 0.25 0 0 mom-axis
+; 0 0 1 scaled? yes quit`. CD and CL (the reported quantities) are unaffected.
 
 /solve/report-files/add rf_coeffs
 report-defs
 cd
 cl
-cm
 ()
 file-name
 "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/gridstudy_naca0012_re3e6_a5_L2/gridstudy_naca0012_re3e6_a5_L2_sa_coeffs.out"
@@ -243,7 +260,9 @@ ok
 ; ---------------------------------------------------------------------
 /report/forces/wall-forces yes 1 0 yes "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/gridstudy_naca0012_re3e6_a5_L2/gridstudy_naca0012_re3e6_a5_L2_sa_force_x.txt"
 /report/forces/wall-forces yes 0 1 yes "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/gridstudy_naca0012_re3e6_a5_L2/gridstudy_naca0012_re3e6_a5_L2_sa_force_y.txt"
-/solve/report-definitions/compute cd cl cm ()
+; The final scaled CD/CL/CM are logged every iteration to *_coeffs.out by the
+; rf_coeffs report file above; its last row is the converged value. (v211 has no
+; `/solve/report-definitions/compute` verb, so nothing is recomputed here.)
 
 ; ---------------------------------------------------------------------
 ; 13. Extraction -- y+ (the mesh-adequacy evidence for the paper)

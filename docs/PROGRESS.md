@@ -1100,3 +1100,116 @@ scope), `\figph` usages in the main body 12 -> 2 (fig9 data-efficiency, fig11b F
 verification — both genuinely blocked on data this session does not have).
 
 Did NOT run git.
+
+## 2026-09-03 — Fluent execution (Opus): mesh fix + first solving case
+
+First real Fluent run of the study. Goal was one NACA case meshing cleanly AND
+solving to convergence in v211, producing the surface CSV plus CD/CL. Done for
+`gridstudy_naca0012_re3e6_a5_L1` (SA).
+
+### Root cause of the "Build Grid: Aborted" abort (it was NOT winding)
+
+The prior diagnosis suspected wake-cut face winding or a degenerate sharp-TE
+cell. Both were checked and ruled out:
+
+- A geometric winding check on the written `.msh` (reconstruct cell centroids,
+  test that each face's CW normal `(dx,dy)->(dy,-dx)` points out of owner c0)
+  found 0 bad faces out of 37878. Winding is correct everywhere, wake cut
+  included. Zone-type codes are exact (interior 2, wall 3, pressure-outlet 5,
+  velocity-inlet 10) and Fluent read every zone.
+- The min-Jacobian 5.27e-9 cell at the TE is tiny but strictly positive
+  (not folded); Fluent's own `/mesh/check` reports all-positive volumes.
+
+The actual bug was an off-by-one in the wake-cut node identification in
+`write_fluent_msh`: the condition `i > nw + na` skipped k = 0 (i = nw+na, the
+trailing edge on the upper branch), so the upper-branch TE node was never merged
+with the lower-branch TE node. That left a duplicate node at the TE that split
+the cell fan, so the upper TE cell (cell (nw+na, 0)) referenced 5 nodes instead
+of 4 and never closed. Fluent aborts "Build Grid: Aborted due to critical error"
+on exactly that. Fix: `i >= nw + na` (the docstring's own formula
+`node(nw+na+k,0) === node(nw-k,0)` for k = 0..nw already required it). Node count
+dropped 19083 -> 19082 (the one duplicate removed). `validate_msh` was hardened
+with a closed-quad check (every cell must have exactly 4 nodes each shared by 2
+of its faces) so this class of bug can't reach the solver silently again; the
+old self-check passed the broken mesh because it never verified cell closure.
+The fix applies to all three grid levels (all regenerated, all min_jacobian > 0).
+
+### v211 TUI keyword reconciliation (probed live, template was authored blind)
+
+`probe_bc_keywords.jou` plus two targeted probes found four template bugs, all of
+which silently eat following journal lines (the exact failure mode the template
+warns about). Fixed in `case_template.jou` and `make_cases.py`, journals
+regenerated:
+
+1. velocity-inlet components are `direction-0` (X-Velocity) / `direction-1`
+   (Y-Velocity), NOT `u`/`v` (which don't exist in this build's grouped `set`
+   menu). velocity-spec cycles: `no` (skip Magnitude+Direction) then `yes`
+   (select Components). Each profile field answers "Use Profile? [no]" first.
+2. SA inlet turbulence key is `turb-viscosity-ratio-profile`, not
+   `turb-viscosity-ratio`. On the pressure-outlet that key is not settable from
+   the menu; with prevent-reverse-flow walls its backflow value is never used, so
+   the outlet turb block is omitted.
+3. The `set/wall` block was removed entirely: `shear-bc` prompts "Change current
+   value? [no]" (the wall is already no-slip), and an answer of `no-slip` is not
+   the yes/no it wants -> the repeating prompt ate the whole reference-values and
+   report-definitions blocks. Fluent's wall default is exactly stationary no-slip,
+   so nothing is lost.
+4. The moment (cm) report-definition was dropped: v211's `moment` report-def
+   rejects `about-point` and the failure cascaded, eating the entire
+   report-files block (so no coeffs.out was written). v211 uses `mom-center`
+   <x y z> + `mom-axis` <x y z>; left as a flagged TODO since CD/CL are the
+   reported quantities and cm was not required. `/define/models/steady` takes no
+   argument (a trailing `yes` is an orphaned invalid command); the invalid
+   `/solve/report-definitions/compute` line was removed (CD/CL come from
+   coeffs.out). SST inlet keywords are updated to the best reconstruction but are
+   NOT yet verified on a live SST solve - probe before the first SST case.
+
+### L1 SA result (converged, physically sane)
+
+- CD = 0.011056  (pressure 0.003577 + viscous 0.007479; viscous is ~68% of drag,
+  so the no-slip wall took effect and CD is well above the 5e-3 missing-viscosity
+  red flag)
+- CL = 0.55299   (pressure 0.55303, viscous ~0). Thin-airfoil 2*pi*alpha = 0.548,
+  so within ~1%.
+- Surface Cp: stagnation +1.01, suction peak -1.89 at x/c ~ 0.009, attached
+  (Cf > 0 everywhere).
+- y+ max = 2.10, area-avg = 0.98. This EXCEEDS the plan's wall-resolved target
+  (max < 1, avg < 0.7). L1 is the coarse level (y+ target 0.9) and the a-priori
+  flat-plate sizing underpredicts the LE/suction-peak y+ by ~2.3x, exactly as
+  FLUENT_PLAN section 3.2 anticipated. To make all three levels strictly
+  wall-resolved, lower the y+ targets by ~2.3x (or accept L1 as the coarse end).
+- Convergence: continuity plateaued ~1.5e-6, momentum ~1e-8, nut ~1.4e-5. CD is
+  mildly unsteady (the CD-steady range oscillates 1-4e-5 around the 1e-5 stop
+  criterion), so it ran the full stage-2 budget to iter 4300 rather than
+  auto-stopping. CD flat to ~4 sig figs; accepted per FLUENT_PLAN section 6
+  (a plateau on a mildly-unsteady flow is expected, declared behaviour). Runtime
+  ~30 min on 6 cores (2ddp) for 18.8k cells.
+
+### Files produced (L1 SA)
+
+`_sa.cas.h5`, `_sa.dat.h5` (display objects ct_pressure/ct_velocity/ct_cp/
+vec_velocity baked in for GUI screenshots), `_sa_coeffs.out`, `_sa_force_x.txt`,
+`_sa_force_y.txt`, `_sa_yplus_max.txt`, `_sa_yplus_avg.txt`, `_sa_surface.csv`
+(columns mapped by header name: y-plus, skin-friction-coef, wall-shear x/y/mag,
+pressure-coefficient, pressure), and a matplotlib cp/cf/yplus verification plot
+`_sa_surface_cp_cf_yplus.png`. Large binaries (.msh, .cas.h5, .dat.h5, .trn) are
+gitignored; small result text files and the plot are kept.
+
+### ParaView note
+
+ParaView's built-in Fluent reader cannot open the v211 `.cas.h5` (CFF/HDF5)
+format (open timed out, no source registered). For ParaView field contours at
+scale, add an EnSight-Gold or CGNS export to the journal after the solve, or open
+the `.cas.h5` in the Fluent GUI (the display objects are already baked in). The
+surface cp/cf here was plotted with matplotlib from surface.csv.
+
+### Recipe for the remaining cases (orchestrator)
+
+Meshes + journals for all 27 cases are regenerated and valid. Per case, per
+model, run the case journal via `fluent_run_journal` (2ddp, processors 6), poll
+`ansys_job_status` + `fluent_check_convergence`, then read the last row of
+`_coeffs.out` for CD/CL and the yplus/force/surface files. The SA path is fully
+verified. Before the first SST case, run `probe_bc_keywords.jou` on it to confirm
+the SST inlet turbulence keywords (turb-intensity / turb-viscosity-ratio and
+their use-profile prompts) and the 5-equation residual count, since those were
+reconstructed, not measured.

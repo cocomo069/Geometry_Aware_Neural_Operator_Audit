@@ -91,8 +91,11 @@ MODELS = {
         label="sa",
         pretty="Spalart-Allmaras",
         cmd="spalart-allmaras yes",
-        n_residuals=4,
-        inlet_block="turb-viscosity-ratio\n3",
+        n_residuals=4,     # continuity, x-velocity, y-velocity, nut (verified v211)
+        # VERIFIED against Fluent 2021 R1 (v211), 2026-09-03: the velocity-inlet
+        # turbulence key for SA is `turb-viscosity-ratio-profile`, and every
+        # profile-capable field first answers "Use Profile? [no]" (the `no`).
+        inlet_block="turb-viscosity-ratio-profile\nno\n3",
         scheme_first="/solve/set/discretization-scheme/nut 0",
         scheme_second="/solve/set/discretization-scheme/nut 1",
         urf_block=("/solve/set/under-relaxation/nut 0.7\n"
@@ -102,8 +105,12 @@ MODELS = {
         label="sst",
         pretty="k-omega SST",
         cmd="kw-sst yes",
-        n_residuals=5,
-        inlet_block="turb-intensity\n0.1\nturb-viscosity-ratio\n3",
+        n_residuals=5,     # continuity, x-velocity, y-velocity, k, omega
+        # NOT YET VERIFIED on a live v211 SST solve. The `no` (Use Profile?)
+        # answers match the confirmed SA pattern; the SST velocity-inlet key
+        # names (turb-intensity / turb-viscosity-ratio) must be confirmed with
+        # probe_bc_keywords.jou before the first SST case is trusted.
+        inlet_block="turb-intensity\nno\n0.1\nturb-viscosity-ratio\nno\n3",
         scheme_first=("/solve/set/discretization-scheme/k 0\n"
                       "/solve/set/discretization-scheme/omega 0"),
         scheme_second=("/solve/set/discretization-scheme/k 1\n"

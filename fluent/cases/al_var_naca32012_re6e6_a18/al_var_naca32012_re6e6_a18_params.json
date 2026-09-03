@@ -1,0 +1,43 @@
+{
+  "case_id": "al_var_naca32012_re6e6_a18",
+  "naca_digits": "32012",
+  "re": 6000000.0,
+  "aoa_deg": 18.0,
+  "mesh_level": 2,
+  "chord": 1.0,
+  "rho": 1.184,
+  "mu": 1.85e-05,
+  "nu": 1.5625e-05,
+  "u_inf": 93.75,
+  "mach_estimate": 0.2709537572254335,
+  "a_ref": 1.0,
+  "x_moment": 0.25,
+  "y_plus": 0.6,
+  "y_plus_target": 0.6,
+  "boundary_layer": {
+    "re_c": 6000000.0,
+    "cf": 0.0027968297235912375,
+    "tau_w": 14.552254655560656,
+    "u_tau": 3.5058173970203517,
+    "y1_centre": 2.674126726613872e-06,
+    "first_cell_height": 5.348253453227744e-06
+  },
+  "grid": {
+    "na": 256,
+    "nw": 64,
+    "nj": 112,
+    "n_cells": 43008,
+    "normal_growth": 1.1279370908223991
+  },
+  "r_far": 30.0,
+  "x_out": 30.0,
+  "smooth_sweeps": 0,
+  "iter_stage1": 300,
+  "iter_stage2": 4000,
+  "cd_stop_criterion": 1e-05,
+  "models": [
+    "sa",
+    "sst"
+  ],
+  "note": "Active-learning 'variance' pick (rank 3, score 2.251). naca5 section NACA 32012 at Re 6e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+}

@@ -1,0 +1,43 @@
+{
+  "case_id": "al_rand_naca2410_re2e6_a18",
+  "naca_digits": "2410",
+  "re": 2000000.0,
+  "aoa_deg": 18.0,
+  "mesh_level": 2,
+  "chord": 1.0,
+  "rho": 1.184,
+  "mu": 1.85e-05,
+  "nu": 1.5625e-05,
+  "u_inf": 31.25,
+  "mach_estimate": 0.09031791907514451,
+  "a_ref": 1.0,
+  "x_moment": 0.25,
+  "y_plus": 0.6,
+  "y_plus_target": 0.6,
+  "boundary_layer": {
+    "re_c": 2000000.0,
+    "cf": 0.0032720972716687494,
+    "tau_w": 1.8916812351834957,
+    "u_tau": 1.2640030640516686,
+    "y1_centre": 7.416912400472454e-06,
+    "first_cell_height": 1.4833824800944908e-05
+  },
+  "grid": {
+    "na": 256,
+    "nw": 64,
+    "nj": 112,
+    "n_cells": 43008,
+    "normal_growth": 1.1168016919385653
+  },
+  "r_far": 30.0,
+  "x_out": 30.0,
+  "smooth_sweeps": 0,
+  "iter_stage1": 300,
+  "iter_stage2": 4000,
+  "cd_stop_criterion": 1e-05,
+  "models": [
+    "sa",
+    "sst"
+  ],
+  "note": "Active-learning 'random' pick (rank 1, score 0.9812). naca4 section NACA 2410 at Re 2e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+}

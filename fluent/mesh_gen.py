@@ -596,7 +596,15 @@ def write_fluent_msh(path: Path, X: np.ndarray, Y: np.ndarray, meta: dict,
     counter = 0
     for i in range(ni + 1):
         for j in range(NJ):
-            if j == 0 and i > nw + na:
+            if j == 0 and i >= nw + na:
+                # Identify the whole upper wake-cut row with the lower branch,
+                # INCLUDING k = 0 (i = nw+na), which is the trailing edge itself:
+                # node(nw+na+k, 0) === node(nw-k, 0) for k = 0 .. nw.
+                # Using `>` here (skipping k = 0) leaves the upper-branch TE node
+                # un-merged -- a duplicate node at the trailing edge that splits
+                # the cell fan around the TE so the upper TE cell never closes,
+                # which is exactly what makes Fluent abort with
+                # "Build Grid: Aborted due to critical error".
                 nid[i, 0] = nid[2 * nw + na - i, 0]      # === node(ni - i, 0)
                 continue
             counter += 1
@@ -744,6 +752,7 @@ def validate_msh(path: Path) -> dict:
     if len(faces) != n_faces:
         errs.append("face rows %d != declared %d" % (len(faces), n_faces))
     refs = {}
+    cell_node_hits = {}          # cell -> {node: incidence count over its faces}
     n_bnd = n_int = 0
     for k, (a, b, c0, c1) in enumerate(faces):
         for nd in (a, b):
@@ -764,10 +773,30 @@ def validate_msh(path: Path) -> dict:
         for c in (c0, c1):
             if c:
                 refs[c] = refs.get(c, 0) + 1
+                d = cell_node_hits.setdefault(c, {})
+                d[a] = d.get(a, 0) + 1
+                d[b] = d.get(b, 0) + 1
     orphan = [c for c in range(1, n_cells + 1) if refs.get(c, 0) < 3]
     if orphan:
         errs.append("%d cells referenced by fewer than 3 faces (first: %s)"
                     % (len(orphan), orphan[:5]))
+
+    # Every cell must be a CLOSED quad: exactly 4 distinct corner nodes, each
+    # shared by exactly 2 of that cell's faces. This is the check that catches a
+    # wake-cut / trailing-edge node that should have been identified but was not
+    # -- a duplicate node at the same location splits the cell fan so a cell
+    # references 5 nodes (two of them coincident), leaving two nodes with
+    # incidence 1. validate_msh missed exactly this before, and Fluent aborts on
+    # it with "Build Grid: Aborted due to critical error".
+    unclosed = []
+    for c in range(1, n_cells + 1):
+        hits = cell_node_hits.get(c, {})
+        if len(hits) != 4 or any(v != 2 for v in hits.values()):
+            unclosed.append(c)
+    if unclosed:
+        errs.append("%d cells are not closed 4-node quads (first: %s) -- most "
+                    "likely an un-identified duplicate node on the wake cut / TE"
+                    % (len(unclosed), unclosed[:5]))
     if errs:
         sep = chr(10) + "  "
         raise SystemExit("mesh self-check FAILED for %s:%s%s"

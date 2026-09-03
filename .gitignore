@@ -12,6 +12,18 @@ checkpoints/
 results/**/*.pt
 wandb/
 
+# Fluent runs and large solver artifacts (meshes, cases, data, transcripts).
+# The journals, params.json, mesh.json, MANIFEST/RUNBOOK and the small result
+# text files (coeffs.out, surface.csv, y+/force reports) are kept; the heavy
+# binaries and the regenerable meshes are not.
+fluent/runs/
+*.msh
+*.cas.h5
+*.dat.h5
+*.cas
+*.dat
+*.trn
+
 # OS
 Thumbs.db
 .DS_Store

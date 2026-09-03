@@ -1,0 +1,1 @@
+.venv/Scripts/python.exe fluent/mesh_gen.py --naca 33012 --re 6e+06 --aoa -6 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.6 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_rand_naca33012_re6e6_am6/al_rand_naca33012_re6e6_am6.msh --json fluent/cases/al_rand_naca33012_re6e6_am6/al_rand_naca33012_re6e6_am6_mesh.json
