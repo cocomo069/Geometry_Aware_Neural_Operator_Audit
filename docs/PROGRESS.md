@@ -1380,3 +1380,23 @@ into RESULTS section 6.4 / Table 5a (values in surrogate_vs_fluent_summary.json)
 (`schtasks /Delete /TN FluentCampaign /F`). A collect classifies a still-running
 solve from its partial coeffs, so trust `has_cas`/the FINALIZED run, not an
 interim snapshot.
+
+## 2026-09-03 — D-025 ParaView field figures (Opus execution)
+
+Rendered the ParaView field-contour figures from the EnSight Gold `.encas` exports
+(ParaView is the post-processing tool of record). Fluent was NOT launched (solves
+running under the FluentCampaign scheduler); ParaView-only, light load. 9 PNGs at
+300 dpi in `paper/figures/fluent/`:
+- B1 grid-independence C_p (NACA0012 Re3e6 a5, SA): L1/L2/L3
+  (`figB1{a,b,c}_gridstudy_L{1,2,3}_cp.png`), fixed range [-2,1], Cool to Warm.
+- B3 velocity-magnitude + black streamlines (SA), Viridis, per-case range:
+  `figB3{a,b,c,d}_al_rand_{naca0010_re7e6_a6, naca2415_re6e6_a0,
+  naca33012_re6e6_am6, naca4415_re2e6_a0}_vel.png`.
+- B4 SA-vs-SST C_p on offset_2 (`figB4{a,b}_offset2_naca0109_a8p6_{sa,sst}_cp.png`),
+  fixed range [-4,1]; SA/SST fields near-identical (peak -6.72 vs -6.66).
+No required cases skipped (all `.encas` readable). B5 (optional r1-rescued) not
+produced: no `*_sa_r1.encas` present yet. `.encas` fields are already node-based
+POINT data with friendly names, so CellDataToPointData was unnecessary. Legend
+persistence handled by hiding prior reps/scalar bars before each export; verified
+each figure by reading the PNG back. Details + captions in
+`fluent/paraview/RENDERED.md`. Did NOT run git.
