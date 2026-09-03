@@ -1294,3 +1294,59 @@ cases also sit at M ≈ 0.32, marginally past the incompressible assumption. The
 random arm's low-α / α = 0 cases (`al_rand_*_a0`, `_a6`, `_am6`, `_a12`) are the
 safe ones. Their non-convergence, if it happens, is itself the active-learning
 result (acquisition picked the hard corner of the envelope), not a setup bug.
+
+---
+
+## 2026-09-03 (Opus) — Fluent post-processing + C4 salvage (PLAN_FLUENT_POST)
+
+Executing Fable's `docs/PLAN_FLUENT_POST.md` after the main SA batch (grid study
+clean; 4 low-AoA random converged; 20 diverged).
+
+### collect_fluent.py (step 1, done)
+`scripts/collect_fluent.py` parses every `fluent/cases/*/*_coeffs.out`, classifies
+converged / quasi_steady / diverged per PLAN section 2, computes the Celik GCI on
+the gridstudy trio, and runs the batch-integrity check (cell count via `.trn`,
+h5py absent). Classifications reproduce PLAN section 0 exactly: gridstudy 3/3
+converged, random 4 converged (low-AoA) / 4 diverged, acquisition 8 diverged,
+variance 8 diverged. The literal "≤1e-5 over 150 iters" converged rule was too
+strict (real converged cases creep ~3e-4 over 150 iters while flat to ~1e-6 per
+iter), so the classifier keys on window oscillation amplitude (p2p/|mean| < 1%,
+no drift) — documented in the script. GCI: SA CD ~0% (L2/L3 identical, p_obs
+noise-dominated — use L1→L2 3.3% as the conservative band per PLAN §0), SST CD
+0.26%, CL SA 3.4% / SST 0.22%.
+
+### Offset study (steps 2–3, batch running)
+`mesh_gen.py --naca-params` (via `airfrans.naca_generator`) + `make_cases.py`
+naca_params/per-case mu. `fluent/make_offset.py` froze the 6 replicas, passed the
+geometry gate (dense contour vs cached `surf_pos`, max NN < 5e-4 c — all ~7.7e-5),
+and appended per-case mu/re (reproducing each sim's U exactly) to
+`cases_to_run.json`. All 6 meshes: min orthogonality ≥ 0.216, positive Jacobian.
+Launched DETACHED: `run_batch.py --models sa,sst --only-file fluent/offset_cases.txt`
+→ `logs/fluent_offset.log` (12 runs, ~2.5–3 h). offset_1 SA converged
+(cd 0.0105, cl 0.261); offset_1 SST classified diverged (to re-check on completion).
+
+### r1 retry (step 4 done, step 5 pending offset completion)
+`templates/case_template_r1.jou` (stage-1 1000 first-order iters @ URF p0.2/mom0.5/
+turb0.5; stage-2 6000 @ p0.2/mom0.4; no cd-steady stop). `make_cases.py --variant`
+writes `<case>_<model>_r1` journals + `MANIFEST_r1.json` without touching S0.
+`fluent/diverged_cases.txt` (20 cases, control-first order) generated from the
+collected results. r1 journals rendered for all 20. NOT yet launched — waits for
+the offset batch to free the single licence; will run the α=12 control
+(`al_rand_naca22012_re3e6_a12`) FIRST as the gate.
+
+### compare_fluent.py (step 4 done)
+`scripts/compare_fluent.py` computes the solver offset (offset.csv) and scores
+every Fluent case with the 3 surrogate ensembles, offset-corrected, with 90%
+conformal-band coverage. **Key finding:** the integrated `cd_int` on the SYNTHETIC
+pool geometry (score_pool path) is an input-representation artifact (~0.05 vs
+0.0099 on the real mesh for a checked in-envelope shape; unchanged by point count)
+— `cd_head` (the coefficient-head regression) is input-robust and is the PRIMARY
+surrogate CD; `cd_int` is kept as an FSC/physics diagnostic and is reliable only
+on the replicas (per_sim, real mesh). `tests/test_compare_fluent.py` pins schema,
+speed convention and offset arithmetic (CPU, no dataset). Full 3-model run is
+deferred until the offset + r1 batches complete.
+
+### ParaView (step 5)
+Not run here (per brief). `fluent/paraview/PARAVIEW_TODO.md` lists the ready
+`.encas` cases and the exact figure specs (B1 grid, B3 the 4 random, B4 offset_2
+SA vs SST, B5 any r1-rescued) for the orchestrator's ParaView step.
