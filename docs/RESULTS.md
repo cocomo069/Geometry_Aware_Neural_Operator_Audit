@@ -166,13 +166,34 @@ GNN. These isolate *why* the models behave as they do.
 
 ---
 
-## 6. Active learning + Fluent verification — Fig 11, Table 5 ⏳ (CPU-gated)
+## 6. Active learning + Fluent verification — Fig 11, Table 5 🔄 (running)
 
 The scoring half (rank a pool of unseen NACA shapes by the ensemble's uncertainty + FSC, then pick
 a diverse set) runs on the existing models and emits `fluent/cases_to_run.json`. The verification
-half (actually simulating those cases in Ansys Fluent, independent of the training solver) is
-**deferred until CPU is free** (per your Fluent job). The falsifiable claim it tests: *do the
-"uncertain" cases really have higher surrogate error than randomly chosen ones?*
+half is now **executing** in Ansys Fluent v211 (6 cores; y+-resolved C-grid; SA turbulence). The
+falsifiable claim it tests: *do the "uncertain" cases really have higher surrogate error than
+randomly chosen ones?*
+
+### 6.1 Grid-independence study ✅ (NACA0012, Re 3e6, α5°, SA)
+
+| level | cells | y+max | C_D | C_L |
+|---|---|---|---|---|
+| L1 (coarse) | 18,796 | 0.87 | 0.011122 | 0.5538 |
+| L2 (medium) | 43,008 | 0.59 | 0.010755 | 0.5530 |
+| L3 (fine) | 96,768 | 0.39 | 0.010755 | 0.5521 |
+
+**C_D changes 3.3% from L1→L2 but only 0.003% from L2→L3 — the solution is grid-independent at
+L2.** y+ < 1 at every level (wall-resolved). C_L varies < 0.3% across all levels. This is the
+numerical-uncertainty band a CFD reviewer requires; the AL-verification and offset cases use the
+L2 resolution. (Sanity: C_L = 0.553 vs thin-airfoil theory 2πα = 0.548, within 1%; C_D in the
+expected 0.008–0.012 range for a smooth NACA0012 at this Re.)
+
+### 6.2 Active-learning verification — running
+
+The 24 AL-selected cases (acquisition / variance / random arms × 8) are solving now. Note ~20 are
+at α=18° (post-stall) where steady RANS may not converge to a flat C_D — that is expected and is
+itself the AL signal (acquisition concentrated on the hardest envelope corners). Surrogate-vs-Fluent
+comparison + ParaView field contours (EnSight export bridge) land when the batch completes.
 
 ---
 

@@ -1,0 +1,6 @@
+                         "Surface Integral Report"
+
+           Area-Weighted Average
+                      Wall Yplus                     
+-------------------------------- --------------------
+                         airfoil           0.27226568
