@@ -178,10 +178,13 @@ def regenerate_and_commit(item: dict) -> None:
         soft([sys.executable, "-m", "scripts.run_uq", "--all", "--seeds", "0,1,2,3,4"])
     soft([sys.executable, "-m", "scripts.make_figures", "--outdir", "paper/figures"])
     soft([sys.executable, "-m", "scripts.make_tables", "--outdir", "paper/tables"])
+    # The user's deliverable is data+graphs in Markdown (no paper prose): refresh the
+    # machine-generated results digest so docs/RESULTS_AUTO.md is always current.
+    soft([sys.executable, "-m", "scripts.make_results_digest"])
     # Commit + push the merged results and regenerated artifacts (own repo, authorized).
     try:
         subprocess.run(["git", "add", "results", "paper/figures", "paper/tables",
-                        "docs/PROGRESS.md"], cwd=str(ROOT), check=False)
+                        "docs/PROGRESS.md", "docs/RESULTS_AUTO.md"], cwd=str(ROOT), check=False)
         msg = f"[results] cycle: merge {item.get('slug','?')} + regen figures/tables"
         subprocess.run(["git", "-c", "user.name=Taimoor Amin",
                         "-c", "user.email=taimooramin419@gmail.com",
