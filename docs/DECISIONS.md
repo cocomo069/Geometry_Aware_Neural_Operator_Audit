@@ -209,3 +209,18 @@ ablations -> gnnens. This drives the GPU pipeline with ZERO dependence on any Cl
 so limit resets don't even pause it. Claude-side finite work (paper/figures) done by
 executor agents. Stop condition: PLAN_PHASE3 definition-of-done. Fluent stays user-CPU-gated.
 To pause: `schtasks /change /tn GeoOpCycle /disable`. Log: logs/cycle.log.
+
+**D-025 · 2026-09-03 · Fluent verification campaign executing (v211, 6 cores, EnSight->ParaView)**
+User lifted the CPU gate ("use fluent cpu gpu whatever, get it done"), specified v211 + 6
+cores + ParaView post. Root-caused the mesh abort: off-by-one in mesh_gen.py wake-cut node
+merge (i>nw+na should be >=) left a 5-node TE cell Fluent rejected; fixed + hardened the
+self-check. Fixed 4 v211 TUI keyword bugs in case_template.jou (direction-0/1 not u/v;
+turb-viscosity-ratio-profile; wall shear-bc removed; cm/steady/compute lines). L1 SA
+validated: CD 0.0111, CL 0.553 (2piα theory 0.548, <1%). y+ target lowered 0.6->0.25 ->
+y+max 0.87 (wall-resolved). ParaView can't read v211 .cas.h5 (CFF/HDF5), so the journal
+now also EnSight-Gold-exports (verified opens in ParaView, 5 scalars+velocity). Full batch
+`fluent/run_batch.py --sst-gridstudy` (30 runs: SA x27 + SST x3 gridstudy) launched
+detached (~24h, 6 cores, sequential, resumable). 20/24 AL cases are post-stall AoA=18 where
+steady RANS may not flat-converge -- that non-convergence IS the AL result (acquisition
+picked the hard envelope), not a bug. Post: ParaView field contours via mcp__paraview__ +
+native baked Fluent display objects; surface.csv feeds surrogate-vs-Fluent comparison (C4).
