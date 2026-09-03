@@ -105,12 +105,22 @@ def main():
     #    auto-extracts the uploaded repo.tar.gz into a read-only ``repo/`` dir,
     #    so copy it into the writable working tree; handle a raw tarball too.
     REPO.mkdir(parents=True, exist_ok=True)
-    extracted = Path(CODE_DATASET_DIR) / "repo"
-    snapshot = Path(CODE_DATASET_DIR) / "repo.tar.gz"
-    if extracted.is_dir():
+    # SEARCH for the code anywhere under /kaggle/input rather than trusting a fixed
+    # mount path: Kaggle mounts datasets inconsistently at /kaggle/input/<slug> vs
+    # /kaggle/input/datasets/<owner>/<slug> (D-020), which silently broke the
+    # ablations launch. Same content-search robustness already used for the cache.
+    extracted = None
+    for cand in Path("/kaggle/input").glob("**/repo"):
+        if cand.is_dir() and (cand / "scripts").is_dir() and (cand / "src").is_dir():
+            extracted = cand
+            break
+    snapshots = list(Path("/kaggle/input").glob("**/repo.tar.gz"))
+    if extracted is not None:
+        print(f"[diag] code: copying extracted repo from {extracted}")
         shutil.copytree(extracted, REPO, dirs_exist_ok=True)
-    elif snapshot.exists():
-        sh(f"tar -xzf {snapshot} -C {REPO}")
+    elif snapshots:
+        print(f"[diag] code: extracting snapshot {snapshots[0]}")
+        sh(f"tar -xzf {snapshots[0]} -C {REPO}")
     else:
         token = ""
         try:
@@ -119,7 +129,7 @@ def main():
         except Exception:
             pass
         if not token:
-            raise SystemExit(f"no repo.tar.gz at {CODE_DATASET_DIR} and no GH_TOKEN secret")
+            raise SystemExit("no repo/ or repo.tar.gz found under /kaggle/input and no GH_TOKEN secret")
         url = REPO_URL.replace("https://", f"https://{token}@")
         sh(f"git clone --quiet {url} {REPO}")
         sh(f"git -C {REPO} checkout --quiet {COMMIT}")
