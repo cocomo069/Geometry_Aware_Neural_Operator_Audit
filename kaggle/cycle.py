@@ -138,19 +138,54 @@ def sweep_is_done(specs: list[str]) -> bool:
     return int(m.group(1)) == 0
 
 
+QUOTA_COOLDOWN_HOURS = 6
+
+
+def _cooldown_path(slug: str) -> Path:
+    return ROOT / "logs" / f"{slug.split('/')[-1]}.quota_cooldown"
+
+
+def on_cooldown(slug: str) -> bool:
+    """True if this slug hit the weekly GPU quota within QUOTA_COOLDOWN_HOURS.
+
+    The Kaggle free tier caps GPU at 30 h/week; when it is exhausted every launch
+    fails identically. Rather than burn a 10 MB push_code upload every 30-min tick
+    for days, back off and retry a few times a day -- still self-heals the moment
+    the weekly quota resets, without the wasteful failed-launch loop.
+    """
+    p = _cooldown_path(slug)
+    if not p.exists():
+        return False
+    import time
+    age_h = (time.time() - p.stat().st_mtime) / 3600.0
+    return age_h < QUOTA_COOLDOWN_HOURS
+
+
 def launch_item(item: dict, owner: str, runs_dataset: str) -> None:
     """push_code then launch this item's specs under its own kernel slug."""
     specs = item["specs"]
+    slug = f"{owner}/{item['slug']}"
     missing = [s for s in specs if not (ROOT / s).is_file()]
     if missing:
         raise SystemExit(f"[cycle] STOP: spec file(s) missing, create them first: {missing}")
     _run([sys.executable, str(HERE / "push_code.py")])
     cmd = [sys.executable, str(HERE / "launch.py"),
-           "--kernel-slug", f"{owner}/{item['slug']}",
-           "--runs-dataset", f"{owner}/{runs_dataset}"]
+           "--kernel-slug", slug, "--runs-dataset", f"{owner}/{runs_dataset}"]
     for sp in specs:
         cmd += ["--sweep", sp]
-    _run(cmd)
+    proc = _run(cmd, check=False, capture=True)
+    out = (proc.stdout or "") + (proc.stderr or "")
+    if "quota" in out.lower():
+        _cooldown_path(slug).write_text(f"quota hit {_utc()}\n", encoding="utf-8")
+        print(f"[cycle] {slug} hit the weekly GPU quota; backing off "
+              f"{QUOTA_COOLDOWN_HOURS} h (auto-retries after, self-heals at reset).")
+    elif proc.returncode != 0:
+        raise SystemExit(f"[cycle] STOP: launch failed ({proc.returncode}) for {slug}")
+
+
+def _utc():
+    import datetime
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 
 def pull_item(item: dict, owner: str, runs_dataset: str) -> None:
@@ -229,6 +264,10 @@ def step(queue_path=QUEUE_PATH, dry_run=False) -> int:
         return 0
 
     if status == ABSENT:
+        if on_cooldown(slug):
+            print(f"[cycle] {slug} in GPU-quota cooldown (<{QUOTA_COOLDOWN_HOURS} h since last "
+                  "quota hit); skipping launch this tick.")
+            return 0
         print(f"[cycle] {slug} not launched yet; launching.")
         launch_item(item, owner, runs_dataset)
         return 0
