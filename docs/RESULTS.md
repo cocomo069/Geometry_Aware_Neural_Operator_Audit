@@ -150,19 +150,48 @@ still drops despite wider intervals.
 
 ---
 
-## 4. Data efficiency — Fig 9 ⏳
+## 4. Data efficiency — Fig 9 ✅
 
-Not yet run. Plan: retrain each model at training-set sizes {25, 50, 100, 200, 400} × 3 seeds and
-plot error vs training size (log-log). Hypothesis (from the literature): the GNN degrades more
-gracefully with scarce data than the transformer, so the model ranking may **flip** at small data
-— a crossing-curves result would be a clean finding.
+Complete: all three models retrained at training-set sizes {25, 50, 100, 200, 400} × 3 seeds
+(45 runs), plus the full-700 point reused from the core grid — a proper log-log error-vs-size curve
+with seed bands (Fig 9, `paper/figures/fig09_data_efficiency.png`). The field-accuracy ordering
+(Transolver > SDF-FNO > GNN) **holds at every training size** down to 25 airfoils — the transformer
+does not lose its edge in the scarce regime here (no curve crossing at these sizes), and all three
+improve smoothly with more data. Per-size numbers are in `docs/RESULTS_AUTO.md` and the run metrics.
 
 ---
 
-## 5. Ablations — Table 4 ⏳
+## 5. Ablations — Table 4 ✅ (2 of 3 axes; see note)
 
-Planned (lean set for v1): SDF-FNO conditioning (SDF vs SDF+normals), physics-loss on/off for the
-GNN. These isolate *why* the models behave as they do.
+**M2 geometry conditioning (SDF vs mask vs SDF+normals), field p rel-L2:**
+
+| conditioning | full | shape5 (OOD) |
+|---|---|---|
+| SDF (baseline) | 0.0257 | 0.0641 |
+| binary mask | 0.0294 | 0.0728 |
+| SDF + normals | 0.0309 | **0.0613** |
+
+**Meaning:** the binary occupancy mask is the worst encoding on both splits; SDF is best
+in-distribution; **SDF+normals gives the best out-of-distribution (shape5) accuracy**. This
+reproduces the Communications Engineering benchmark's finding that SDF beats a mask, and adds that
+surface normals help specifically under shape-family shift.
+
+**M1 physics/force-consistency loss (λ_F on vs off):**
+
+| GNN variant | full p rel-L2 | full FSC | combined p rel-L2 | combined FSC |
+|---|---|---|---|---|
+| baseline (λ_F=0) | 0.074 | 0.0053 | 0.270 | 0.0176 |
+| + force loss (λ_F>0) | 0.104 | **0.0013** | **0.259** | **0.0059** |
+
+**Meaning (a clean predicted negative result):** adding the force-consistency loss **worsens field
+accuracy in-distribution** (0.074 → 0.104) while **sharply cutting FSC** (0.0053 → 0.0013, and 3×
+lower on `combined`). So the physics term does exactly what the spec anticipated — it shrinks the
+residual it directly penalizes without improving (indeed slightly hurting) the field prediction.
+Useful to report: a force-consistency penalty buys self-consistency, not accuracy.
+
+**Note:** the third planned axis (augmentation on/off for the symmetry residual) and larger λ sweeps
+were cut for v1 per the lean-scope plan (PLAN_PHASE2). The ensemble-size ablation is implicit in the
+K∈{1,3,5} conformal files.
 
 ---
 
