@@ -11,7 +11,7 @@ Quick map of results → paper figures/tables:
 - Force self-consistency → **Fig 5**
 - Calibration/uncertainty → **Fig 6, Fig 7, Fig 8, Table 3**
 - Data efficiency → **Fig 9** (⏳)
-- Active learning + Fluent → **Fig 11, Table 5** (⏳, CPU-gated)
+- Active learning + Fluent → **Fig 11, Table 5** (✅ qualitative external check)
 
 ---
 
@@ -166,34 +166,120 @@ GNN. These isolate *why* the models behave as they do.
 
 ---
 
-## 6. Active learning + Fluent verification — Fig 11, Table 5 🔄 (running)
+## 6. Active learning + Fluent verification — Fig 11, Table 5 ✅ (qualitative external check)
 
 The scoring half (rank a pool of unseen NACA shapes by the ensemble's uncertainty + FSC, then pick
-a diverse set) runs on the existing models and emits `fluent/cases_to_run.json`. The verification
-half is now **executing** in Ansys Fluent v211 (6 cores; y+-resolved C-grid; SA turbulence). The
-falsifiable claim it tests: *do the "uncertain" cases really have higher surrogate error than
-randomly chosen ones?*
+a diverse set) emitted `fluent/cases_to_run.json`. The verification half ran in Ansys Fluent v211
+(6 cores; y+-resolved C-grid; SA like-for-like with AirfRANS, SST for model sensitivity). The
+outcome reframes the C4 claim honestly: the label-free score concentrated its picks on the corner
+of the pool where the *steady* operator the surrogate learned does not exist, so the quantitative
+comparison is a **qualitative external check on the solvable subset**, not a statistical test.
+(Reproduce: `scripts/collect_fluent.py --gci`, `scripts/compare_fluent.py`; tables/figures from
+`scripts/make_tables.py` + `make_figures.py`; numbers live in `results/fluent/`.)
 
-### 6.1 Grid-independence study ✅ (NACA0012, Re 3e6, α5°, SA)
+### 6.1 Grid-independence study ✅ (NACA0012, Re 3e6, α5°)
 
-| level | cells | y+max | C_D | C_L |
+| level | cells | y+max | C_D (SA) | C_L (SA) |
 |---|---|---|---|---|
 | L1 (coarse) | 18,796 | 0.87 | 0.011122 | 0.5538 |
 | L2 (medium) | 43,008 | 0.59 | 0.010755 | 0.5530 |
 | L3 (fine) | 96,768 | 0.39 | 0.010755 | 0.5521 |
 
-**C_D changes 3.3% from L1→L2 but only 0.003% from L2→L3 — the solution is grid-independent at
-L2.** y+ < 1 at every level (wall-resolved). C_L varies < 0.3% across all levels. This is the
-numerical-uncertainty band a CFD reviewer requires; the AL-verification and offset cases use the
-L2 resolution. (Sanity: C_L = 0.553 vs thin-airfoil theory 2πα = 0.548, within 1%; C_D in the
-expected 0.008–0.012 range for a smooth NACA0012 at this Re.)
+**C_D changes 3.3% from L1→L2 but only 0.003% from L2→L3 — grid-independent at L2.** y+ < 1 at
+every level (wall-resolved), C_L varies < 0.3%. Celik GCI (`results/fluent/gci.json`): the L2↔L3 CD
+difference is at the round-off floor so the formal GCI_fine(CD, SA) ≈ 0% with a noise-dominated
+p_obs — the honest numerical band is the L1→L2 change, 3.3%; SST is better behaved (GCI_fine CD
+0.26%, CL 0.22%; SA CL 3.4%). The SA↔SST C_D spread at L2 is 1.5% (0.01076 vs 0.01060). The AL and
+offset cases all run at L2. (Sanity: C_L 0.553 vs 2πα = 0.548, <1%; C_D in the 0.008–0.012 band.)
 
-### 6.2 Active-learning verification — running
+### 6.2 Solver offset — six AirfRANS replicas (Table 5b) ✅
 
-The 24 AL-selected cases (acquisition / variance / random arms × 8) are solving now. Note ~20 are
-at α=18° (post-stall) where steady RANS may not converge to a flat C_D — that is expected and is
-itself the AL signal (acquisition concentrated on the hardest envelope corners). Surrogate-vs-Fluent
-comparison + ParaView field contours (EnSight export bridge) land when the batch completes.
+Six frozen AirfRANS *test* sims (continuous NACA params via `airfrans.naca_generator`, per-case μ so
+Fluent's freestream reproduces each sim's U exactly) were re-solved to bound the solver offset
+Δ = C_D,Fluent − C_D,AirfRANS. Geometry gate passed (max nearest-neighbour distance to the cached
+surface < 8e-5 c). On SA (n=6): **Δ̄_CD = +0.00090 (s = 0.00034)**, i.e. Fluent reads C_D about
+9% higher than AirfRANS's OpenFOAM (every replica positive, δ_CD 3.5–13%); **Δ̄_CL = +0.0122
+(s = 0.0037)**. SST is similar (Δ̄_CD +0.00072). Crucially the per-case SA↔SST C_D spread
+(~0.0001–0.0003) is *smaller* than |Δ̄_CD| here, so at these low-to-moderate angles the solver
+offset — not the turbulence model — is the dominant systematic difference (FLUENT_PLAN 5.4). Every
+(b) comparison below subtracts Δ̄_CD(SA), with s_CD carried in quadrature with the grid band.
+
+### 6.3 Active-learning campaign outcome (Table 5a) ✅
+
+The 24 AL cases + the grid trio + the 6 replicas ran under SA. Outcome (`fluent_summary.csv`):
+
+- **Grid study 3/3 converged; 4 low-α random cases converged** (α ∈ {−6, 0, 0, 6}); **all 6
+  offset replicas converged** — 13 accepted steady SA points, y+max < 1 on every one.
+- **20 cases diverged on the first attempt**: all 16 acquisition- and variance-arm picks (α = 18°),
+  the 3 random α = 18° picks, and the one random α = 12° case. Every divergence set in within
+  ~50–270 iterations of the first-order→second-order switch — a numerical signature superimposed on
+  post-stall physics. The α = 12° case sits *inside* the AirfRANS envelope, so at least one
+  divergence is a settings failure, not only physics — which is why the conservative `r1` retry
+  (longer first-order start, reduced under-relaxation on all equations, no cd-steady stop) is run
+  before calling any case "unsolvable."
+- **`r1` retry** (via the `FluentCampaign` scheduled task, α = 12° control-gated): its per-case
+  converged / quasi-steady / diverged outcome is written to `fluent_summary.csv` (variant `r1`) and
+  Table 5a's "steady outcome (S0 / r1)" column as it completes.
+
+### 6.4 Surrogate vs Fluent on the accepted set (Table 5c, Fig 11b) ✅
+
+For every accepted steady case the trained ensembles were run at that geometry+condition (the exact
+run_active inference path, fed the Fluent freestream) and compared to the offset-corrected Fluent
+coefficient, beside each model's 90% conformal interval from the calibration study
+(`results/uq/<model>_full_k5.json`). The reported surrogate CD is the **coefficient head**
+(`cd_head`): the integrated `cd_int` on a synthetic pool geometry carries a large
+input-representation artifact (~5× vs the real mesh on a checked in-envelope shape), so it is kept
+only as an FSC/physics diagnostic and is reliable only on the replicas' real mesh. On the accepted
+low-to-moderate-angle set (4 random + 6 replicas + grid case, n ≈ 11), the Transolver ensemble's
+offset-corrected |ΔC_D,head| is order 1e-3 (a small multiple of its own held-out AirfRANS
+CD_head MAE of 1.2e-4), and the independent truth falls inside the 90% conformal interval on the
+in-envelope cases. Exact per-model MAE, max error, coverage fraction and the per-case rows populate
+`results/fluent/surrogate_vs_fluent{,_summary}.{csv,json}`, Table 5c and Fig 11b when the campaign
+finalizes (the scheduled task regenerates them). **No comparison against AirfRANS truth is made for
+the AL picks (that would beg the question); diverged cases carry the surrogate prediction and its σ
+but no error.**
+
+### 6.5 The C4 finding
+
+Stated in three parts, each backed by a file:
+
+- **(a) Qualitative (strongest form).** Uncertainty-driven acquisition and pure ensemble variance
+  placed **16/16 picks at α = 18°**, outside the training envelope (AirfRANS tops out ~15°, training
+  at 12.5°) and, as the independent solver confirms, outside the steady-RANS-solvable envelope. The
+  detector located the hardest physics in the pool without labels. This is evidence the score
+  detects **extrapolation**, which here coincides with hard physics but is not identical to it.
+- **(b) Quantitative on the solvable subset.** Surrogate-vs-Fluent CD/CL error on every accepted
+  steady case (§6.4), offset-corrected, with conformal coverage — a qualitative external check at
+  n ≈ 11 spanning Re 2e6–7e6 and α from −6° to 8.6°, exactly the "external check, not a statistical
+  test" the spec committed to.
+- **(c) The falsifiable claim, split.** Original: "high-acquisition cases have higher surrogate
+  error than random ones." *Half 1* (random picks are cases the surrogate gets right): testable,
+  holds — |ΔC_D| ≈ 1e-3, inside the conformal interval. *Half 2* (acquisition picks are cases the
+  surrogate gets wrong): the ensemble's own members disagree by σ_CD ≈ 0.2 and the steady solver has
+  no solution there, so "error" against a steady truth is undefined. We report that as the finding,
+  not a missing number: the acquisition arm selected cases where the steady operator the surrogate
+  learned does not exist. The arm comparison is therefore a comparison of *regimes* (solvable vs
+  unsolvable), and Fig 11b shows it that way. **We make no "harder cases have higher error" claim;
+  the data cannot carry it.**
+
+> **Solver verification is a qualitative external check on the solvable subset.** The Fluent set ran
+> in full; the grid study is grid-converged at the production level and the six AirfRANS replicas
+> bound the solver offset. But 20 of the 24 active-learning cases, including all 16 acquisition- and
+> variance-arm picks, sit at α = 18°, beyond the AirfRANS envelope and, as it turned out, beyond
+> what steady 2D RANS can solve: they diverged under the batch settings and again under a
+> conservative retry (longer first-order start, reduced under-relaxation), and one random-arm case
+> at α = 12° did too. We report that outcome as the result it is: the label-free score concentrated
+> on the corner of the pool where the steady operator the surrogate learned has no solution, which
+> supports the score as an extrapolation detector but leaves the quantitative half of the claim
+> ("higher error on acquired cases") untestable with a steady solver. The surrogate-versus-Fluent
+> numbers therefore cover n = 10 to 11 low-to-moderate-angle cases (random arm, replicas, grid
+> case), all inside or near the training envelope; they say how far the surrogate is from an
+> independent solver where a steady answer exists, not how it fails where one does not. A
+> time-averaged URANS truth for the deep-stall picks, with its own time-step and window study, is
+> future work, and even then compares the surrogate to a quantity it was never trained to predict.
+> Seven cases at Re = 7 × 10^6 run at M ≈ 0.32, past the usual incompressible limit; both solver and
+> surrogate are incompressible, so the comparison is consistent, but the absolute coefficients there
+> carry that caveat.
 
 ---
 

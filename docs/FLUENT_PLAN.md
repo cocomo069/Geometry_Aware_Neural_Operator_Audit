@@ -333,9 +333,19 @@ random, because with n = 6 a random draw is likely to miss an axis entirely:
 | 5 | 4-digit at the **high** Re edge (≈6×10⁶) | as above, and the high-Re case is where our y+ sizing is most stressed |
 | 6 | a **5-digit** section, mid conditions | the `shape5` split tests on 5-digit, so an offset measured only on 4-digit sections would not transfer to the split that matters most |
 
-Exact sim ids are pinned once `docs/DATA_NOTES.md` exists (A1 owns the sim-name
-parsing) and are then **frozen and committed** — this list must not be re-drawn
-after seeing results.
+**Frozen and committed** (do not re-draw after seeing results). The six replicas
+are pinned in `docs/PLAN_FLUENT_POST.md` §3 and defined in `fluent/make_offset.py`
+(`OFFSET_SIMS`): offset_1 `..._60.541_2.401_0.081_0.0_16.295` (Re 3.9e6, α 2.4),
+offset_2 `..._62.607_8.578_0.875_0.0_8.812` (α 8.6), offset_3
+`..._71.226_3.333_2.424_2.411_10.928`, offset_4 `..._31.863_-1.58_1.567_6.956_10.028`
+(low-Re edge), offset_5 `..._93.213_3.79_0.418_0.0_9.665` (high-Re edge), offset_6
+`..._64.144_0.932_1.956_3.115_0.0_17.336` (5-digit). "High α" was capped at ~8.6°
+after the α = 12° divergence. Continuous NACA params are meshed via
+`airfrans.naca_generator` (geometry gate: max NN distance to the cached surface
+< 8e-5 c). **Measured offset (SA, n = 6):** Δ̄_CD = +0.00090 (s 0.00034),
+Δ̄_CL = +0.0122 (s 0.0037); Fluent reads C_D ~9% above AirfRANS's OpenFOAM, and
+the SA↔SST spread is smaller than |Δ̄_CD| at these angles (see RESULTS §6.2,
+`results/fluent/offset.csv`).
 
 Replication means matching NACA digits, Re, α, chord and fluid properties
 exactly. The fluid properties in `fluent/cases_to_run.json` (ρ = 1.184 kg/m³,
