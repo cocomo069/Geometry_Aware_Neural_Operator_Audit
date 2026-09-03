@@ -64,7 +64,13 @@ DEFAULTS = dict(
     chord=1.0,
     rho=1.184,
     mu=1.85e-5,
-    y_plus=0.6,
+    # y+ target at the MEDIUM level. Lowered 0.6 -> 0.25 on 2026-09-03 after the
+    # first live L1 solve came back with achieved y+max = 2.10 against a 0.9
+    # target (achieved/target ~ 2.33x, the LE/suction-peak amplification that
+    # FLUENT_PLAN section 3.2 anticipated but under-budgeted). 0.25 is 0.6/2.4,
+    # which puts the achieved max under 1 (wall-resolved) at every grid level.
+    # cases_to_run.json's own `defaults.y_plus` overrides this; keep them equal.
+    y_plus=0.25,
     r_far=30.0,
     x_out=30.0,
     smooth_sweeps=0,
@@ -105,12 +111,18 @@ MODELS = {
         label="sst",
         pretty="k-omega SST",
         cmd="kw-sst yes",
-        n_residuals=5,     # continuity, x-velocity, y-velocity, k, omega
-        # NOT YET VERIFIED on a live v211 SST solve. The `no` (Use Profile?)
-        # answers match the confirmed SA pattern; the SST velocity-inlet key
-        # names (turb-intensity / turb-viscosity-ratio) must be confirmed with
-        # probe_bc_keywords.jou before the first SST case is trusted.
-        inlet_block="turb-intensity\nno\n0.1\nturb-viscosity-ratio\nno\n3",
+        n_residuals=5,     # continuity, x-velocity, y-velocity, k, omega (VERIFIED v211)
+        # VERIFIED against Fluent 2021 R1 (v211), 2026-09-03 (runs/probe_sst.trn):
+        # the residual header is exactly `continuity x-velocity y-velocity k omega`
+        # (5 equations, not 6). The SST velocity-inlet turbulence keys are
+        # `turb-intensity` (percent) and `turb-viscosity-ratio` -- both are PLAIN
+        # numeric fields with NO "Use Profile?" prompt (unlike SA's
+        # `turb-viscosity-ratio-profile`), so the value follows the key directly.
+        # An intervening `no` throws "eval: unbound variable / Invalid" and only
+        # recovers by luck, so it is deliberately absent here. The velocity-inlet
+        # default turbulence-specification method under SST is already
+        # "Intensity and Viscosity Ratio", so ke-spec need not be set.
+        inlet_block="turb-intensity\n0.1\nturb-viscosity-ratio\n3",
         scheme_first=("/solve/set/discretization-scheme/k 0\n"
                       "/solve/set/discretization-scheme/omega 0"),
         scheme_second=("/solve/set/discretization-scheme/k 1\n"

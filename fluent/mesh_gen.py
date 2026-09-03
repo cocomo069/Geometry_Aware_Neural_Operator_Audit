@@ -470,7 +470,14 @@ def build_cgrid(surface: np.ndarray, nw: int, nj: int, chord: float,
     ds[1:-1] = 0.5 * (seg[:-1] + seg[1:])
     ds[0], ds[-1] = seg[0], seg[-1]
     fc = np.maximum(first_cell, ds / AR_CAP)
-    assert np.allclose(fc[nw:nw + na + 1], first_cell),         "aspect-ratio cap moved the first cell on the airfoil -- y+ target broken"
+    # The y+ target is sacred ON THE SECTION: the wake-oriented aspect-ratio cap
+    # must never raise the wall cell there. At small y+ targets (high Re and/or
+    # fine levels) the mid-chord streamwise spacing can exceed first_cell*AR_CAP,
+    # so the max() above would clip the airfoil wall cell and silently break the
+    # y+ sizing. Force the section back to first_cell -- this IS the guarantee the
+    # old assertion only checked -- and let its (still < 1e4) wall aspect ratio
+    # stand. The cap keeps doing its job on the wake rays, where it belongs.
+    fc[nw:nw + na + 1] = first_cell
 
     S = np.empty((ni + 1, nj + 1))
     growths = np.empty(ni + 1)
@@ -811,7 +818,7 @@ def validate_msh(path: Path) -> dict:
 
 def generate(naca: str, re: float, aoa_deg: float, level: int, out: Path,
              chord: float = 1.0, rho: float = RHO_DEFAULT, mu: float = MU_DEFAULT,
-             y_plus: float = 0.6, r_far: float = 30.0, x_out: float = 30.0,
+             y_plus: float = 0.25, r_far: float = 30.0, x_out: float = 30.0,
              smooth_sweeps: int = 0, outer_uniformity: float = 1.0,
              overrides: dict | None = None,
              verbose: bool = True) -> dict:
@@ -880,8 +887,11 @@ def main(argv=None):
     ap.add_argument("--chord", type=float, default=1.0, help="chord in metres")
     ap.add_argument("--rho", type=float, default=RHO_DEFAULT, help="density, kg/m^3")
     ap.add_argument("--mu", type=float, default=MU_DEFAULT, help="dynamic viscosity, Pa.s")
-    ap.add_argument("--y-plus", type=float, default=0.6,
-                    help="y+ target at the MEDIUM level; other levels scale by 1/r")
+    ap.add_argument("--y-plus", type=float, default=0.25,
+                    help="y+ target at the MEDIUM level; other levels scale by 1/r. "
+                         "Lowered 0.6 -> 0.25 on 2026-09-03: the a-priori flat-plate "
+                         "sizing under-predicts the LE/suction-peak y+ ~2.4x, so 0.6 "
+                         "gave an achieved y+max of 2.1; 0.25 keeps achieved max < 1.")
     ap.add_argument("--r-far", type=float, default=30.0, help="far-field radius, chords")
     ap.add_argument("--x-out", type=float, default=30.0, help="outlet plane x, chords")
     ap.add_argument("--smooth-sweeps", type=int, default=0,

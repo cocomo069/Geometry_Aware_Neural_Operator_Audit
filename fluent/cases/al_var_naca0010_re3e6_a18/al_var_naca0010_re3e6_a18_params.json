@@ -12,22 +12,22 @@
   "mach_estimate": 0.13547687861271676,
   "a_ref": 1.0,
   "x_moment": 0.25,
-  "y_plus": 0.6,
-  "y_plus_target": 0.6,
+  "y_plus": 0.25,
+  "y_plus_target": 0.25,
   "boundary_layer": {
     "re_c": 3000000.0,
     "cf": 0.0030879503693483122,
     "tau_w": 4.016747941378859,
     "u_tau": 1.841880451912542,
-    "y1_centre": 5.089906888509153e-06,
-    "first_cell_height": 1.0179813777018306e-05
+    "y1_centre": 2.120794536878814e-06,
+    "first_cell_height": 4.241589073757628e-06
   },
   "grid": {
     "na": 256,
     "nw": 64,
     "nj": 112,
     "n_cells": 43008,
-    "normal_growth": 1.1209080295388345
+    "normal_growth": 1.1304722954825084
   },
   "r_far": 30.0,
   "x_out": 30.0,

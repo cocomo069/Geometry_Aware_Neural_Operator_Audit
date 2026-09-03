@@ -186,18 +186,32 @@ y₁   = 0.6 · 1.85×10⁻⁵ / (1.184 · 1.842) = 5.09×10⁻⁶ m
 Δy₁  = 1.02×10⁻⁵ m  ( = 1.0×10⁻⁵ c )
 ```
 
-### 3.2 Why the target is 0.6 and not 1.0
+### 3.2 Why the target is 0.25 (recalibrated from 0.6 against a live solve)
 
 The correlation is a flat-plate estimate at `x = c`. On an airfoil the real y+
-peaks near the leading edge and under the suction peak, typically 1.5–2.5× the
-flat-plate value, and the correlation ignores the pressure gradient entirely. A
-target of 0.6 leaves headroom so the *achieved maximum* stays below 1 and both
-turbulence models run genuinely wall-resolved, with no switch to wall functions
-part-way along the chord.
+peaks near the leading edge and under the suction peak, and the correlation
+ignores the pressure gradient entirely, so the *achieved* maximum runs well above
+the flat-plate target. The target is set below 1 so that the achieved maximum
+still lands below 1 and both turbulence models run genuinely wall-resolved, with
+no switch to wall functions part-way along the chord.
 
-This is an **a priori sizing rule only**. The journals report the achieved y+
-(`*_yplus_max.txt`, `*_yplus_avg.txt`) and those are the numbers Table 5 quotes.
-If the achieved maximum exceeds 1, the case is rejected and re-meshed — see §6.
+**The original 0.6 was too optimistic and is now measured, not assumed.** The
+first live v211 solve (NACA 0012, Re 3×10⁶, α = 5°, coarse level, y+ target 0.90)
+came back with an **achieved y+max of 2.10** — a ratio of achieved-to-target of
+~2.33, above the 1.5–2.5 band the original text guessed at and, more to the
+point, well over 1. The medium-level target was therefore lowered **0.6 → 0.25
+on 2026-09-03** (a factor of ~2.4, i.e. 1/2.33 with a hair of margin). Re-meshing
+and re-solving the same coarse case at the new target (level-1 target 0.375) gave
+**achieved y+max = 0.87, y+avg = 0.41** — wall-resolved. Since the coarse level
+carries the largest target, all three grid levels are now below 1.
+
+This is still an **a priori sizing rule only**. The journals report the achieved
+y+ (`*_yplus_max.txt`, `*_yplus_avg.txt`) and those are the numbers Table 5
+quotes. If the achieved maximum exceeds 1, the case is rejected and re-meshed —
+see §6. Note the α = 18° active-learning cases have far stronger suction peaks
+than this α = 5° calibration case, so their achieved y+max may still approach or
+exceed 1 at the leading edge; those cases are flagged (post-stall) and checked
+individually.
 
 ### 3.3 Growth and far-field extent
 
@@ -225,7 +239,9 @@ for SA tells you nothing about the SST results reported beside it.
 
 **Refinement is systematic in every direction, including at the wall.** Cell
 counts scale by ≈1.5 per direction per level, and the y+ target scales by 1/1.5
-alongside them (0.90 / 0.60 / 0.40), so `Δy₁` refines with everything else. All
+alongside them (0.375 / 0.25 / 0.167 coarse→fine, recalibrated from the original
+0.90 / 0.60 / 0.40 after the live-solve y+ measurement in §3.2), so `Δy₁` refines
+with everything else. All
 three levels stay wall-resolved (y+ < 1), so no wall-treatment switch
 contaminates the comparison. Holding `Δy₁` fixed across levels — common RANS
 practice — would have broken the systematic-refinement assumption that
@@ -233,9 +249,13 @@ Richardson extrapolation rests on, and is deliberately not done here.
 
 | Level | Cells N | h ∝ N^(−1/2) (rel.) | y+ target | Δy₁ (m) |
 |---|---|---|---|---|
-| 3 fine (φ₁) | 96 768 | 1.000 | 0.40 | 6.79×10⁻⁶ |
-| 2 medium (φ₂) | 43 008 | 1.500 | 0.60 | 1.02×10⁻⁵ |
-| 1 coarse (φ₃) | 18 796 | 2.269 | 0.90 | 1.53×10⁻⁵ |
+| 3 fine (φ₁) | 96 768 | 1.000 | 0.167 | 2.83×10⁻⁶ |
+| 2 medium (φ₂) | 43 008 | 1.500 | 0.25 | 4.24×10⁻⁶ |
+| 1 coarse (φ₃) | 18 796 | 2.269 | 0.375 | 6.36×10⁻⁶ |
+
+(y+ targets and Δy₁ recalibrated 2026-09-03; the Δy₁ values above are for the
+baseline Re = 3×10⁶ case — the active-learning cases at higher Re have smaller
+Δy₁ still, since Δy₁ ∝ 1/u_τ. See §3.2 for the calibration.)
 
 Refinement ratios `r₂₁ = h₂/h₁ = 1.500` and `r₃₂ = h₃/h₂ = 1.513`, both above
 the 1.3 minimum the GCI procedure requires, and near enough to equal that the

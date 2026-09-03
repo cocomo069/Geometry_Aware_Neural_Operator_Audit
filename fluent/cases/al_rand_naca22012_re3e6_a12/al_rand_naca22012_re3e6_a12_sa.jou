@@ -51,7 +51,6 @@
 /file/read-case "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/al_rand_naca22012_re3e6_a12/al_rand_naca22012_re3e6_a12.msh"
 /mesh/check
 /mesh/quality
-/mesh/repair-improve/report-poor-elements
 
 ; ---------------------------------------------------------------------
 ; 2. Solver: pressure-based, steady, 2D planar
@@ -282,7 +281,26 @@ ok
 /file/export/ascii "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/al_rand_naca22012_re3e6_a12/al_rand_naca22012_re3e6_a12_sa_surface.csv" airfoil () no pressure pressure-coefficient x-wall-shear y-wall-shear wall-shear skin-friction-coef y-plus () yes
 
 ; ---------------------------------------------------------------------
-; 15. Bake display objects into the case for later GUI inspection
+; 15. EnSight Gold field export -- ParaView is the post tool of record
+; ---------------------------------------------------------------------
+; ParaView's built-in Fluent reader CANNOT open a v211 .cas.h5 (CFF/HDF5); it
+; reads EnSight Gold cleanly. This writes al_rand_naca22012_re3e6_a12_sa.encas plus
+; its .geo / .scl* / .vel companions, which ParaView opens directly for the
+; volume-field contours (pressure, cp, velocity magnitude, wall-shear x/y).
+;
+; VERIFIED TUI arg order against a live v211 solver (runs/probe_ensight3.trn):
+;   ensight-gold <file>
+;     <scalar>... ()   scalar/function list FIRST (before anything else)
+;     yes              write in binary format?
+;     *  ()            cell zones: all, then () to end the list
+;     ()               interior zone surfaces: none
+;     no               cell-centered? (no = node-centred, what ParaView wants)
+; The scalar list comes immediately after the filename -- a common trap is to
+; put the cell-zone/binary answers first, which silently exports velocity only.
+/file/export/ensight-gold "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/al_rand_naca22012_re3e6_a12/al_rand_naca22012_re3e6_a12_sa.encas" pressure pressure-coefficient velocity-magnitude x-wall-shear y-wall-shear () yes * () () no
+
+; ---------------------------------------------------------------------
+; 16. Bake display objects into the case for later GUI inspection
 ; ---------------------------------------------------------------------
 ; Headless Fluent cannot render a PNG, but these objects PERSIST in the saved
 ; case, so the case can be opened in the GUI later and screenshotted with
@@ -299,3 +317,4 @@ ok
 /file/stop-transcript
 exit
 ok
+/exit yes

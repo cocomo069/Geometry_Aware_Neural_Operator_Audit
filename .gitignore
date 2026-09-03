@@ -23,6 +23,13 @@ fluent/runs/
 *.cas
 *.dat
 *.trn
+# EnSight Gold field exports (ParaView post) -- regenerable, like the .cas/.dat
+*.encas
+*.geo
+*.scl*
+*.vel
+fluent/cases/**/*.xml
+fluent/runs/**/*.xml
 
 # OS
 Thumbs.db

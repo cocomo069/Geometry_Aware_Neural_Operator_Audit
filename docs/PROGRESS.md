@@ -1213,3 +1213,84 @@ verified. Before the first SST case, run `probe_bc_keywords.jou` on it to confir
 the SST inlet turbulence keywords (turb-intensity / turb-viscosity-ratio and
 their use-profile prompts) and the 5-equation residual count, since those were
 reconstructed, not measured.
+
+## 2026-09-03 — Fluent full-campaign prep (Opus): EnSight, y+ fix, SST, batch runner
+
+Prepared the whole 2D RANS campaign to run unattended as a standalone background
+process. No long batch was run (that is ~17 h and is left for the user); only the
+machinery was built and validated with short probes and one capped solve.
+
+### 1. ParaView bridge via EnSight Gold export (verified end to end)
+
+ParaView cannot open a v211 `.cas.h5` (CFF/HDF5), so the case template now writes
+an EnSight Gold export after the solve+save. The exact v211 TUI arg order was
+found by probing the live solver on the existing L1 case+data (three iterations,
+`runs/probe_ensight*.trn`): after the filename the **scalar list comes first**,
+then binary?, then cell zones, then interior surfaces, then cell-centred. The
+naive "surfaces/binary first" ordering silently exports velocity only. The
+verified one-liner baked into `templates/case_template.jou`:
+
+    /file/export/ensight-gold "<out>.encas" pressure pressure-coefficient \
+        velocity-magnitude x-wall-shear y-wall-shear () yes * () () no
+
+Output opens cleanly in ParaView (`paraview_open_data`): all 5 scalars + the
+velocity vector, cp range [-1.89, 0.999], matching the known suction peak /
+stagnation. The baked-in native Fluent display objects are kept as well (GUI
+screenshots). EnSight artifacts (`*.encas/.geo/.scl*/.vel`, ensight `.xml`) added
+to `.gitignore` — regenerable like the `.cas/.dat`.
+
+### 2. y+ fix — target lowered 0.6 → 0.25, all meshes regenerated
+
+The first L1 solve gave achieved y+max 2.10 against a 0.90 target (ratio ~2.33),
+over the wall-resolved <1 requirement. Lowered the medium-level y+ target 0.6 →
+0.25 (factor ~2.4) in `cases_to_run.json` defaults, `make_cases.py` and
+`mesh_gen.py`, and regenerated all 27 meshes + 54 journals. Confirmed on a
+regenerated L1 (target 0.375) with a capped solve through the new batch runner:
+**achieved y+max 0.87, y+avg 0.41 — wall-resolved.** Since L1 carries the largest
+target, all three grid levels are now < 1. `mesh_gen.build_cgrid` fix: at the
+smaller first cell the mid-chord streamwise spacing can exceed
+`first_cell*AR_CAP`, which tripped the aspect-ratio-cap assertion on the section;
+replaced the assertion with an explicit `fc[section] = first_cell` (the cap must
+never move the wall cell there — that IS the guarantee it was only checking).
+Max AR rose to ~6.5e3 (still < the 1e4 acceptance floor); all min_jacobian > 0.
+
+### 3. SST keywords + residual count (probed live, `runs/probe_sst.trn`)
+
+Residual header is exactly `continuity x-velocity y-velocity k omega` = **5
+equations** (n_residuals=5 was right; the old "6" comment was wrong). The SST
+velocity-inlet keys `turb-intensity` / `turb-viscosity-ratio` are PLAIN numeric
+fields with NO "Use Profile?" prompt (unlike SA's `-profile` key), so the value
+follows the key directly; the previous `no` line threw "eval: unbound variable"
+and only recovered by luck. Removed the `no` lines from the SST `inlet_block` in
+`make_cases.py` and re-rendered. SST velocity-inlet default turbulence-spec is
+already "Intensity and Viscosity Ratio", so ke-spec need not be set.
+
+### 4. Standalone batch runner `fluent/run_batch.py`
+
+Resumable, sequential, drives `fluent.exe` directly (not the MCP). Per case:
+builds the mesh if missing (runs the case's own `mesh.cmd`), skips if
+`_coeffs.out` has a final row AND `.cas.h5` exists, else launches
+`fluent.exe 2ddp -g -t6 -i <journal> -wait` blocking, appends to
+`logs/fluent_batch.log`, continues on error/timeout. Flags: `--dry-run`,
+`--only`, `--models`, `--sst-gridstudy`, `--smoke-iters` (validation cap),
+`--timeout-min`. Validated: dry-run lists 27 SA (30 with `--sst-gridstudy`,
+gridstudy first); skip logic detects a complete case; one real capped launch
+(L1 SA, 800 iters, 2.9 min) produced cd 0.0112 / cl 0.550, the y+ files above and
+the EnSight export. Smoke artifacts were cleared afterward so the real run
+re-solves L1 to full convergence.
+
+### 5. Template cleanups
+
+Removed the untested `/mesh/repair-improve/report-poor-elements` line (the
+proven L1 journal never had it) and added a final `/exit yes`.
+
+### Cases expected to be hard
+
+20 of the 24 AL cases sit at **α = 18° (post-stall)**; steady RANS may not
+converge to a flat CD there and several of those meshes have min orthogonality
+0.13–0.19 (inherent to high-AoA thick-section C-grids, below the 0.15 acceptance
+floor — flag, not fold; all Jacobians positive). The seven Re = 7×10⁶ α = 18°
+cases also sit at M ≈ 0.32, marginally past the incompressible assumption. The
+random arm's low-α / α = 0 cases (`al_rand_*_a0`, `_a6`, `_am6`, `_a12`) are the
+safe ones. Their non-convergence, if it happens, is itself the active-learning
+result (acquisition picked the hard corner of the envelope), not a setup bug.

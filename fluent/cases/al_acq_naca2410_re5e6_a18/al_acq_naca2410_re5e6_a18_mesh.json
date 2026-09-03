@@ -9,14 +9,14 @@
   "nu": 1.5625e-05,
   "u_inf": 78.125,
   "a_ref": 1.0,
-  "y_plus_target": 0.6,
+  "y_plus_target": 0.25,
   "boundary_layer": {
     "re_c": 5000000.0,
     "cf": 0.002870632735551912,
     "tau_w": 10.372403439005932,
     "u_tau": 2.959810108358101,
-    "y1_centre": 3.1674329287295405e-06,
-    "first_cell_height": 6.334865857459081e-06
+    "y1_centre": 1.3197637203039753e-06,
+    "first_cell_height": 2.6395274406079506e-06
   },
   "grid": {
     "na": 256,
@@ -30,8 +30,8 @@
       -0.23176274578121053
     ],
     "wake_growth": 1.0959534222530265,
-    "normal_growth": 1.1262239722086984,
-    "first_cell": 6.334865857459081e-06,
+    "normal_growth": 1.1358033778752135,
+    "first_cell": 2.6395274406079506e-06,
     "shortest_ray": 29.76178119776945,
     "r_far": 30.0,
     "x_out": 30.0,
@@ -42,12 +42,12 @@
   },
   "quality": {
     "n_cells": 43008,
-    "min_area": 9.630437280971904e-10,
+    "min_area": 4.012681714682387e-10,
     "max_area": 1.7990043391381505,
-    "min_jacobian": 9.63043498558637e-10,
+    "min_jacobian": 4.012681244008136e-10,
     "max_aspect_ratio": 5228.9016092760885,
-    "min_orthogonality": 0.18846221009517472,
-    "mean_orthogonality": 0.7623795998294053
+    "min_orthogonality": 0.17117289645506994,
+    "mean_orthogonality": 0.7494742281280912
   },
   "counts": {
     "n_nodes": 43440,
