@@ -146,14 +146,12 @@ and derived coefficients has not been systematically reported.
 
 \begin{figure}[t]
   \centering
-  % \includegraphics[width=\textwidth]{figures/fig01_schematic.pdf}
-  \figph[0.92\textwidth]{Figure 1. Schematic: the three architecture families
-    (graph, SDF-conditioned FNO, geometry transformer) across the top, sharing a
-    single evaluation protocol beneath --- force integration, consistency
-    residuals, ensembling and conformal calibration --- to make visually
-    explicit that only the encoder changes.}
+  \includegraphics[width=0.92\textwidth]{figures/fig01_schematic.pdf}
   \caption{The three geometry-encoding families and the shared evaluation
-           protocol beneath them.}
+           protocol beneath them: only the encoder changes; the force
+           integration, the six OOD splits, the ensembling/conformal
+           calibration and the acquisition/Fluent loop are identical across
+           \Mgnn, \Mfno{} and \Mtrans.}
   \label{fig:schematic}
 \end{figure}
 
@@ -486,25 +484,40 @@ is where an augmentation ablation would show whether it can be trained away.
 
 \begin{figure}[t]
   \centering
-  % \includegraphics[width=\textwidth]{figures/fig02_cp_profiles.pdf}
-  \figph[0.92\textwidth]{Figure 2. $\cp$ distributions on four airfoils,
-    prediction against truth with the ensemble interval shaded: one
-    in-distribution and three out-of-distribution (Reynolds, angle-of-attack,
-    shape-family). Chosen to show where the interval widens and whether it
-    widens in the right place.}
-  \caption{Surface pressure distributions, prediction versus truth with ensemble
-           intervals, on one in-distribution and three OOD cases.}
+  \includegraphics[width=\textwidth]{figures/fig02_cp_profiles.pdf}
+  \caption{\Mtrans{} surface $\cp$, prediction versus truth, on one
+           representative test simulation per split (full, Reynolds shift,
+           AoA shift, shape family), upper and lower surface shown separately
+           (solid/dashed), $\cp$ axis inverted (suction up, the aerodynamics
+           convention). The shaded band is the $K=5$ deep-ensemble
+           $\pm 1$ standard deviation. In distribution the ensemble mean is
+           visually indistinguishable from truth and the band is a hairline;
+           under Reynolds and AoA shift the mean develops a systematic
+           offset near the suction peak and the band widens but --- exactly
+           the pattern behind \S\ref{sec:results_calibration}'s coverage
+           collapse --- not enough to keep the truth curve inside it; under
+           shape-family shift (a new NACA digit family, same flow regime) the
+           fit stays close and the band stays narrow, consistent with
+           \splitname{shape5} being the mildest single-axis shift for every
+           architecture (\S\ref{sec:results_ood}).}
   \label{fig:cp_profiles}
 \end{figure}
 
 \begin{figure}[t]
   \centering
-  % \includegraphics[width=\textwidth]{figures/fig03_car_surfaces.pdf}
-  \figph[0.92\textwidth]{Figure 3. Surface pressure on three DrivAerNet++ cars:
-    prediction, truth, and signed error, on a shared colour scale so the three
-    panels are honestly comparable. One car per body style.}
-  \caption{Predicted and true surface pressure with signed error on three
-           DrivAerNet++ designs.}
+  \includegraphics[width=\textwidth]{figures/fig03_surface_fields.pdf}
+  \caption{\Mtrans{} surface $\cp$ scattered on the airfoil contour --- truth,
+           prediction, and absolute error, shared colour scale on the first
+           two panels per row --- for one in-distribution simulation
+           (\splitname{full}) and one on the hardest shift
+           (\splitname{combined}, shape and Reynolds shifted together), seed
+           0. This panel replaces the three-DrivAerNet++-cars figure planned
+           in the original design doc: DrivAerNet++ is out of scope for this
+           preprint (\S\ref{sec:data}), so the "surface field" slot is filled
+           with a second, complementary view of the same AirfRANS airfoils
+           Figure~\ref{fig:cp_profiles} plots as a profile --- here the error
+           is visibly concentrated near the leading edge, where the
+           combined-shift suction peak is most mispredicted.}
   \label{fig:car_surfaces}
 \end{figure}
 
@@ -616,24 +629,97 @@ acquisition score of \S\ref{sec:activelearning}.
 
 \begin{figure}[t]
   \centering
-  % \includegraphics[width=0.7\textwidth]{figures/fig10_symmetry.pdf}
-  \figph[0.7\textwidth]{Figure 10. Symmetry residual per model, with and without
-    rotation/reflection augmentation, plus the antisymmetry check
-    $\Cl(-\aoa) \approx -\Cl(\aoa)$ on symmetric sections.}
-  \caption{Symmetry residual per model, with and without augmentation.}
+  \includegraphics[width=0.75\textwidth]{figures/fig10_symmetry.pdf}
+  \caption{Symmetry (mirror-equivariance) residual per model, by split, log
+           scale; no augmentation is applied in any run reported here
+           (\S\ref{sec:models}). The residual grows from \splitname{full} to
+           \splitname{aoa} for every architecture and never approaches zero,
+           confirming that none of the three encodings is built to be
+           equivariant to reflection; \Mtrans{} is consistently the least
+           violating of the three, \Mgnn{} and \Mfno{} track each other
+           closely. The augmentation/loss ablation that would test whether
+           this is trainable away is Table~\ref{tab:ablations}'s
+           \Losssym{} row (pending, \S\ref{sec:results_ablations}).}
   \label{fig:symmetry}
 \end{figure}
 
 \subsection{Calibration}
 \label{sec:results_calibration}
 
-\todo{In-distribution coverage hitting nominal is a sanity check, not a finding.
-The finding is the OOD coverage curve. Expect substantial undercoverage under
-shape-family and post-stall shift, with ensemble-only intervals worse than
-conformalised ones in-distribution but similarly broken outside it. If that
-holds, the honest conclusion is: conformal prediction fixes calibration but not
-robustness, and a conformal guarantee must not be read as protection against
-design-space extrapolation.}
+Table~\ref{tab:calibration} and Figures~\ref{fig:reliability}--\ref{fig:width_dists}
+report split-conformal calibration of the integrated drag band $\Cdint$ at
+nominal 80/90/95\%, matched (calibrate and test on the same split's own sets)
+and transfer (calibrate on \splitname{full}, deploy on the shifted split).
+Ensembles are $K=5$ for \Mfno{} and \Mtrans{} on \{\splitname{full},
+\splitname{reynolds}, \splitname{aoa}, \splitname{shape5}\}; \Mgnn's ensembles
+were still training on the cloud queue as this section was written, so every
+\Mgnn{} row here is $K=1$ --- a single member, the \emph{absolute} nonconformity
+score (a fixed interval half-width, not one that adapts to how hard a given
+input is), not the input-adaptive \emph{normalized} score $K\geq3$ enables. That
+distinction matters for reading the table: \Mgnn's coverage swings are what a
+fixed-width band produces when calibration-set and test-set difficulty differ,
+not a smooth degradation curve, and should not be over-interpreted as a
+property of the graph encoder specifically until the $K\geq3$ row lands
+(\S\ref{sec:results_ablations}/PLAN\_PHASE3.md \S3).
+
+\textbf{In distribution, matched calibration is close to nominal for every
+model}: \Cdint{} coverage at 90\% is $0.845$ (\Mgnn, $K{=}1$), $0.955$ (\Mfno),
+$0.91$ (\Mtrans) --- the conformal guarantee behaving as designed when
+calibration and test data are exchangeable. This is the sanity check, not the
+finding.
+
+\textbf{Under shift, coverage moves in both directions and the guarantee is not
+reliable}, worst on the two flow-regime shifts. On \splitname{reynolds}, \Mgnn{}
+collapses to $0.698$ at nominal 90\% (ECE $0.214$, a $\sim$10--20$\times$ jump
+over its own in-distribution ECE of $0.045$); \Mfno{} and \Mtrans{} hold up
+better under this shift ($0.895$ and $0.938$) but are not exempt from failure
+elsewhere: \Mfno{} undercovers on \splitname{shape5} ($0.763$ at nominal 90,
+ECE $0.12$, its worst split), the shift \S\ref{sec:results_ood} found mildest
+for \emph{field accuracy} but not for calibration --- a reminder that these are
+different failure modes measured on the same axis, not the same number twice.
+\Mtrans{} is the most consistently calibrated of the three across every split
+reported (coverage within $0.87$--$0.95$ of a 0.90 nominal target everywhere),
+matching its position as the field-accuracy and (mostly) self-consistency
+leader, but even it undercovers on \splitname{shape5} ($0.867$) rather than
+holding exactly at nominal.
+
+\textbf{Matched versus transfer calibration does not order cleanly.} Naively,
+matched calibration should be the more defensible number (it uses that split's
+own, in-principle-exchangeable calibration set) and transfer should be worse (it
+reuses \splitname{full}'s calibration set on a distribution it was never fit
+to). The data does not cooperate: on \splitname{reynolds}, transfer calibration
+\emph{outcovers} matched for \Mgnn{} ($0.825$ vs.\ $0.698$) and for \Mfno{}
+($0.942$ vs.\ $0.895$); on \splitname{shape5}, transfer beats matched for
+\Mfno{} ($0.847$ vs.\ $0.763$) but loses to it for \Mgnn{} ($0.841$ vs.\
+$0.945$, where matched \emph{overcovers}) and for \Mtrans{} ($0.814$ vs.\
+$0.867$). No single choice of calibration set is reliably safer once
+exchangeability has already broken; this is itself evidence that the failure is
+structural (the score's relationship to error has genuinely changed under
+shift) rather than a fixable artifact of which calibration set was used.
+
+\textbf{Interval width widens under shift for every model (Figure~\ref{fig:width_dists}),
+but under-compensates.} $\Cdint$ band width at nominal 90\% grows from
+\splitname{full} to the harder splits --- e.g.\ \Mfno{} from $0.0085$ (full) to
+$0.022$ (reynolds), \Mtrans{} from $0.0056$ to $0.021$ --- roughly $2.5$--$3.7\times$.
+That the model's own uncertainty estimate grows at all under shift is
+informative (an unresponsive score would be worse), but it is not enough:
+coverage still drops on the same splits where width grows most, which is
+exactly what "widening honestly but insufficiently" looks like in the reliability
+diagram (Figure~\ref{fig:reliability}) as curves that bow away from the identity
+line specifically on the OOD splits.
+
+\textbf{The honest conclusion, stated as plainly as the numbers allow: split
+conformal prediction repairs in-distribution calibration but its coverage
+guarantee is not robust to distribution shift.} A 90\% conformal interval
+computed on this study's splits must not be read as a 90\% probability
+statement once the input has moved outside the calibration distribution ---
+under a flow-regime shift (\splitname{reynolds}, \splitname{aoa}) that
+probability can be as low as $0.70$ in this study, not $0.90$. Practically:
+recalibrating on data from the deployment distribution, when any is available,
+helps unpredictably rather than reliably (the matched-vs-transfer result
+above), and the safer default for a practitioner is to treat any conformal
+interval as calibrated only for inputs the acquisition/monitoring pipeline of
+\S\ref{sec:activelearning} has confirmed are in-distribution.
 
 On a calibration set of $n$ simulations disjoint from train and test, with
 normalised nonconformity score
@@ -651,49 +737,36 @@ points within a simulation are \emph{not} exchangeable, so we conformalise at th
 simulation level with a quantile-over-points score and state the weaker
 interpretation rather than implying a pointwise guarantee.
 
-\begin{table}[t]
-  \centering
-  \caption{\textbf{Table 3.} Calibration: empirical coverage and mean/median
-    interval width at nominal 80\%, 90\% and 95\%, by model and split, for
-    ensemble-only and conformalised intervals, plus the OOD-to-in-distribution
-    coverage ratio --- the single number summarising calibration robustness.}
-  \label{tab:calibration}
-  \begin{tabular}{llrrrrrr}
-    \toprule
-    & & \multicolumn{3}{c}{Coverage} & \multicolumn{3}{c}{Width} \\
-    \cmidrule(lr){3-5}\cmidrule(lr){6-8}
-    Split & Model & 80\% & 90\% & 95\% & 80\% & 90\% & 95\% \\
-    \midrule
-    \multicolumn{8}{c}{\itshape \todo{auto-generated from results/uq/*.json}} \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+\input{tables/tab3_calibration}
 
 \begin{figure}[t]
   \centering
   \begin{subfigure}{0.48\textwidth}\centering
-    % \includegraphics[width=\textwidth]{figures/fig06_reliability.pdf}
-    \figph[0.95\textwidth]{Figure 6. Reliability diagram: empirical against
-      nominal coverage, one line per split, ensemble-only versus conformalised.}
+    \includegraphics[width=\textwidth]{figures/fig06_reliability.pdf}
     \caption{Reliability.}\label{fig:reliability}
   \end{subfigure}\hfill
   \begin{subfigure}{0.48\textwidth}\centering
-    % \includegraphics[width=\textwidth]{figures/fig07_coverage_vs_shift.pdf}
-    \figph[0.95\textwidth]{Figure 7. Coverage against shift magnitude $\shift$,
-      showing where exchangeability stops holding and the guarantee lapses.}
+    \includegraphics[width=\textwidth]{figures/fig07_coverage_vs_shift.pdf}
     \caption{Coverage versus shift.}\label{fig:coverage_vs_shift}
   \end{subfigure}
-  \caption{Calibration in-distribution and under shift.}
+  \caption{Calibration in-distribution and under shift, largest available $K$
+           per model ($K=5$ for \Mfno/\Mtrans, $K=1$ for \Mgnn): (a) empirical
+           versus nominal coverage for the matched-calibration $\Cdint$ band;
+           (b) empirical coverage at nominal 90\% against split, matched
+           (dashed) versus transfer-calibrated on \splitname{full} (solid).}
   \label{fig:calibration}
 \end{figure}
 
 \begin{figure}[t]
   \centering
-  % \includegraphics[width=0.7\textwidth]{figures/fig08_width_dists.pdf}
-  \figph[0.7\textwidth]{Figure 8. Interval-width distributions, in-distribution
-    against OOD, per model. Distinguishes intervals that widen honestly under
-    shift from intervals that stay narrow and simply stop covering.}
-  \caption{Interval-width distributions, in-distribution versus OOD.}
+  \includegraphics[width=0.9\textwidth]{figures/fig08_interval_width.pdf}
+  \caption{Interval-width distributions, in-distribution versus OOD, matched
+           calibration: mean interval width at nominal 90\%, per model and
+           split, for the $\Cdint$ coefficient band and the pointwise field
+           band (log scale). Widths grow from \splitname{full} outward for
+           every model, but --- as Table~\ref{tab:calibration} and
+           Figure~\ref{fig:coverage_vs_shift} show together --- not by enough
+           to keep coverage at nominal under shift.}
   \label{fig:width_dists}
 \end{figure}
 
@@ -743,11 +816,13 @@ pending) is designed to test.
 
 \begin{table}[t]
   \centering
-  \caption{\textbf{Table 4.} Ablations: geometry encoding for \Mfno{} (SDF versus
-    binary occupancy mask versus SDF plus normals), physics-loss weights
-    $\lambda \in \{0, 0.01, 0.1, 1\}$, ensemble size $\nens \in \{1,3,5,10\}$,
-    conformal score choice, surface-only versus volume-then-trace, and
-    rotation/reflection augmentation on and off.}
+  \caption{\textbf{Table 4.} Ablations (lean v1 set): geometry encoding for
+    \Mfno{} (SDF versus binary occupancy mask versus SDF plus normals),
+    physics-loss weight $\lamF \in \{0, 1\}$, ensemble size
+    $\nens \in \{1,3,5\}$ and conformal score choice (normalized versus
+    absolute) --- both already computable from \texttt{results/uq}
+    (\S\ref{sec:results_calibration}) but not yet tabulated here --- and
+    field-aggregation choice (max versus quantile-0.9).}
   \label{tab:ablations}
   \begin{tabular}{llrrrr}
     \toprule
@@ -763,7 +838,14 @@ pending) is designed to test.
 \label{sec:activelearning}
 % =====================================================================
 
-\todo{One page. The falsifiable claim goes here and must be stated as such.}
+This section turns \FSC{} and ensemble spread from diagnostics into a use: a
+label-free score that picks which of many un-simulated candidates is worth the
+cost of a new CFD run. The scoring half runs today on the existing \Mtrans{}
+ensemble and needs no Fluent; the verification half --- actually running the
+selected cases through an independent solver and checking whether the
+"uncertain" ones really were harder --- is authored and ready but deferred
+pending CPU availability (\S\ref{sec:discussion}), so this section reports the
+selection honestly as a selection, not yet as a validated claim.
 
 The pool is a parametric family of NACA 4- and 5-digit sections crossed with a
 grid of $(\Rey, \aoa)$, none in the training set. Each candidate is scored
@@ -777,6 +859,42 @@ $\betaacq = \gammaacq = 1$ by default plus a sensitivity check. The top-$k$ are
 selected subject to greedy farthest-point diversity in normalised design space,
 so the selection cannot collapse onto $k$ near-duplicates. Baselines: random
 selection and pure ensemble-variance selection.
+
+\paragraph{The run.} Scorer \Mtrans{} at $K=5$ on \splitname{full}
+(\texttt{transolver\_full\_k5}); pool of 630 candidates, NACA 4- and 5-digit
+sections $\times$ $\Rey\in\{2,\dots,7\}\times10^6$ $\times$ $\aoa\in\{-6,0,6,12,18\}\degrees$,
+every combination that coincides with a training case excluded (none did, by
+construction of the grid); three arms of $k=8$ each (acquisition, ensemble
+variance only, random). Figure~\ref{fig:active_learning}(a) plots the full pool
+against $\aoa$, coloured by $\Rey$, with the three arms' selections marked; the
+qualitative result is unambiguous before any Fluent run is needed: both
+acquisition and pure-variance selection place all 8 of their picks at
+$\aoa=18\degrees$, the top of the pool's angle grid and --- given the training
+range in \S\ref{sec:data} tops out at $12.5\degrees$ --- comfortably into
+post-stall territory at these Reynolds numbers, while the random arm spreads
+across the whole envelope, including several low-angle, near-in-distribution
+cases. Table~\ref{tab:fluent} lists the 8 acquisition-arm cases with their
+ensemble spread, \FSC, symmetry residual and acquisition score.
+Solver-verification status is exactly what the table's caption says: selected,
+not yet verified.
+
+\input{tables/tab5_selected_cases}
+
+\paragraph{The falsifiable claim, restated precisely.} The claim this section
+is designed to test is: \emph{cases with high acquisition score have higher
+surrogate error, against the true (Fluent) solution, than randomly selected
+ones.} That test needs the independent solver and cannot be run on the
+surrogate's own training-data-derived truth without begging the question ---
+computing "surrogate error" against AirfRANS would only confirm that the
+acquisition score correlates with what it was built from. What \emph{can} be
+said now, honestly, from the selection alone: the acquisition and
+pure-variance arms agree with each other (all 8 vs.\ all 8 at
+$\aoa=18\degrees$) and disagree sharply with random, which is the necessary
+precondition for the falsifiable test to be informative --- if the arms had
+picked statistically indistinguishable cases, no Fluent result could
+discriminate them. Whether the harder-\emph{looking} cases are actually harder
+in an independent solver is the open question \S\ref{sec:discussion} states as
+a limitation, not a result.
 
 \paragraph{Solver verification.}
 Selected cases are run in Ansys Fluent: 2D steady incompressible RANS,
@@ -792,37 +910,36 @@ six AirfRANS \emph{test} simulations and measure the offset
 $\shift_{\Cd} = \Cd^{\text{Fluent}} - \Cd^{\text{AirfRANS}}$ before interpreting
 any surrogate-versus-Fluent gap. Without this, every disagreement is confounded.
 \todo{Report the offset with its spread, and state whether the SA--SST spread
-exceeds it --- if it does, that is the headline caveat.}
-
-\paragraph{The falsifiable claim.}
-Cases with high acquisition score have higher surrogate error than randomly
-selected ones. \todo{Report the result either way. With 6--12 verification cases
-we cannot claim active learning works; a null result here is a real finding, and
-the paper must be as willing to print it as the positive one.}
-
-\begin{table}[t]
-  \centering
-  \caption{\textbf{Table 5.} Fluent verification cases: geometry, flow
-    conditions, mesh size, achieved $y^+$, grid-independence result (apparent
-    order $p$ and GCI), solver-to-OpenFOAM offset, and the surrogate prediction
-    with its conformal interval.}
-  \label{tab:fluent}
-  \begin{tabular}{llrrrrrr}
-    \toprule
-    Case & Section & $\Rey$ & $\aoa$ & Cells & $y^+_{\max}$ & GCI & $\Cd$ (Fluent / surrogate) \\
-    \midrule
-    \multicolumn{8}{c}{\itshape \todo{from fluent/cases/*/ once the runs are executed}} \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+exceeds it --- if it does, that is the headline caveat.} The case list is
+fixed and committed (\texttt{fluent/cases\_to\_run.json}): 3 grid-independence
+replicates (\texttt{gridstudy\_naca0012\_re3e6\_a5}, levels 1--3) plus the 24
+selected cases of the three arms above, 27 in total, rendered
+(\texttt{fluent/make\_cases.py}) and ready to execute case-by-case per
+\texttt{fluent/README.md}'s runbook the moment CPU is available. One risk is
+worth flagging before any run, not after: every acquisition- and
+variance-selected case sits at $\aoa=18\degrees$, and steady RANS convergence
+at that angle, this close to and past stall, is not guaranteed --- a
+non-converged case will be reported as such, not tuned to converge.
 
 \begin{figure}[t]
   \centering
-  % \includegraphics[width=0.7\textwidth]{figures/fig11_active_learning.pdf}
-  \figph[0.7\textwidth]{Figure 11. Surrogate error on Fluent-verified cases
-    selected by ensemble uncertainty, by \FSC, and at random, with error bars
-    that make the small sample size visually obvious rather than hiding it.}
-  \caption{Surrogate error on Fluent-verified cases by selection strategy.}
+  \begin{subfigure}{0.48\textwidth}\centering
+    \includegraphics[width=\textwidth]{figures/fig11_active_pool.pdf}
+    \caption{Pool and selections (done).}\label{fig:active_pool}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.48\textwidth}\centering
+    \figph[0.95\textwidth]{Figure 11b. Surrogate error on Fluent-verified cases
+      selected by acquisition score, by ensemble variance, and at random, with
+      error bars that make the small sample size visually obvious rather than
+      hiding it.}
+    \caption{Verified error by arm (pending Fluent).}\label{fig:active_verify}
+  \end{subfigure}
+  \caption{Active learning: (a) the 630-candidate pool, coloured by $\Rey$,
+           with the three $k{=}8$ arms marked --- acquisition and pure
+           ensemble-variance selection agree with each other and disagree with
+           random; (b) surrogate error on the Fluent-verified subset by
+           selection strategy, the actual falsifiable test, pending CPU
+           availability (\S\ref{sec:discussion}).}
   \label{fig:active_learning}
 \end{figure}
 
@@ -837,21 +954,27 @@ read, not skimmed.
 
 \paragraph{Limitations.}
 \begin{itemize}\itemsep2pt
-  \item \textbf{Single seed on the core grid, as reported here.} Every number
-        in Tables~\ref{tab:indist}--\ref{tab:ood} and
+  \item \textbf{Single seed on the core accuracy grid; ensembles are $K=5$ for
+        two of three architectures, $K=1$ for the third, as reported here.}
+        Every number in Tables~\ref{tab:indist}--\ref{tab:ood} and
         Figures~\ref{fig:error_vs_shift}--\ref{fig:fsc_scatter} is from one
-        training run per (model, split) cell, seed 0. Five-member deep
-        ensembles (seeds 0--4, for the calibration study of
-        \S\ref{sec:results_calibration} and for seed-spread error bars on the
-        headline figures) are training as this draft is written and are not
-        yet merged. Until they land, the reader should treat the headline
-        field-error and $\Cd$-ranking gaps between architectures --- some of
-        which, in \S\ref{sec:results_id}--\ref{sec:results_ood}, are only a few
-        percentage points --- as unaccompanied by a seed-variance estimate; the
-        cross-split and cross-shift patterns, which are an order of magnitude
-        larger than those gaps, are far less likely to be single-seed noise,
-        but we do not yet have the number that would let a reader check that
-        directly.
+        training run per (model, split) cell, seed 0 --- those headline
+        field-error and $\Cd$-ranking gaps between architectures, some of
+        which are only a few percentage points, are not yet accompanied by a
+        seed-variance estimate at the core-grid level. The calibration study
+        (\S\ref{sec:results_calibration}) does have that estimate for two of
+        the three architectures: five-member deep ensembles (seeds 0--4) are
+        complete for \Mfno{} and \Mtrans{} on \{\splitname{full},
+        \splitname{reynolds}, \splitname{aoa}, \splitname{shape5}\}. \Mgnn's
+        ensembles were still training on the cloud queue as this draft was
+        written, so every \Mgnn{} calibration number here is $K=1$ (a single
+        member, the fixed-width \emph{absolute} conformal score, not the
+        input-adaptive \emph{normalized} one $K\geq3$ enables) --- read
+        \Mgnn's calibration row as preliminary and the other two as backed by
+        a real ensemble. The cross-split and cross-shift patterns, an order of
+        magnitude larger than the between-architecture gaps, are far less
+        likely to be single-seed noise, but core-grid seed variance is not
+        the number that would let a reader check that directly.
   \item \textbf{One dataset family, and 2D only, in the results reported here.}
         Everything in this preprint is AirfRANS: 2D airfoils, incompressible
         RANS, one turbulence model (Spalart--Allmaras), one solver family
@@ -861,13 +984,20 @@ read, not skimmed.
         in this paper should be read as extending to 3D geometry, compressible
         flow, or any solver other than the one AirfRANS was generated with.
   \item \textbf{The Fluent verification set has not been run yet.} The
-        acquisition pipeline, journal templates and case list are authored and
-        checked (\S\ref{sec:activelearning}), but the CFD runs themselves are
-        deferred pending compute availability; \S\ref{sec:activelearning}
-        reports what is ready to run, not a completed external check. When run,
-        it will be 6--12 cases plus a grid-independence study --- a qualitative
-        external check, not a statistical test, and described that way
-        throughout.
+        acquisition pipeline, journal templates and the full 27-case list
+        (\texttt{fluent/cases\_to\_run.json}: 3 grid-independence replicates
+        plus the 24 selected cases of \S\ref{sec:activelearning}) are authored,
+        rendered and checked, but the CFD runs themselves are deferred pending
+        compute availability; \S\ref{sec:activelearning} reports what is
+        selected and ready to run, not a completed external check. All 8
+        acquisition-arm cases sit at $\aoa=18\degrees$
+        (Table~\ref{tab:fluent}), which is both the reason the arm is
+        informative (it disagrees sharply with random) and a convergence risk
+        for steady RANS this close to stall; a non-converged case will be
+        reported as such. When run, this is 24 selection cases plus a
+        three-level grid-independence study --- a qualitative external check
+        against 24 points, not a large-sample statistical test, and described
+        that way throughout.
   \item \textbf{Reimplementations, not the authors' code.} All three
         architectures are reimplemented from the cited papers rather than run
         from the authors' released code (\S\ref{sec:models}), for a hardware
@@ -883,13 +1013,19 @@ read, not skimmed.
         parameter budget may differ, which the (currently pending) data-efficiency
         curves of Figure~\ref{fig:data_efficiency} are designed to expose
         rather than hide.
-  \item \textbf{Conformal guarantees are exchangeability-conditional, and are
-        not yet measured.} The calibration study (\S\ref{sec:results_calibration})
-        has not run; when it does, note in advance that under shape-family
-        shift exchangeability fails by construction, so the marginal-coverage
-        guarantee does not apply there by definition, and we will report
-        realised coverage rather than imply the nominal guarantee still holds
-        \citep{tibshirani2019covariateshift}.
+  \item \textbf{Conformal guarantees are exchangeability-conditional, and the
+        measured breakage is a small-sample estimate.} The calibration study
+        (\S\ref{sec:results_calibration}) is complete and reports realised
+        coverage rather than assuming the nominal guarantee survives shift
+        \citep{tibshirani2019covariateshift} --- under shape-family and
+        flow-regime shift, exchangeability fails by construction, and coverage
+        moves accordingly (as low as $0.70$ at a nominal 90\% on
+        \splitname{reynolds}). Each split's coverage point is itself an
+        empirical rate over that split's own test set ($n=196$--$511$,
+        Table~\ref{tab:datacard}), not a large-sample asymptotic result, so the
+        exact coverage numbers in Table~\ref{tab:calibration} carry their own
+        (unreported here) sampling uncertainty on top of the qualitative
+        finding that the guarantee degrades under shift.
   \item \textbf{The angle-of-attack pre-stall/post-stall breakout is not yet
         computed.} \S\ref{sec:results_ood}'s reading of the \splitname{aoa}
         result as a regime-crossing failure rests on the aggregate split
@@ -917,28 +1053,133 @@ not always the architecture that is most internally self-consistent: on the two
 hardest single-axis shifts, \Mfno{} out-consistents the field-accuracy leader
 \Mtrans{} (\S\ref{sec:results_consistency}). All three architectures carry a
 large, roughly uniform symmetry residual with no augmentation applied
-(\S\ref{sec:results_id}); whether augmentation removes it is an open ablation,
-not yet run. \todo{Whichever of these also hold once the remaining phases land,
-report them too: physics losses that only shrink the residual they penalise;
-symmetry augmentation that fixes the symmetry residual and nothing else;
-active learning selecting cases no harder than random.}
+(\S\ref{sec:results_id}, Figure~\ref{fig:symmetry}) that \emph{grows} under
+shift for every model rather than staying fixed; whether augmentation removes
+it is an open ablation, not yet run. Matched-versus-transfer conformal
+calibration (\S\ref{sec:results_calibration}) does not order cleanly either:
+naively, calibrating on a split's own data should be the safer choice, but
+transfer calibration from \splitname{full} beats matched calibration for
+\Mgnn{} and \Mfno{} on \splitname{reynolds} and for \Mfno{} on
+\splitname{shape5} --- a genuinely mixed result, reported as found rather than
+rounded into "matched is always better." \todo{Whichever of these also hold
+once the remaining phases land, report them too: physics losses that only
+shrink the residual they penalise; symmetry augmentation that fixes the
+symmetry residual and nothing else; whether the acquisition-selected cases
+(concentrated at $\aoa=18\degrees$, \S\ref{sec:activelearning}) turn out no
+harder than random once Fluent-verified --- a null result there is a real
+finding and must be printed as willingly as a positive one.}
 
 % =====================================================================
 \section{Conclusion}
 \label{sec:conclusion}
 % =====================================================================
 
-\todo{Half a page. The contribution is a measurement protocol, not a leaderboard
-position. Close on what a practitioner should do differently on Monday morning.}
+This paper's contribution is a measurement protocol, not a leaderboard
+position, and the three architectures audited under it earn that framing: on
+raw field accuracy they separate cleanly (\Mtrans{} $>$ \Mfno{} $>$ \Mgnn,
+everywhere, by up to $4\times$), but on the quantity a designer actually
+conditions a decision on --- $C_D$ rank correlation --- they are within a few
+parts per thousand of each other and only modestly ahead of a 29-parameter
+ridge baseline. A field-error leaderboard, run in isolation, would have
+reported a result that barely survives contact with the metric a wing or hull
+designer would use. That is the paper's first and most transferable finding:
+\emph{for down-selection tasks, measure the ranking metric, not only the field
+norm, before declaring an architecture the winner.}
+
+The second finding is that self-consistency and calibration are not
+by-products of accuracy --- they have to be measured separately, and they
+disagree with the accuracy ranking often enough to matter. \Mfno{} out-consistents
+the field-accuracy leader \Mtrans{} on the two hardest single-axis shifts
+(\S\ref{sec:results_consistency}); split-conformal coverage, backed by a real
+$K=5$ ensemble for two of the three architectures, holds at its nominal level
+in distribution and degrades unevenly under shift, worst on the flow-regime
+axes (\S\ref{sec:results_calibration}) where field error also degrades most ---
+but the two degradations are not the same number, and a model can be the most
+accurate in distribution while being neither the most self-consistent nor the
+best calibrated once conditions shift.
+
+The third finding is architectural rather than about any one model: every
+axis this protocol measures --- field error, $C_D$ ranking, \FSC, symmetry
+residual, conformal coverage --- degrades sharply on the two shifts that cross
+into a new flow regime (\splitname{reynolds}, \splitname{aoa}) and only mildly
+on the shift that stays inside the training regime (\splitname{shape5}, a new
+NACA digit family at the same Reynolds and angle of attack), even though
+\splitname{shape5} carries the largest raw shift magnitude
+$\shift$ by construction (\S\ref{sec:protocol}). These models interpolate
+within a flow regime and do not extrapolate across one, and a
+design-space-distance heuristic does not see that difference; \FSC{} and
+ensemble spread, both label-free, do a better job of flagging it, which is
+what makes them usable inside the acquisition loop of
+\S\ref{sec:activelearning}.
+
+\paragraph{What a practitioner should do differently on Monday morning.} Report
+the ranking metric alongside the field norm before claiming an architecture
+win, especially for a design task. Compute \FSC{} on every prediction a
+surrogate makes, including in production on shapes with no ground truth --- it
+is free, it needs no label, and this study's own numbers show it tracks
+distribution shift at least as sensitively as field error. Treat a conformal
+interval as calibrated only for inputs confirmed in-distribution by that same
+label-free check, not as a blanket probability statement; recalibrating on
+deployment data is not a reliable fix on its own (\S\ref{sec:results_calibration}'s
+matched-versus-transfer result). And when deciding where to spend the next
+expensive simulation, an ensemble-and-consistency acquisition score is cheap
+to compute and, in this study's pool, concentrates its picks exactly where
+domain knowledge says a RANS surrogate should be least trusted --- a start
+worth solver-verifying, which is this paper's own next step.
 
 % =====================================================================
 \section*{Reproducibility statement}
 % =====================================================================
-\todo{Code under MIT; split-ID manifests, the DrivAerNet++ subset manifest, model
-cards and the Fluent verification set (meshes, journals, convergence histories,
-extracted surface data) released with a DOI. State the AirfRANS ODbL-1.0 and
-DrivAerNet++ CC BY-NC-4.0 obligations and that no processed copy of either is
-redistributed. State that all three architectures are reimplementations.}
+Code is released under the MIT licence at \todo{repository URL}; a Zenodo DOI
+is minted at public release, alongside a rules-compliant public staging copy of
+the repository (the working repository is private during the study for
+scooping-risk reasons, per the project's own decision log, and is restructured
+into the public layout only once, not iteratively). The release includes:
+split-ID manifests for all six splits (\texttt{data/splits/*.json}, the exact
+train/calibration/test simulation lists each result in this paper was produced
+from); per-run configs and metrics
+(\texttt{results/<run\_id>/\{config.yaml,metrics.json,per\_sim.csv\}} for every
+core, ensemble and baseline run); the conformal calibration reports
+(\texttt{results/uq/*.json}) Table~\ref{tab:calibration} and
+Figures~\ref{fig:reliability}--\ref{fig:width_dists} are generated from; the
+active-learning pool, scores and selection
+(\texttt{results/active/*}, \texttt{fluent/cases\_to\_run.json}); and, once
+solver-verified, the Fluent case set itself (meshes, journals, convergence
+histories, extracted surface data). Every figure and table in this paper is
+produced by \texttt{scripts/make\_figures.py} / \texttt{scripts/make\_tables.py}
+from the committed JSON, not hand-typed, so a reader can regenerate every
+number from the release.
+
+Data: AirfRANS \citep{bonnet2022airfrans} is licensed ODbL-1.0
+(attribution and share-alike on derived databases); this release publishes
+split manifests and code, never a processed copy of the AirfRANS fields, and
+respects the share-alike obligation on any derived database. DrivAerNet++
+\citep{elrefaie2024drivaernetpp}, licensed CC~BY-NC-4.0, contributes zero
+results to this preprint (\S\ref{sec:data}) and is not included in the release.
+
+Reimplementation note (\S\ref{sec:models}): \Mgnn, \Mfno{} and \Mtrans{} are
+each reimplemented from the cited papers, not run from the authors' released
+code, for the hardware-dependency reason stated in \S\ref{sec:models}. No
+number in this paper should be read as a reproduction of a published result;
+the meaningful comparison is the within-study one, matched by construction
+across all three families (parameter count, loss, optimiser, schedule, batch
+size, epoch budget).
+
+Normalisation (\S\ref{sec:models}): every split's input/output statistics are
+computed from that split's own training list only, never from a shared global
+set and never from that split's calibration or test data, so no OOD split's
+test statistics can leak into training even indirectly through input scaling
+--- this is a deliberate fix to an earlier version of the pipeline that shared
+one global normalisation across splits, described honestly here because it
+changed reported OOD numbers (the corrected numbers are what this paper
+reports; the affected runs were retrained under the fix before any result in
+this paper was produced).
+
+Seeds: every run records its seed in \texttt{metrics.json}; deep-ensemble
+members are seeds 0--4 (or 0 alone where noted); training is deterministic
+given seed, split manifest and code commit, modulo the floating-point
+non-associativity inherent to GPU reduction order, which is not controlled for
+across the local Quadro P2000 and the cloud Tesla T4 (\S\ref{sec:discussion}).
 
 \section*{Acknowledgements}
 \todo{Reviewers, compute, dataset authors.}
@@ -951,21 +1192,98 @@ redistributed. State that all three architectures are reimplementations.}
 \section{Hyperparameters and training details}
 \label{app:hyper}
 % =====================================================================
-\todo{Full table per model: widths, depths, $k$, latent grid resolution, Fourier
-modes, slice count, learning rate, schedule, batch size, epochs, gradient
-clipping, seeds. Enough that someone could rebuild the runs from the appendix
-alone.}
+Full configs are committed at \texttt{configs/\{gnn,sdf\_fno,transolver\}.yaml}
+and, per run, at \texttt{results/<run\_id>/config.yaml}; this appendix
+reproduces the values needed to rebuild a run without opening those files.
+
+\begin{table}[h]
+  \centering
+  \caption{Architecture hyperparameters, one column per model.}
+  \label{tab:app_arch}
+  \begin{tabular}{lccc}
+    \toprule
+    & \Mgnn & \Mfno & \Mtrans \\
+    \midrule
+    encoder width / channel dim         & 128 (hidden)      & 32 (FNO width)     & 128 ($d$) \\
+    depth                               & 8 (msg.\ rounds)  & 4 (FNO layers)     & 4 (attn.\ layers) \\
+    geometry parameter                  & $k=16$ (kNN)      & 16 modes, $64{\times}64$ grid & $M=32$ slices \\
+    conditioning                        & pos./normal/curvature & signed distance ($\sdf$) & 8 heads, slice attn. \\
+    grouped/spectral detail             & --                & 4 spectral groups; kernel enc/dec $k{=}8$ & --- \\
+    positional Fourier frequencies      & 6                 & 6                  & 6 \\
+    coefficient head                    & \multicolumn{3}{c}{trunk 128--256, 2-layer MLP, deep-set mean+max pooling (identical across models)} \\
+    parameter count                     & 1{,}389{,}637     & 1{,}373{,}605      & 1{,}281{,}701 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[h]
+  \centering
+  \caption{Training hyperparameters, matched across all three architectures
+    (\S\ref{sec:models}) and identical in every core-grid, ensemble and
+    baseline-comparable run.}
+  \label{tab:app_train}
+  \begin{tabular}{ll}
+    \toprule
+    Optimiser & Adam, weight decay 0 \\
+    Learning rate & $10^{-3}$ initial, cosine schedule to $10^{-6}$, 0 warmup epochs \\
+    Gradient clipping & global norm 1.0 \\
+    Batch size & 16 (all three architectures) \\
+    Epochs & 400 \\
+    Precision & fp32 (no AMP; Pascal-generation local GPU has no practical fp16 path) \\
+    Loss weights (default) & $\lambda_H=0.1$ (coefficient head, always on); $\lamF=\lamB=\lamS=\lamD=0$ \\
+    Seeds & core grid: 0; deep ensembles: 0--4 (\Mfno/\Mtrans, $K=5$) or 0 (\Mgnn, $K=1$ as reported) \\
+    Normalisation & per-split, train-list-only statistics (\S\ref{sec:models}) \\
+    Checkpointing & every epoch, resumable from the last checkpoint \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 % =====================================================================
 \section{CFD setup and grid-independence study}
 \label{app:cfd}
 % =====================================================================
-\todo{Import from \texttt{docs/FLUENT\_PLAN.md}: the $y^+$ sizing derivation and its
-flat-plate correlation, the C-grid topology and measured mesh quality per level,
-the three-level GCI arithmetic with apparent order $p$, residual histories, and
-the six replicated AirfRANS cases with per-case offsets and the cp/cf overlays
-that localise where the two setups disagree. This appendix is what a CFD reviewer
-reads first --- write it for that reader.}
+The design in this appendix is complete and frozen (\texttt{docs/FLUENT\_PLAN.md});
+the measured values below are \todo{pending} until the CPU-gated runs of
+\S\ref{sec:activelearning} execute. Written for a CFD reviewer, who reads this
+appendix first.
+
+\paragraph{Meshing.} \texttt{fluent/mesh\_gen.py} writes the C-grid mesh
+directly as a native Fluent \texttt{.msh} from the NACA parametric equations,
+rather than through a general-purpose mesher (gmsh cannot emit Fluent's format
+at all; \texttt{meshio}'s Fluent writer drops boundary zones): the topology is
+a single structured block with a known index map, so there is nothing for a
+mesher to discover, and the $y^+$ target and the grid-independence refinement
+ratio become exact one-line parameters instead of sizing-function requests
+that are only approximately honoured. \texttt{mesh\_gen.py --self-check}
+re-parses the written mesh and asserts index ranges, owner/neighbour
+consistency and non-degenerate faces; \texttt{fluent/templates/mesh\_cgrid.rpl}
+is an independent ICEM Tcl cross-check kept as a fallback, not exercised in
+this preprint.
+
+\paragraph{Solver setup.} 2D steady incompressible RANS, two turbulence
+closures run per case for a spread estimate: Spalart--Allmaras
+\citep{spalart1992sa} (matching AirfRANS's own OpenFOAM setup) and
+$k$--$\omega$ SST \citep{menter1994sst}. $y^+$ target and first-cell height:
+\todo{value, from the flat-plate correlation in FLUENT\_PLAN.md \S3}.
+
+\paragraph{Grid-independence study.} Three refinement levels per case
+(\texttt{gridstudy\_naca0012\_re3e6\_a5\_L\{1,2,3\}}, already in
+\texttt{fluent/cases\_to\_run.json}), apparent order $p$ and GCI computed per
+\citet{celik2008gci, roache1994perspective}: \todo{apparent order $p$, GCI on
+the fine-grid solution, mesh quality metrics per level}.
+
+\paragraph{Solver offset against AirfRANS.} Six AirfRANS test simulations
+replicated in Fluent to measure $\shift_{\Cd} = \Cd^{\text{Fluent}} -
+\Cd^{\text{AirfRANS}}$ before any surrogate-versus-Fluent comparison is
+interpreted (\S\ref{sec:activelearning}): \todo{offset with spread; whether
+the SA--SST spread exceeds the offset itself, the headline caveat if so; $\cp$/
+$c_f$ overlays localising where the two setups disagree}.
+
+\paragraph{Acceptance criteria.} A case counts only if it meets the RUNBOOK's
+convergence criteria (\texttt{fluent/README.md}); a case that does not
+converge --- a real risk at $\aoa=18\degrees$, where every acquisition-arm
+selection sits (\S\ref{sec:activelearning}) --- is reported as non-converged,
+not tuned until it converges.
 
 % =====================================================================
 \section{Additional figures}
@@ -979,9 +1297,49 @@ $\betaacq$ and $\gammaacq$.}
 \section{Compute accounting}
 \label{app:compute}
 % =====================================================================
-\todo{Measured wall-clock and energy per run, totalled over the study, including
-failed and restarted runs. Honest cost accounting is itself a contribution for a
-small-compute study --- report what it actually took, not what it would have
-taken had nothing gone wrong.}
+Every number below is summed directly from \texttt{train\_time\_s} across the
+50 committed \texttt{results/<run\_id>/metrics.json} files that carry it as of
+this draft (core grid plus every committed deep-ensemble member; the two
+non-learned baselines and one run recorded without a timing field are
+excluded from the sum, not from the study); it is therefore a lower bound on
+total compute spent, not an estimate: sessions that
+were retrained from scratch after an infrastructure bug (a mount-path
+assumption that broke cross-session resume, \S\ref{sec:discussion}) are not
+separately itemised because their wall-clock is already folded into whichever
+completed run superseded them, and GNN-ensemble sessions still in flight on
+the cloud queue at time of writing are not yet in this sum.
+
+\begin{table}[h]
+  \centering
+  \caption{Training compute, summed over every committed run
+    (core grid + deep-ensemble members), by model.}
+  \label{tab:app_compute}
+  \begin{tabular}{lrr}
+    \toprule
+    Model & GPU-hours & \# runs summed \\
+    \midrule
+    \Mgnn{}      & 10.45 & 6  \\
+    \Mfno{}      & 6.08  & 22 \\
+    \Mtrans{}    & 6.74  & 22 \\
+    \midrule
+    Total (neural)  & 23.27 & 50 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\Mgnn{} costs more per run despite having the fewest runs summed
+(kNN reconstruction on every forward pass is the dominant cost, matching
+\S\ref{sec:results_efficiency}'s single-run measurement of $\sim$3\,\si{\hour}
+for one \Mgnn{} \splitname{full} run against \Mfno's 0.36 and \Mtrans's
+0.41\,\si{\hour}); \Mfno{} and \Mtrans{} sum more GPU-hours in this table only
+because more of their ensemble members (five seeds on four splits each) had
+landed locally at draft time. Baselines (ridge, constant) are not trained in
+the gradient-descent sense and are excluded (fit cost is sub-second CPU).
+Hardware: local gating and development on a Quadro P2000 (4\,GB, Pascal,
+CPU-bound for anything beyond a smoke test); all runs summed above trained on
+Kaggle's free-tier Tesla T4 (16\,GB), chained across $\sim$11-hour sessions
+(\S\ref{sec:models}, \S\ref{sec:discussion}); the local machine's CPU was never
+used for training. Energy accounting is not available from the Kaggle API and
+is not reported.
 
 \end{document}

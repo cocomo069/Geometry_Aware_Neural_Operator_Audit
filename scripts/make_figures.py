@@ -30,6 +30,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
+from matplotlib.patches import FancyArrowPatch, FancyBboxPatch  # noqa: E402
 
 from src.viz import data as vdata  # noqa: E402
 from src.viz import style  # noqa: E402
@@ -119,9 +120,123 @@ def fig5_fsc_scatter(df: pd.DataFrame, outdir: Path) -> Path | None:
     return _save(fig, outdir, "fig05_fsc_scatter")
 
 
-def fig9_data_efficiency(df: pd.DataFrame, outdir: Path) -> Path | None:
-    """Rel-L2 vs training-set size, log-log, one line per model with seed bands."""
+def fig1_schematic(outdir: Path) -> Path | None:
+    """Protocol schematic: three encoders feeding one shared evaluation harness.
+
+    Pure drawing, no data dependency -- always renders.  Kept as a plain
+    matplotlib patches diagram (no TikZ/graphviz dependency) so it builds on
+    the same Agg-only, no-extra-deps stack as every other figure.
+    """
+    fig, ax = plt.subplots(figsize=(7.2, 4.4))
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 6.4)
+    ax.axis("off")
+
+    encoders = [
+        ("M1  GNN\n$k$NN message passing", style.MODEL_COLORS["gnn"], 1.1),
+        ("M2  SDF-FNO\nGINO-style, SDF-conditioned", style.MODEL_COLORS["sdf_fno"], 4.15),
+        ("M3  Transolver\nphysics attention, slices", style.MODEL_COLORS["transolver"], 7.2),
+    ]
+    box_w, box_h = 2.65, 1.05
+    for label, color, cx in encoders:
+        b = FancyBboxPatch((cx - box_w / 2, 4.9), box_w, box_h,
+                            boxstyle="round,pad=0.06,rounding_size=0.08",
+                            linewidth=1.3, edgecolor=color, facecolor=color, alpha=0.16)
+        ax.add_patch(b)
+        ax.text(cx, 4.9 + box_h / 2, label, ha="center", va="center", fontsize=8.2,
+                 color="black", linespacing=1.5)
+
+    shared_y0, shared_h = 0.35, 1.35
+    shared = FancyBboxPatch((0.5, shared_y0), 9.0, shared_h,
+                             boxstyle="round,pad=0.06,rounding_size=0.1",
+                             linewidth=1.3, edgecolor=style.OKABE_ITO["black"],
+                             facecolor="white")
+    ax.add_patch(shared)
+    ax.text(5.0, shared_y0 + shared_h + 0.32, "one shared evaluation protocol",
+            ha="center", va="center", fontsize=9, style="italic")
+
+    stages = [
+        "force\nintegration\n→ FSC",
+        "6 OOD\nsplits\n(shift $\\Delta$)",
+        "deep\nensembles +\nsplit conformal",
+        "acquisition\n+ Fluent\nverification",
+    ]
+    n = len(stages)
+    slot = 9.0 / n
+    for i, s in enumerate(stages):
+        cx = 0.5 + slot * (i + 0.5)
+        ax.text(cx, shared_y0 + shared_h / 2, s, ha="center", va="center", fontsize=7.6,
+                 linespacing=1.4)
+        if i > 0:
+            ax.plot([0.5 + slot * i, 0.5 + slot * i],
+                     [shared_y0 + 0.12, shared_y0 + shared_h - 0.12],
+                     color=style.OKABE_ITO["grey"], lw=0.8, alpha=0.6)
+
+    for _, color, cx in encoders:
+        arrow = FancyArrowPatch((cx, 4.9), (cx, shared_y0 + shared_h + 0.02),
+                                 arrowstyle="-|>", mutation_scale=12, lw=1.2,
+                                 color=color, alpha=0.85)
+        ax.add_patch(arrow)
+
+    ax.text(5.0, 6.1, "same data pipeline, loss family, optimiser, schedule, budget",
+            ha="center", va="center", fontsize=7.8, color=style.OKABE_ITO["grey"])
+    return _save(fig, outdir, "fig01_schematic")
+
+
+def fig10_symmetry(df: pd.DataFrame, outdir: Path) -> Path | None:
+    """Symmetry (mirror-equivariance) residual per model, grouped bars by split."""
     d = _neural(df)
+    metric = "consistency_sym_residual"
+    if d.empty or metric not in d.columns or d[metric].isna().all():
+        print("TODO fig10: no consistency.sym_residual in results")
+        return None
+    splits_present = [s for s in style.SPLIT_ORDER if s in set(d["split"])]
+    models = style.sort_models(d["model"].unique())
+    if not splits_present or not models:
+        print("TODO fig10: no (model, split) cells with symmetry residual")
+        return None
+
+    fig, ax = plt.subplots(figsize=(6.2, 3.6))
+    width = 0.8 / max(1, len(models))
+    any_bar = False
+    for mi, m in enumerate(models):
+        sub = d[d["model"] == m]
+        g = sub.groupby("split")[metric].mean().reindex(splits_present)
+        xs = np.array([i + (mi - (len(models) - 1) / 2) * width for i in range(len(splits_present))])
+        heights = g.to_numpy(dtype=float)
+        mask = np.isfinite(heights)
+        if not mask.any():
+            continue
+        ax.bar(xs[mask], heights[mask], width=width, color=style.model_color(m),
+               label=style.model_label(m), alpha=0.9)
+        any_bar = True
+    if not any_bar:
+        print("TODO fig10: no finite symmetry-residual values")
+        plt.close(fig)
+        return None
+    ax.set_xticks(range(len(splits_present)))
+    ax.set_xticklabels([style.split_label(s) for s in splits_present], rotation=20, ha="right")
+    ax.set_yscale("log")
+    ax.set_ylabel("symmetry residual (log scale)")
+    ax.set_title("Symmetry (mirror-equivariance) violation, no augmentation")
+    ax.legend(frameon=False, fontsize=7)
+    ax.grid(True, which="both", axis="y", alpha=0.3)
+    return _save(fig, outdir, "fig10_symmetry")
+
+
+def fig9_data_efficiency(df: pd.DataFrame, outdir: Path) -> Path | None:
+    """Rel-L2 vs training-set size, log-log, one line per model with seed bands.
+
+    Restricted to the ``full`` split before checking distinctness: the
+    data-efficiency sweep varies training-set size *within* ``full`` (tagged
+    ``n<size>`` runs); without this filter, the fallback ``train_size`` reader
+    (CONTEXT.md's per-split manifest ``n_train``) makes the six *different*
+    OOD splits look like >=3 distinct sizes and would plot a spurious
+    data-efficiency curve that actually mixes distribution shift with data
+    scarcity -- the sweep has not run yet (docs/RESULTS.md section 4).
+    """
+    d = _neural(df)
+    d = d[d["split"] == "full"] if "split" in d.columns else d
     if d.empty or d["train_size"].nunique() < 3:
         print("TODO fig9: need >=3 distinct train_size values (data-efficiency sweep)")
         return None
@@ -365,6 +480,49 @@ def fig8_interval_width(outdir: Path, results: str) -> Path | None:
     return _save(fig, outdir, "fig08_interval_width")
 
 
+def fig11_active_pool(outdir: Path, results: str) -> Path | None:
+    """Acquisition-score landscape over the 630-case AL pool, with the three arms marked."""
+    path = Path(results) / "active" / "acquisition_ranking.csv"
+    if not path.is_file():
+        print("TODO fig11: no results/active/acquisition_ranking.csv (run_active.py not run yet)")
+        return None
+    try:
+        pool = pd.read_csv(path)
+    except Exception as exc:
+        print(f"TODO fig11: unreadable acquisition_ranking.csv ({exc})")
+        return None
+    need = {"aoa_deg", "re", "acq_score",
+            "selected_acquisition", "selected_variance", "selected_random"}
+    if pool.empty or not need.issubset(pool.columns):
+        print("TODO fig11: acquisition_ranking.csv missing expected columns")
+        return None
+
+    fig, ax = plt.subplots(figsize=(5.4, 3.9))
+    rng = np.random.default_rng(0)
+    jitter = rng.uniform(-0.35, 0.35, size=len(pool))
+    sc = ax.scatter(pool["aoa_deg"] + jitter, pool["acq_score"], c=pool["re"],
+                     cmap="viridis", s=9, alpha=0.35, linewidths=0)
+    arms = (
+        ("selected_acquisition", "acquisition (k=8)", "*", 150, style.OKABE_ITO["vermillion"]),
+        ("selected_variance", "ensemble variance (k=8)", "^", 65, style.OKABE_ITO["blue"]),
+        ("selected_random", "random (k=8)", "s", 50, style.OKABE_ITO["grey"]),
+    )
+    for col, label, marker, size, color in arms:
+        sub = pool[pool[col] == 1]
+        if sub.empty:
+            continue
+        ax.scatter(sub["aoa_deg"], sub["acq_score"], marker=marker, s=size,
+                   facecolor=color, edgecolor="black", linewidths=0.6, label=label, zorder=5)
+    cbar = fig.colorbar(sc, ax=ax)
+    cbar.set_label(r"$\mathrm{Re}$")
+    ax.set_xlabel(r"angle of attack $\alpha$ (deg)")
+    ax.set_ylabel("acquisition score $a$")
+    ax.set_title("Active-learning pool (630 candidates) and the three selection arms")
+    ax.legend(frameon=False, fontsize=7, loc="upper left")
+    ax.grid(True, alpha=0.3)
+    return _save(fig, outdir, "fig11_active_pool")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--results", default="results")
@@ -376,11 +534,15 @@ def main(argv: list[str] | None = None) -> int:
     df = vdata.load_runs(args.results)
 
     written: list[Path] = []
-    for fn in (fig4_error_vs_shift, fig5_fsc_scatter, fig9_data_efficiency, fig12_cost_accuracy):
+    p = fig1_schematic(outdir)
+    if p:
+        written.append(p)
+    for fn in (fig4_error_vs_shift, fig5_fsc_scatter, fig9_data_efficiency,
+               fig10_symmetry, fig12_cost_accuracy):
         p = fn(df, outdir)
         if p:
             written.append(p)
-    for fn in (fig6_reliability, fig7_coverage_vs_shift, fig8_interval_width):
+    for fn in (fig6_reliability, fig7_coverage_vs_shift, fig8_interval_width, fig11_active_pool):
         p = fn(outdir, args.results)
         if p:
             written.append(p)

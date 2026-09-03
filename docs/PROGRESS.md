@@ -1007,3 +1007,96 @@ last.pt). A stalled pull now costs one 16-33 MB retry, never the session.
 (one step, safe while a session is mid-flight). `--dry-run` inspects state without any call.
 
 Did NOT run git.
+
+## 2026-09-03 — PLAN_PHASE3 section 4 "NOW" items: figures 1/2/3/10/11a, calibration/AL/
+conclusion/repro/appendix prose (Sonnet, executor)
+
+Pure writing + matplotlib, CPU-only, no GPU touched, no training, no Kaggle, no git. Did
+what PLAN_PHASE3.md section 4 marks NOW from data already committed locally
+(`results/`, `results/uq/`, `results/active/`, `checkpoints/`).
+
+**Figures.** Added to `scripts/make_figures.py` (pure, gated exactly like the existing
+functions): `fig1_schematic` (protocol diagram, matplotlib patches, no data dependency),
+`fig10_symmetry` (grouped bars of `consistency.sym_residual` by model x split, log-y),
+`fig11_active_pool` (acquisition-score-vs-AoA scatter over the 630-candidate pool, coloured
+by Re, the three k=8 arms marked, from `results/active/acquisition_ranking.csv`). New file
+`scripts/render_examples.py` (kept separate from `make_figures.py` because it needs
+`torch`/checkpoint loading, a different dependency shape than the pure-dataframe figure
+functions) does real CPU inference: loads a config + one or more seed checkpoints, builds
+the split's test dataset via `scripts.train.build_datasets`/`build_model`/`load_checkpoint`,
+runs a forward pass on one representative test simulation, denormalises, and plots
+`c_p = p / (0.5 U_inf^2)` (kinematic pressure convention, DATA_NOTES.md A1.2). Produces
+`fig02_cp_profiles.pdf` (Transolver, prediction vs. truth, K=5 ensemble band, one panel per
+split: full/reynolds/aoa/shape5 — real committed K=5 checkpoints exist for all four) and
+`fig03_surface_fields.pdf` (repurposes the DrivAerNet++ "three cars" slot, out of v1 scope
+per D-005: truth/prediction/|error| c_p scattered on the airfoil contour, full vs. combined
+split, seed 0). Both are genuine model output, not illustrative sketches; fig2 in particular
+visibly reproduces the paper's own finding (tight band and near-perfect fit in-distribution,
+systematic offset and wider-but-insufficient band under Reynolds/AoA shift, tight fit under
+shape5 — matching the "shape5 is the mildest single-axis shift" result).
+
+**Bug fixed in passing.** `fig9_data_efficiency`'s gate (`train_size.nunique() >= 3`) was a
+false positive on the *real* results tree: `_train_size_from`'s split-manifest fallback gives
+every OOD split its own `n_train` (700/160/404/704/391/191), so six different splits looked
+like >=3 distinct training-set sizes and the function would have plotted a spurious
+data-efficiency curve that actually conflates distribution shift with training-set size —
+before any data-efficiency sweep has run. Fixed by filtering to `split == "full"` first
+(matching `fig12`'s existing pattern and the true intent: data-eff varies size *within*
+`full`). Verified: `tests/test_viz.py -q` still 9/9 green (its synthetic fig9 test already
+uses split=full with distinct `n<size>` tags, so it was and remains a true positive); fig9
+now correctly TODO-skips against the real tree.
+
+**Regenerated figures.** `python -m scripts.make_figures --outdir paper/figures` (9 files:
+fig01, 04, 05, 06, 07, 08, 10, 11, 12; fig09 correctly TODO-skipped) then
+`python -m scripts.render_examples --outdir paper/figures` (fig02, fig03). All from
+committed JSON/checkpoints, none hand-edited.
+
+**Paper (`paper/main.tex`).** Wrote: Fig 1/2/3/10 captions and uncommented their
+`\includegraphics` (deleting the matching `\figph` lines); Fig 6/7/8 uncommented (they were
+still `\figph` placeholders despite the PDFs already existing) and the fig08 filename
+mismatch fixed (`fig08_width_dists.pdf` -> `fig08_interval_width.pdf`, the name
+`make_figures.py` actually writes); replaced the hand-typed placeholder Table 3 with
+`\input{tables/tab3_calibration}` (matching how Table 1/2 already work); Section 8.4
+Calibration rewritten from `results/uq` + `tab3_calibration` + docs/RESULTS.md 3.1-3.2 (in-
+distribution near nominal for every model; GNN is K=1 for now, absolute score not
+normalized, stated explicitly; Reynolds/AoA are the worst shifts, GNN collapses to 0.698
+coverage on reynolds; matched-vs-transfer calibration does not order cleanly, reported as
+found rather than rounded into a clean story; width widens under shift but under-
+compensates). Section 9 Active Learning: real narrative of the actual run (Transolver K=5
+scorer, 630-pool, three k=8 arms), new `paper/tables/tab5_selected_cases.tex` (the 8
+acquisition-arm cases with sigma_CD/FSC/L_sym/score from `results/active/`, replacing the
+old Fluent-blocked Table 5 placeholder per PLAN_PHASE3 4.2, labelled "selected, verification
+pending"), Figure 11 restructured into two subfigures (11a live = the new pool figure, 11b
+still `\figph`, genuinely blocked on Fluent), falsifiable-claim paragraph restated precisely
+(what can and cannot be said before an independent solver runs). Conclusion written (three
+findings + a "what to do differently Monday" paragraph, explicitly a protocol contribution
+not a leaderboard position). Reproducibility statement written (MIT/DOI-at-release, what the
+release contains, AirfRANS ODbL-1.0 / DrivAerNet++ CC-BY-NC obligations, the reimplementation
+note per D-002, the per-split normalisation note per D-021, seeds). Discussion updated: the
+"single seed" bullet now states K=5 (M2/M3) vs K=1 (M1, ensembles still training) precisely;
+the "calibration not yet measured" bullet rewritten to describe what was actually measured
+plus its small-sample caveat; the Fluent bullet updated to the real 27-case count; the
+"negative and mixed results" paragraph gained the matched-vs-transfer non-ordering as a
+concrete mixed result. Appendix A (hyperparameters) filled from `configs/*.yaml` (two
+tables: per-architecture, and the shared training recipe). Appendix B (CFD setup) written as
+a structured stub with real design content from `docs/FLUENT_PLAN.md` (meshing route,
+solver setup, GCI plan, offset-study plan, acceptance criteria) and `\todo{}`-tagged only the
+actual measured numbers, which do not exist yet. Appendix D (compute accounting) computed
+directly from `train_time_s` summed over all 50 committed `metrics.json` files that carry it
+(23.27 GPU-h total: GNN 10.45h/6 runs, SDF-FNO 6.08h/22 runs, Transolver 6.74h/22 runs),
+stated as a lower bound, not an estimate, since GNN-ensemble sessions still in flight are not
+in the sum. Table 4 (ablations) caption trimmed to the lean v1 set (no numbers filled in —
+ablations were explicitly out of scope for this pass per the task's data-availability note).
+
+**Not touched, on instruction:** `kaggle/`, `scripts/run_*.py`, `src/` training code,
+`scripts/make_tables.py` (existing tab1/2/3 `.tex`/`.md` files used as committed static
+assets, not regenerated — regenerating tab1 is a known pre-existing landmine per the
+2026-09-02 entry above, unrelated to this session), ablation numbers, data-efficiency
+numbers, Fluent numbers, DrivAerNet++.
+
+**Compile.** `pdflatex` + `bibtex` + `pdflatex` x2: clean, zero undefined references or
+citations, 24 pages. `\todo` count 23 -> 18, `\pending` count roughly unchanged (not in
+scope), `\figph` usages in the main body 12 -> 2 (fig9 data-efficiency, fig11b Fluent
+verification — both genuinely blocked on data this session does not have).
+
+Did NOT run git.

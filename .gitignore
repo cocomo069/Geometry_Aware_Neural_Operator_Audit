@@ -24,3 +24,10 @@ results/g2_train.log
 # stray kernel-output extractions
 /repo/
 logs/
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+paper/*.pdf
+paper/*.synctex.gz
