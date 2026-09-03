@@ -135,6 +135,23 @@ MODELS = {
 
 SAFE_ID = _re.compile(r"^[A-Za-z0-9_.-]+$")
 
+# Per-variant overrides (PLAN_FLUENT_POST section 2). Variant "" is the S0 batch.
+# r1: conservative steady retry -- longer first-order start, reduced URFs incl.
+# the turbulence equations, longer second-order budget.
+VARIANTS = {
+    "r1": dict(
+        template="case_template_r1.jou",
+        iter_stage1=1000, iter_stage2=6000,
+        urf_block={
+            "sa": ("/solve/set/under-relaxation/nut 0.5\n"
+                   "/solve/set/under-relaxation/turb-viscosity 1"),
+            "sst": ("/solve/set/under-relaxation/k 0.5\n"
+                    "/solve/set/under-relaxation/omega 0.5\n"
+                    "/solve/set/under-relaxation/turb-viscosity 1"),
+        },
+    ),
+}
+
 
 def fluent_path(p):
     """Fluent's TUI wants forward slashes even on Windows."""
@@ -242,12 +259,12 @@ def derive(case, defaults):
     )
 
 
-def instantiate(template, d, model, mesh_path, out_dir):
+def instantiate(template, d, model, mesh_path, out_dir, *, label=None, urf_block=None):
     tight = " ".join(["1e-6"] * model["n_residuals"])
     loose = " ".join(["1e-4"] * model["n_residuals"])
     slots = {
         "CASE_ID": d["case_id"],
-        "TURB_LABEL": model["label"],
+        "TURB_LABEL": label or model["label"],
         "MESH_PATH": fluent_path(mesh_path),
         "OUT_DIR": fluent_path(out_dir),
         "RHO": "%.6g" % d["rho"],
@@ -262,7 +279,7 @@ def instantiate(template, d, model, mesh_path, out_dir):
         "TURB_INLET_BLOCK": model["inlet_block"],
         "TURB_SCHEME_BLOCK_FIRST": model["scheme_first"],
         "TURB_SCHEME_BLOCK_SECOND": model["scheme_second"],
-        "TURB_URF_BLOCK": model["urf_block"],
+        "TURB_URF_BLOCK": urf_block or model["urf_block"],
         "RESIDUAL_CRITERIA": tight,
         "RESIDUAL_CRITERIA_LOOSE": loose,
         "ITER_STAGE1": str(d["iter_stage1"]),
@@ -347,37 +364,66 @@ def main(argv=None):
                     help="restrict to these case_ids (repeatable)")
     ap.add_argument("--write-mesh", action="store_true",
                     help="also generate the .msh (pure numpy; still no solver)")
+    ap.add_argument("--only-file", default=None,
+                    help="restrict to the case_ids listed one-per-line in this file")
+    ap.add_argument("--variant", default="",
+                    help="solver variant (e.g. r1): use templates/case_template_<v>.jou, "
+                         "write journals/outputs as <case>_<model>_<v>, apply the variant's "
+                         "iteration/URF overrides. Does not touch the S0 MANIFEST/RUNBOOK.")
     args = ap.parse_args(argv)
+
+    variant = args.variant
+    if variant and variant not in VARIANTS:
+        raise SystemExit("unknown --variant %r (have %s)" % (variant, sorted(VARIANTS)))
+    vcfg = VARIANTS.get(variant, {})
 
     defaults, cases = load_manifest(args.manifest)
     validate(cases, defaults)
-    if args.only:
-        cases = [c for c in cases if c["case_id"] in set(args.only)]
+    only = set(args.only) if args.only else set()
+    if args.only_file:
+        for line in Path(args.only_file).read_text(encoding="utf-8").splitlines():
+            cid = line.strip()
+            if cid and not cid.startswith("#"):
+                only.add(cid)
+    if only:
+        cases = [c for c in cases if c["case_id"] in only]
         if not cases:
-            raise SystemExit("--only matched no case_id in %s" % args.manifest)
+            raise SystemExit("--only/--only-file matched no case_id in %s" % args.manifest)
 
-    template = TEMPLATE.read_text(encoding="utf-8")
+    template_path = (HERE / "templates" / vcfg["template"]) if variant else TEMPLATE
+    template = template_path.read_text(encoding="utf-8")
     out_root = Path(args.out_dir)
     out_root.mkdir(parents=True, exist_ok=True)
 
     manifest_rows, total_cells, n_jou = [], 0, 0
     for case in cases:
         d = derive(case, defaults)
+        if variant:
+            d["iter_stage1"] = vcfg.get("iter_stage1", d["iter_stage1"])
+            d["iter_stage2"] = vcfg.get("iter_stage2", d["iter_stage2"])
         cdir = out_root / d["case_id"]
         cdir.mkdir(parents=True, exist_ok=True)
         mesh_path = cdir / (d["case_id"] + ".msh")
         mjson = cdir / (d["case_id"] + "_mesh.json")
 
-        (cdir / (d["case_id"] + "_params.json")).write_text(
-            json.dumps(d, indent=2), encoding="utf-8")
-        cmd = mesh_command(d, mesh_path, mjson)
-        (cdir / (d["case_id"] + "_mesh.cmd")).write_text(cmd + "\n", encoding="utf-8")
+        if not variant:
+            # the S0 params.json / mesh.cmd are authoritative; a variant run must
+            # not overwrite them (it only adds suffixed journals).
+            (cdir / (d["case_id"] + "_params.json")).write_text(
+                json.dumps(d, indent=2), encoding="utf-8")
+            cmd = mesh_command(d, mesh_path, mjson)
+            (cdir / (d["case_id"] + "_mesh.cmd")).write_text(cmd + "\n", encoding="utf-8")
+        else:
+            cmd = mesh_command(d, mesh_path, mjson)
 
         jous = []
         for m in d["models"]:
             model = MODELS[m]
-            text = instantiate(template, d, model, mesh_path, cdir)
-            jp = cdir / ("%s_%s.jou" % (d["case_id"], m))
+            label = m if not variant else "%s_%s" % (m, variant)
+            urf = (vcfg.get("urf_block", {}) or {}).get(m) if variant else None
+            text = instantiate(template, d, model, mesh_path, cdir,
+                               label=label, urf_block=urf)
+            jp = cdir / ("%s_%s.jou" % (d["case_id"], label))
             jp.write_text(text, encoding="utf-8")
             jous.append(jp.relative_to(REPO).as_posix())
             n_jou += 1
@@ -414,16 +460,18 @@ def main(argv=None):
                   "assumption in case_template.jou is marginal"
                   % d["mach_estimate"])
 
-    (out_root / "MANIFEST.json").write_text(json.dumps(dict(
-        generated=str(date.today()), source=str(args.manifest),
+    suffix = "" if not variant else "_" + variant
+    (out_root / ("MANIFEST%s.json" % suffix)).write_text(json.dumps(dict(
+        generated=str(date.today()), source=str(args.manifest), variant=variant,
         defaults=defaults, n_cases=len(manifest_rows), n_journals=n_jou,
         total_cells_all_runs=total_cells, cases=manifest_rows), indent=2),
         encoding="utf-8")
-    write_runbook(out_root, manifest_rows, total_cells, n_jou)
-    print("\n[cases] %d cases, %d journals, %d cells summed over all runs"
-          % (len(manifest_rows), n_jou, total_cells))
-    print("[cases] wrote %s and %s"
-          % (out_root / "MANIFEST.json", out_root / "RUNBOOK.md"))
+    if not variant:
+        write_runbook(out_root, manifest_rows, total_cells, n_jou)
+    print("\n[cases] %d cases, %d journals, %d cells summed over all runs%s"
+          % (len(manifest_rows), n_jou, total_cells,
+             (" (variant %s)" % variant) if variant else ""))
+    print("[cases] wrote %s" % (out_root / ("MANIFEST%s.json" % suffix)))
     return 0
 
 

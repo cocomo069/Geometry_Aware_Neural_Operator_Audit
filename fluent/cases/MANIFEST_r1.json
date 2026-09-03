@@ -1,0 +1,486 @@
+{
+  "generated": "2026-09-03",
+  "source": "D:\\Personal Projects\\geom_aware_neural_operator\\fluent\\cases_to_run.json",
+  "variant": "r1",
+  "defaults": {
+    "chord": 1.0,
+    "rho": 1.184,
+    "mu": 1.85e-05,
+    "y_plus": 0.25,
+    "r_far": 30.0,
+    "x_out": 30.0,
+    "smooth_sweeps": 0,
+    "iter_stage1": 300,
+    "iter_stage2": 4000,
+    "cd_stop_criterion": 1e-05,
+    "models": [
+      "sa",
+      "sst"
+    ]
+  },
+  "n_cases": 20,
+  "n_journals": 40,
+  "total_cells_all_runs": 1720320,
+  "cases": [
+    {
+      "case_id": "al_acq_naca0010_re7e6_a18",
+      "naca": "0010",
+      "re": 7000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 109.375,
+      "y_plus_target": 0.25,
+      "first_cell_height": 1.9312382855910597e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1390920492177532,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_acq_naca0010_re7e6_a18/al_acq_naca0010_re7e6_a18_sa_r1.jou",
+        "fluent/cases/al_acq_naca0010_re7e6_a18/al_acq_naca0010_re7e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_acq_naca0010_re7e6_a18/al_acq_naca0010_re7e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 0010 --re 7e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_acq_naca0010_re7e6_a18/al_acq_naca0010_re7e6_a18.msh --json fluent/cases/al_acq_naca0010_re7e6_a18/al_acq_naca0010_re7e6_a18_mesh.json",
+      "note": "Active-learning 'acquisition' pick (rank 0, score 7.533). naca4 section NACA 0010 at Re 7e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_acq_naca4415_re7e6_a18",
+      "naca": "4415",
+      "re": 7000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 109.375,
+      "y_plus_target": 0.25,
+      "first_cell_height": 1.9312382855910597e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1390920492177532,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_acq_naca4415_re7e6_a18/al_acq_naca4415_re7e6_a18_sa_r1.jou",
+        "fluent/cases/al_acq_naca4415_re7e6_a18/al_acq_naca4415_re7e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_acq_naca4415_re7e6_a18/al_acq_naca4415_re7e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 4415 --re 7e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_acq_naca4415_re7e6_a18/al_acq_naca4415_re7e6_a18.msh --json fluent/cases/al_acq_naca4415_re7e6_a18/al_acq_naca4415_re7e6_a18_mesh.json",
+      "note": "Active-learning 'acquisition' pick (rank 1, score 3.072). naca4 section NACA 4415 at Re 7e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_acq_naca2410_re5e6_a18",
+      "naca": "2410",
+      "re": 5000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 78.125,
+      "y_plus_target": 0.25,
+      "first_cell_height": 2.6395274406079506e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1356659116310994,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_acq_naca2410_re5e6_a18/al_acq_naca2410_re5e6_a18_sa_r1.jou",
+        "fluent/cases/al_acq_naca2410_re5e6_a18/al_acq_naca2410_re5e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_acq_naca2410_re5e6_a18/al_acq_naca2410_re5e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 2410 --re 5e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_acq_naca2410_re5e6_a18/al_acq_naca2410_re5e6_a18.msh --json fluent/cases/al_acq_naca2410_re5e6_a18/al_acq_naca2410_re5e6_a18_mesh.json",
+      "note": "Active-learning 'acquisition' pick (rank 2, score 3.858). naca4 section NACA 2410 at Re 5e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_acq_naca0015_re6e6_a18",
+      "naca": "0015",
+      "re": 6000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 93.75,
+      "y_plus_target": 0.25,
+      "first_cell_height": 2.2284389388448935e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1375218685449546,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_acq_naca0015_re6e6_a18/al_acq_naca0015_re6e6_a18_sa_r1.jou",
+        "fluent/cases/al_acq_naca0015_re6e6_a18/al_acq_naca0015_re6e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_acq_naca0015_re6e6_a18/al_acq_naca0015_re6e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 0015 --re 6e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_acq_naca0015_re6e6_a18/al_acq_naca0015_re6e6_a18.msh --json fluent/cases/al_acq_naca0015_re6e6_a18/al_acq_naca0015_re6e6_a18_mesh.json",
+      "note": "Active-learning 'acquisition' pick (rank 3, score 2.901). naca4 section NACA 0015 at Re 6e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_acq_naca33012_re7e6_a18",
+      "naca": "33012",
+      "re": 7000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 109.375,
+      "y_plus_target": 0.25,
+      "first_cell_height": 1.9312382855910597e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1390920492177532,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_acq_naca33012_re7e6_a18/al_acq_naca33012_re7e6_a18_sa_r1.jou",
+        "fluent/cases/al_acq_naca33012_re7e6_a18/al_acq_naca33012_re7e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_acq_naca33012_re7e6_a18/al_acq_naca33012_re7e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 33012 --re 7e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_acq_naca33012_re7e6_a18/al_acq_naca33012_re7e6_a18.msh --json fluent/cases/al_acq_naca33012_re7e6_a18/al_acq_naca33012_re7e6_a18_mesh.json",
+      "note": "Active-learning 'acquisition' pick (rank 4, score 3.692). naca5 section NACA 33012 at Re 7e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_acq_naca0010_re3e6_a18",
+      "naca": "0010",
+      "re": 3000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 46.875,
+      "y_plus_target": 0.25,
+      "first_cell_height": 4.241589073757628e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1304722954825084,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18_sa_r1.jou",
+        "fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 0010 --re 3e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18.msh --json fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18_mesh.json",
+      "note": "Active-learning 'acquisition' pick (rank 5, score 3.714). naca4 section NACA 0010 at Re 3e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_acq_naca4410_re7e6_a18",
+      "naca": "4410",
+      "re": 7000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 109.375,
+      "y_plus_target": 0.25,
+      "first_cell_height": 1.9312382855910597e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1390920492177532,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_acq_naca4410_re7e6_a18/al_acq_naca4410_re7e6_a18_sa_r1.jou",
+        "fluent/cases/al_acq_naca4410_re7e6_a18/al_acq_naca4410_re7e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_acq_naca4410_re7e6_a18/al_acq_naca4410_re7e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 4410 --re 7e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_acq_naca4410_re7e6_a18/al_acq_naca4410_re7e6_a18.msh --json fluent/cases/al_acq_naca4410_re7e6_a18/al_acq_naca4410_re7e6_a18_mesh.json",
+      "note": "Active-learning 'acquisition' pick (rank 6, score 3.84). naca4 section NACA 4410 at Re 7e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_acq_naca24015_re7e6_a18",
+      "naca": "24015",
+      "re": 7000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 109.375,
+      "y_plus_target": 0.25,
+      "first_cell_height": 1.9312382855910597e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1390920492177532,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_acq_naca24015_re7e6_a18/al_acq_naca24015_re7e6_a18_sa_r1.jou",
+        "fluent/cases/al_acq_naca24015_re7e6_a18/al_acq_naca24015_re7e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_acq_naca24015_re7e6_a18/al_acq_naca24015_re7e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 24015 --re 7e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_acq_naca24015_re7e6_a18/al_acq_naca24015_re7e6_a18.msh --json fluent/cases/al_acq_naca24015_re7e6_a18/al_acq_naca24015_re7e6_a18_mesh.json",
+      "note": "Active-learning 'acquisition' pick (rank 7, score 2.597). naca5 section NACA 24015 at Re 7e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_var_naca0015_re6e6_a18",
+      "naca": "0015",
+      "re": 6000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 93.75,
+      "y_plus_target": 0.25,
+      "first_cell_height": 2.2284389388448935e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1375218685449546,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_var_naca0015_re6e6_a18/al_var_naca0015_re6e6_a18_sa_r1.jou",
+        "fluent/cases/al_var_naca0015_re6e6_a18/al_var_naca0015_re6e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_var_naca0015_re6e6_a18/al_var_naca0015_re6e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 0015 --re 6e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_var_naca0015_re6e6_a18/al_var_naca0015_re6e6_a18.msh --json fluent/cases/al_var_naca0015_re6e6_a18/al_var_naca0015_re6e6_a18_mesh.json",
+      "note": "Active-learning 'variance' pick (rank 0, score 3.003). naca4 section NACA 0015 at Re 6e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_var_naca4415_re6e6_a18",
+      "naca": "4415",
+      "re": 6000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 93.75,
+      "y_plus_target": 0.25,
+      "first_cell_height": 2.2284389388448935e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1375218685449546,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_var_naca4415_re6e6_a18/al_var_naca4415_re6e6_a18_sa_r1.jou",
+        "fluent/cases/al_var_naca4415_re6e6_a18/al_var_naca4415_re6e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_var_naca4415_re6e6_a18/al_var_naca4415_re6e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 4415 --re 6e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_var_naca4415_re6e6_a18/al_var_naca4415_re6e6_a18.msh --json fluent/cases/al_var_naca4415_re6e6_a18/al_var_naca4415_re6e6_a18_mesh.json",
+      "note": "Active-learning 'variance' pick (rank 1, score 2.256). naca4 section NACA 4415 at Re 6e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_var_naca0010_re3e6_a18",
+      "naca": "0010",
+      "re": 3000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 46.875,
+      "y_plus_target": 0.25,
+      "first_cell_height": 4.241589073757628e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1304722954825084,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_var_naca0010_re3e6_a18/al_var_naca0010_re3e6_a18_sa_r1.jou",
+        "fluent/cases/al_var_naca0010_re3e6_a18/al_var_naca0010_re3e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_var_naca0010_re3e6_a18/al_var_naca0010_re3e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 0010 --re 3e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_var_naca0010_re3e6_a18/al_var_naca0010_re3e6_a18.msh --json fluent/cases/al_var_naca0010_re3e6_a18/al_var_naca0010_re3e6_a18_mesh.json",
+      "note": "Active-learning 'variance' pick (rank 2, score 2.287). naca4 section NACA 0010 at Re 3e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_var_naca32012_re6e6_a18",
+      "naca": "32012",
+      "re": 6000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 93.75,
+      "y_plus_target": 0.25,
+      "first_cell_height": 2.2284389388448935e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1375218685449546,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_var_naca32012_re6e6_a18/al_var_naca32012_re6e6_a18_sa_r1.jou",
+        "fluent/cases/al_var_naca32012_re6e6_a18/al_var_naca32012_re6e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_var_naca32012_re6e6_a18/al_var_naca32012_re6e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 32012 --re 6e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_var_naca32012_re6e6_a18/al_var_naca32012_re6e6_a18.msh --json fluent/cases/al_var_naca32012_re6e6_a18/al_var_naca32012_re6e6_a18_mesh.json",
+      "note": "Active-learning 'variance' pick (rank 3, score 2.251). naca5 section NACA 32012 at Re 6e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_var_naca24015_re5e6_a18",
+      "naca": "24015",
+      "re": 5000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 78.125,
+      "y_plus_target": 0.25,
+      "first_cell_height": 2.6395274406079506e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1356659116310994,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_var_naca24015_re5e6_a18/al_var_naca24015_re5e6_a18_sa_r1.jou",
+        "fluent/cases/al_var_naca24015_re5e6_a18/al_var_naca24015_re5e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_var_naca24015_re5e6_a18/al_var_naca24015_re5e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 24015 --re 5e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_var_naca24015_re5e6_a18/al_var_naca24015_re5e6_a18.msh --json fluent/cases/al_var_naca24015_re5e6_a18/al_var_naca24015_re5e6_a18_mesh.json",
+      "note": "Active-learning 'variance' pick (rank 4, score 2.256). naca5 section NACA 24015 at Re 5e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_var_naca0010_re6e6_a18",
+      "naca": "0010",
+      "re": 6000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 93.75,
+      "y_plus_target": 0.25,
+      "first_cell_height": 2.2284389388448935e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1375218685449546,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_var_naca0010_re6e6_a18/al_var_naca0010_re6e6_a18_sa_r1.jou",
+        "fluent/cases/al_var_naca0010_re6e6_a18/al_var_naca0010_re6e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_var_naca0010_re6e6_a18/al_var_naca0010_re6e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 0010 --re 6e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_var_naca0010_re6e6_a18/al_var_naca0010_re6e6_a18.msh --json fluent/cases/al_var_naca0010_re6e6_a18/al_var_naca0010_re6e6_a18_mesh.json",
+      "note": "Active-learning 'variance' pick (rank 5, score 2.326). naca4 section NACA 0010 at Re 6e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_var_naca2415_re7e6_a18",
+      "naca": "2415",
+      "re": 7000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 109.375,
+      "y_plus_target": 0.25,
+      "first_cell_height": 1.9312382855910597e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1390920492177532,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_var_naca2415_re7e6_a18/al_var_naca2415_re7e6_a18_sa_r1.jou",
+        "fluent/cases/al_var_naca2415_re7e6_a18/al_var_naca2415_re7e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_var_naca2415_re7e6_a18/al_var_naca2415_re7e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 2415 --re 7e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_var_naca2415_re7e6_a18/al_var_naca2415_re7e6_a18.msh --json fluent/cases/al_var_naca2415_re7e6_a18/al_var_naca2415_re7e6_a18_mesh.json",
+      "note": "Active-learning 'variance' pick (rank 6, score 2.223). naca4 section NACA 2415 at Re 7e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_var_naca22015_re7e6_a18",
+      "naca": "22015",
+      "re": 7000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 109.375,
+      "y_plus_target": 0.25,
+      "first_cell_height": 1.9312382855910597e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1390920492177532,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_var_naca22015_re7e6_a18/al_var_naca22015_re7e6_a18_sa_r1.jou",
+        "fluent/cases/al_var_naca22015_re7e6_a18/al_var_naca22015_re7e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_var_naca22015_re7e6_a18/al_var_naca22015_re7e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 22015 --re 7e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_var_naca22015_re7e6_a18/al_var_naca22015_re7e6_a18.msh --json fluent/cases/al_var_naca22015_re7e6_a18/al_var_naca22015_re7e6_a18_mesh.json",
+      "note": "Active-learning 'variance' pick (rank 7, score 2.368). naca5 section NACA 22015 at Re 7e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_rand_naca2410_re2e6_a18",
+      "naca": "2410",
+      "re": 2000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 31.25,
+      "y_plus_target": 0.25,
+      "first_cell_height": 6.180760333727046e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1263560030810433,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_rand_naca2410_re2e6_a18/al_rand_naca2410_re2e6_a18_sa_r1.jou",
+        "fluent/cases/al_rand_naca2410_re2e6_a18/al_rand_naca2410_re2e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_rand_naca2410_re2e6_a18/al_rand_naca2410_re2e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 2410 --re 2e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_rand_naca2410_re2e6_a18/al_rand_naca2410_re2e6_a18.msh --json fluent/cases/al_rand_naca2410_re2e6_a18/al_rand_naca2410_re2e6_a18_mesh.json",
+      "note": "Active-learning 'random' pick (rank 1, score 0.9812). naca4 section NACA 2410 at Re 2e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_rand_naca32015_re7e6_a18",
+      "naca": "32015",
+      "re": 7000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 109.375,
+      "y_plus_target": 0.25,
+      "first_cell_height": 1.9312382855910597e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1390920492177532,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_rand_naca32015_re7e6_a18/al_rand_naca32015_re7e6_a18_sa_r1.jou",
+        "fluent/cases/al_rand_naca32015_re7e6_a18/al_rand_naca32015_re7e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_rand_naca32015_re7e6_a18/al_rand_naca32015_re7e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 32015 --re 7e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_rand_naca32015_re7e6_a18/al_rand_naca32015_re7e6_a18.msh --json fluent/cases/al_rand_naca32015_re7e6_a18/al_rand_naca32015_re7e6_a18_mesh.json",
+      "note": "Active-learning 'random' pick (rank 3, score 0.9607). naca5 section NACA 32015 at Re 7e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_rand_naca4412_re7e6_a18",
+      "naca": "4412",
+      "re": 7000000.0,
+      "aoa_deg": 18.0,
+      "mesh_level": 2,
+      "u_inf": 109.375,
+      "y_plus_target": 0.25,
+      "first_cell_height": 1.9312382855910597e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1390920492177532,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_rand_naca4412_re7e6_a18/al_rand_naca4412_re7e6_a18_sa_r1.jou",
+        "fluent/cases/al_rand_naca4412_re7e6_a18/al_rand_naca4412_re7e6_a18_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_rand_naca4412_re7e6_a18/al_rand_naca4412_re7e6_a18.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 4412 --re 7e+06 --aoa 18 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_rand_naca4412_re7e6_a18/al_rand_naca4412_re7e6_a18.msh --json fluent/cases/al_rand_naca4412_re7e6_a18/al_rand_naca4412_re7e6_a18_mesh.json",
+      "note": "Active-learning 'random' pick (rank 4, score 0.9887). naca4 section NACA 4412 at Re 7e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "al_rand_naca22012_re3e6_a12",
+      "naca": "22012",
+      "re": 3000000.0,
+      "aoa_deg": 12.0,
+      "mesh_level": 2,
+      "u_inf": 46.875,
+      "y_plus_target": 0.25,
+      "first_cell_height": 4.241589073757628e-06,
+      "n_cells": 43008,
+      "normal_growth": 1.1304722954825084,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "journals": [
+        "fluent/cases/al_rand_naca22012_re3e6_a12/al_rand_naca22012_re3e6_a12_sa_r1.jou",
+        "fluent/cases/al_rand_naca22012_re3e6_a12/al_rand_naca22012_re3e6_a12_sst_r1.jou"
+      ],
+      "mesh": "fluent/cases/al_rand_naca22012_re3e6_a12/al_rand_naca22012_re3e6_a12.msh",
+      "mesh_cmd": ".venv/Scripts/python.exe fluent/mesh_gen.py --naca 22012 --re 3e+06 --aoa 12 --level 2 --chord 1 --rho 1.184 --mu 1.85e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/al_rand_naca22012_re3e6_a12/al_rand_naca22012_re3e6_a12.msh --json fluent/cases/al_rand_naca22012_re3e6_a12/al_rand_naca22012_re3e6_a12_mesh.json",
+      "note": "Active-learning 'random' pick (rank 7, score 0.9797). naca5 section NACA 22012 at Re 3e+06, AoA 12 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    }
+  ]
+}

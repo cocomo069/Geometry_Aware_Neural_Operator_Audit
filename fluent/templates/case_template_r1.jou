@@ -1,0 +1,172 @@
+; =====================================================================
+; case_template_r1.jou -- STEADY robustness-retry variant (PLAN section 2)
+; =====================================================================
+; A copy of case_template.jou with ONLY the numerical-robustness settings
+; changed, for the diverged active-learning cases:
+;   * stage 1: longer first-order start (1000 iters) at conservative URFs
+;     (pressure 0.2, momentum 0.5, turbulence 0.5);
+;   * stage 2: second order at reduced URFs (pressure 0.2, momentum 0.4),
+;     longer budget (6000 iters), and NO cd-steady stop condition -- the
+;     post-processor (scripts/collect_fluent.py) applies the flatness /
+;     quasi-steady criteria itself.
+; Every output name carries the _r1 suffix via {{TURB_LABEL}} (make_cases.py
+; sets TURB_LABEL = "<model>_r1"), so the original diverged transcripts stay on
+; disk as evidence. Sections 11-16 (save, extraction, EnSight, display objects)
+; are unchanged from case_template.jou.
+; =====================================================================
+
+/file/start-transcript "{{OUT_DIR}}/{{CASE_ID}}_{{TURB_LABEL}}.trn"
+/file/confirm-overwrite yes
+
+; ---------------------------------------------------------------------
+; 1. Mesh
+; ---------------------------------------------------------------------
+/file/read-case "{{MESH_PATH}}"
+/mesh/check
+/mesh/quality
+
+; ---------------------------------------------------------------------
+; 2. Solver
+; ---------------------------------------------------------------------
+/define/models/solver/pressure-based yes
+/define/models/steady
+/define/models/energy no
+/define/models/viscous/{{TURB_MODEL_CMD}}
+
+; ---------------------------------------------------------------------
+; 3. Material
+; ---------------------------------------------------------------------
+/define/materials/change-create air air yes constant {{RHO}} no no yes constant {{MU}} no no no
+
+; ---------------------------------------------------------------------
+; 4. Boundary conditions
+; ---------------------------------------------------------------------
+/define/boundary-conditions/set/velocity-inlet farfield ()
+velocity-spec
+no
+yes
+direction-0
+no
+{{U_X}}
+direction-1
+no
+{{U_Y}}
+{{TURB_INLET_BLOCK}}
+q
+
+/define/boundary-conditions/set/pressure-outlet outlet ()
+gauge-pressure
+no
+0
+prevent-reverse-flow?
+yes
+q
+
+; ---------------------------------------------------------------------
+; 5. Reference values
+; ---------------------------------------------------------------------
+/report/reference-values/area {{A_REF}}
+/report/reference-values/density {{RHO}}
+/report/reference-values/velocity {{U_INF}}
+/report/reference-values/length {{CHORD}}
+/report/reference-values/viscosity {{MU}}
+/report/reference-values/pressure 0
+/report/reference-values/zone fluid
+
+; ---------------------------------------------------------------------
+; 6. Report definitions -- CL, CD
+; ---------------------------------------------------------------------
+/solve/report-definitions/add cd drag thread-names airfoil () force-vector 1 0 scaled? yes quit
+/solve/report-definitions/add cl lift thread-names airfoil () force-vector 0 1 scaled? yes quit
+
+/solve/report-files/add rf_coeffs
+report-defs
+cd
+cl
+()
+file-name
+"{{OUT_DIR}}/{{CASE_ID}}_{{TURB_LABEL}}_coeffs.out"
+frequency
+1
+quit
+
+; ---------------------------------------------------------------------
+; 7. Solution methods -- CONSERVATIVE (r1)
+; ---------------------------------------------------------------------
+/solve/set/p-v-coupling 20
+/solve/set/gradient-scheme no yes
+/solve/set/under-relaxation/pressure 0.2
+/solve/set/under-relaxation/mom 0.5
+{{TURB_URF_BLOCK}}
+
+; ---------------------------------------------------------------------
+; 8. Initialisation
+; ---------------------------------------------------------------------
+/solve/initialize/compute-defaults/velocity-inlet farfield
+/solve/initialize/initialize-flow
+
+; ---------------------------------------------------------------------
+; 9. Stage 1 -- LONGER first-order startup (1000 iters)
+; ---------------------------------------------------------------------
+/solve/set/discretization-scheme/pressure 10
+/solve/set/discretization-scheme/mom 0
+{{TURB_SCHEME_BLOCK_FIRST}}
+/solve/monitors/residual/convergence-criteria {{RESIDUAL_CRITERIA_LOOSE}}
+/solve/iterate {{ITER_STAGE1}}
+
+; ---------------------------------------------------------------------
+; 10. Stage 2 -- second order, REDUCED URFs, longer budget, no stop condition
+; ---------------------------------------------------------------------
+/solve/set/discretization-scheme/pressure 13
+/solve/set/discretization-scheme/mom 1
+{{TURB_SCHEME_BLOCK_SECOND}}
+/solve/set/under-relaxation/pressure 0.2
+/solve/set/under-relaxation/mom 0.4
+/solve/monitors/residual/convergence-criteria {{RESIDUAL_CRITERIA}}
+/solve/iterate {{ITER_STAGE2}}
+
+; ---------------------------------------------------------------------
+; 11. Save case + data BEFORE any extraction
+; ---------------------------------------------------------------------
+/file/write-case "{{OUT_DIR}}/{{CASE_ID}}_{{TURB_LABEL}}.cas.h5"
+ok
+/file/write-data "{{OUT_DIR}}/{{CASE_ID}}_{{TURB_LABEL}}.dat.h5"
+ok
+
+; ---------------------------------------------------------------------
+; 12. Extraction -- coefficients
+; ---------------------------------------------------------------------
+/report/forces/wall-forces yes 1 0 yes "{{OUT_DIR}}/{{CASE_ID}}_{{TURB_LABEL}}_force_x.txt"
+/report/forces/wall-forces yes 0 1 yes "{{OUT_DIR}}/{{CASE_ID}}_{{TURB_LABEL}}_force_y.txt"
+
+; ---------------------------------------------------------------------
+; 13. Extraction -- y+
+; ---------------------------------------------------------------------
+/report/surface-integrals/facet-max airfoil () y-plus yes "{{OUT_DIR}}/{{CASE_ID}}_{{TURB_LABEL}}_yplus_max.txt"
+/report/surface-integrals/area-weighted-avg airfoil () y-plus yes "{{OUT_DIR}}/{{CASE_ID}}_{{TURB_LABEL}}_yplus_avg.txt"
+
+; ---------------------------------------------------------------------
+; 14. Extraction -- surface fields
+; ---------------------------------------------------------------------
+/file/export/ascii "{{OUT_DIR}}/{{CASE_ID}}_{{TURB_LABEL}}_surface.csv" airfoil () no pressure pressure-coefficient x-wall-shear y-wall-shear wall-shear skin-friction-coef y-plus () yes
+
+; ---------------------------------------------------------------------
+; 15. EnSight Gold field export
+; ---------------------------------------------------------------------
+/file/export/ensight-gold "{{OUT_DIR}}/{{CASE_ID}}_{{TURB_LABEL}}.encas" pressure pressure-coefficient velocity-magnitude x-wall-shear y-wall-shear () yes * () () no
+
+; ---------------------------------------------------------------------
+; 16. Bake display objects into the case
+; ---------------------------------------------------------------------
+/display/objects/create contour ct_pressure field pressure surfaces-list interior () quit
+/display/objects/create contour ct_velocity field velocity-magnitude surfaces-list interior () quit
+/display/objects/create contour ct_cp field pressure-coefficient surfaces-list interior () quit
+/display/objects/create vector vec_velocity field velocity-magnitude surfaces-list interior () quit
+
+/file/write-case "{{OUT_DIR}}/{{CASE_ID}}_{{TURB_LABEL}}.cas.h5"
+ok
+
+/file/stop-transcript
+exit
+ok
+/exit yes

@@ -1,0 +1,179 @@
+; =====================================================================
+; case_template_r1.jou -- STEADY robustness-retry variant (PLAN section 2)
+; =====================================================================
+; A copy of case_template.jou with ONLY the numerical-robustness settings
+; changed, for the diverged active-learning cases:
+;   * stage 1: longer first-order start (1000 iters) at conservative URFs
+;     (pressure 0.2, momentum 0.5, turbulence 0.5);
+;   * stage 2: second order at reduced URFs (pressure 0.2, momentum 0.4),
+;     longer budget (6000 iters), and NO cd-steady stop condition -- the
+;     post-processor (scripts/collect_fluent.py) applies the flatness /
+;     quasi-steady criteria itself.
+; Every output name carries the _r1 suffix via sst_r1 (make_cases.py
+; sets TURB_LABEL = "<model>_r1"), so the original diverged transcripts stay on
+; disk as evidence. Sections 11-16 (save, extraction, EnSight, display objects)
+; are unchanged from case_template.jou.
+; =====================================================================
+
+/file/start-transcript "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18_sst_r1.trn"
+/file/confirm-overwrite yes
+
+; ---------------------------------------------------------------------
+; 1. Mesh
+; ---------------------------------------------------------------------
+/file/read-case "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18.msh"
+/mesh/check
+/mesh/quality
+
+; ---------------------------------------------------------------------
+; 2. Solver
+; ---------------------------------------------------------------------
+/define/models/solver/pressure-based yes
+/define/models/steady
+/define/models/energy no
+/define/models/viscous/kw-sst yes
+
+; ---------------------------------------------------------------------
+; 3. Material
+; ---------------------------------------------------------------------
+/define/materials/change-create air air yes constant 1.184 no no yes constant 1.85e-05 no no no
+
+; ---------------------------------------------------------------------
+; 4. Boundary conditions
+; ---------------------------------------------------------------------
+/define/boundary-conditions/set/velocity-inlet farfield ()
+velocity-spec
+no
+yes
+direction-0
+no
+46.875000
+direction-1
+no
+0
+turb-intensity
+0.1
+turb-viscosity-ratio
+3
+q
+
+/define/boundary-conditions/set/pressure-outlet outlet ()
+gauge-pressure
+no
+0
+prevent-reverse-flow?
+yes
+q
+
+; ---------------------------------------------------------------------
+; 5. Reference values
+; ---------------------------------------------------------------------
+/report/reference-values/area 1
+/report/reference-values/density 1.184
+/report/reference-values/velocity 46.875000
+/report/reference-values/length 1
+/report/reference-values/viscosity 1.85e-05
+/report/reference-values/pressure 0
+/report/reference-values/zone fluid
+
+; ---------------------------------------------------------------------
+; 6. Report definitions -- CL, CD
+; ---------------------------------------------------------------------
+/solve/report-definitions/add cd drag thread-names airfoil () force-vector 1 0 scaled? yes quit
+/solve/report-definitions/add cl lift thread-names airfoil () force-vector 0 1 scaled? yes quit
+
+/solve/report-files/add rf_coeffs
+report-defs
+cd
+cl
+()
+file-name
+"D:/Personal Projects/geom_aware_neural_operator/fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18_sst_r1_coeffs.out"
+frequency
+1
+quit
+
+; ---------------------------------------------------------------------
+; 7. Solution methods -- CONSERVATIVE (r1)
+; ---------------------------------------------------------------------
+/solve/set/p-v-coupling 20
+/solve/set/gradient-scheme no yes
+/solve/set/under-relaxation/pressure 0.2
+/solve/set/under-relaxation/mom 0.5
+/solve/set/under-relaxation/k 0.5
+/solve/set/under-relaxation/omega 0.5
+/solve/set/under-relaxation/turb-viscosity 1
+
+; ---------------------------------------------------------------------
+; 8. Initialisation
+; ---------------------------------------------------------------------
+/solve/initialize/compute-defaults/velocity-inlet farfield
+/solve/initialize/initialize-flow
+
+; ---------------------------------------------------------------------
+; 9. Stage 1 -- LONGER first-order startup (1000 iters)
+; ---------------------------------------------------------------------
+/solve/set/discretization-scheme/pressure 10
+/solve/set/discretization-scheme/mom 0
+/solve/set/discretization-scheme/k 0
+/solve/set/discretization-scheme/omega 0
+/solve/monitors/residual/convergence-criteria 1e-4 1e-4 1e-4 1e-4 1e-4
+/solve/iterate 1000
+
+; ---------------------------------------------------------------------
+; 10. Stage 2 -- second order, REDUCED URFs, longer budget, no stop condition
+; ---------------------------------------------------------------------
+/solve/set/discretization-scheme/pressure 13
+/solve/set/discretization-scheme/mom 1
+/solve/set/discretization-scheme/k 1
+/solve/set/discretization-scheme/omega 1
+/solve/set/under-relaxation/pressure 0.2
+/solve/set/under-relaxation/mom 0.4
+/solve/monitors/residual/convergence-criteria 1e-6 1e-6 1e-6 1e-6 1e-6
+/solve/iterate 6000
+
+; ---------------------------------------------------------------------
+; 11. Save case + data BEFORE any extraction
+; ---------------------------------------------------------------------
+/file/write-case "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18_sst_r1.cas.h5"
+ok
+/file/write-data "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18_sst_r1.dat.h5"
+ok
+
+; ---------------------------------------------------------------------
+; 12. Extraction -- coefficients
+; ---------------------------------------------------------------------
+/report/forces/wall-forces yes 1 0 yes "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18_sst_r1_force_x.txt"
+/report/forces/wall-forces yes 0 1 yes "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18_sst_r1_force_y.txt"
+
+; ---------------------------------------------------------------------
+; 13. Extraction -- y+
+; ---------------------------------------------------------------------
+/report/surface-integrals/facet-max airfoil () y-plus yes "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18_sst_r1_yplus_max.txt"
+/report/surface-integrals/area-weighted-avg airfoil () y-plus yes "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18_sst_r1_yplus_avg.txt"
+
+; ---------------------------------------------------------------------
+; 14. Extraction -- surface fields
+; ---------------------------------------------------------------------
+/file/export/ascii "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18_sst_r1_surface.csv" airfoil () no pressure pressure-coefficient x-wall-shear y-wall-shear wall-shear skin-friction-coef y-plus () yes
+
+; ---------------------------------------------------------------------
+; 15. EnSight Gold field export
+; ---------------------------------------------------------------------
+/file/export/ensight-gold "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18_sst_r1.encas" pressure pressure-coefficient velocity-magnitude x-wall-shear y-wall-shear () yes * () () no
+
+; ---------------------------------------------------------------------
+; 16. Bake display objects into the case
+; ---------------------------------------------------------------------
+/display/objects/create contour ct_pressure field pressure surfaces-list interior () quit
+/display/objects/create contour ct_velocity field velocity-magnitude surfaces-list interior () quit
+/display/objects/create contour ct_cp field pressure-coefficient surfaces-list interior () quit
+/display/objects/create vector vec_velocity field velocity-magnitude surfaces-list interior () quit
+
+/file/write-case "D:/Personal Projects/geom_aware_neural_operator/fluent/cases/al_acq_naca0010_re3e6_a18/al_acq_naca0010_re3e6_a18_sst_r1.cas.h5"
+ok
+
+/file/stop-transcript
+exit
+ok
+/exit yes
