@@ -236,7 +236,10 @@ def fig9_data_efficiency(df: pd.DataFrame, outdir: Path) -> Path | None:
     scarcity -- the sweep has not run yet (docs/RESULTS.md section 4).
     """
     d = _neural(df)
-    d = d[d["split"] == "full"] if "split" in d.columns else d
+    # data-eff runs use split labels "full_n25".."full_n400"; the core run is "full"
+    # (train_size 700). Match both, but NOT the OOD splits (reynolds/aoa/...), so the
+    # curve is pure data scarcity within the full distribution.
+    d = d[d["split"].astype(str).str.startswith("full")] if "split" in d.columns else d
     if d.empty or d["train_size"].nunique() < 3:
         print("TODO fig9: need >=3 distinct train_size values (data-efficiency sweep)")
         return None

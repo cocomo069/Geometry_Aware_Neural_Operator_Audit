@@ -196,7 +196,9 @@ All figures are in `paper/figures/` (PDF + PNG). Present now:
 
 ![Interval width, in-distribution vs OOD](../paper/figures/fig08_interval_width.png)
 
-- fig09: Data-efficiency curves (rel-L2 vs train size) — _pending_
+### fig09: Data-efficiency curves (rel-L2 vs train size)
+
+![Data-efficiency curves (rel-L2 vs train size)](../paper/figures/fig09_data_efficiency.png)
 
 ### fig10: Symmetry residual per model
 
