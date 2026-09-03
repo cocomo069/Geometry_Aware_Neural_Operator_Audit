@@ -26,6 +26,7 @@ Usage:
 """
 from __future__ import annotations
 
+import os
 import argparse
 import datetime
 import hashlib
@@ -62,12 +63,19 @@ def _sha256(path: Path) -> str:
 
 
 def _kaggle_output(kernel: str, dest: Path, pattern: str, timeout=None) -> subprocess.CompletedProcess:
-    """One ``kaggle kernels output`` call filtered to a filename regex."""
+    """One ``kaggle kernels output`` call filtered to a filename regex.
+
+    Force UTF-8 for the child: on a Windows cp1252 console the kaggle CLI's own
+    print of unicode (dataset/kernel names) raises 'charmap codec can't encode'
+    and exits non-zero even though the files downloaded fine -- which would abort
+    the whole autonomous cycle. PYTHONUTF8/IOENCODING make that print harmless.
+    """
     dest.mkdir(parents=True, exist_ok=True)
+    env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
     cmd = [sys.executable, "-m", "kaggle", "kernels", "output", kernel,
            "-p", str(dest), "--file-pattern", pattern]
     print(f"[pull] $ {' '.join(cmd)}", flush=True)
-    return subprocess.run(cmd, check=True, timeout=timeout)
+    return subprocess.run(cmd, check=True, timeout=timeout, env=env)
 
 
 # --------------------------------------------------------------------------- #
