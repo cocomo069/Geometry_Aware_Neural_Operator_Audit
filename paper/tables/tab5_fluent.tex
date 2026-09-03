@@ -1,0 +1,37 @@
+\begin{table}[t]
+\centering
+\caption{Surrogate vs Fluent on the accepted steady set (n=6, grid-converged at L2, GCI_fine CD(SA)=0.00%; qualitative external check). Surrogate CD is the input-robust coefficient head.}
+\label{tab:fluent_verify}
+\small
+\begin{tabular}{llllllllllll}
+\toprule
+case & arm & NACA & Re & alpha & status & CD\_fl & CD\_fl-dbar & Transolver & SDF-FNO & GNN & cov90 \\
+\midrule
+al_rand_naca0010_re7e6_a6 & random & 0010 & 7e+06 & 6 & converged & 0.009794 & 0.009014 & 0.0105$\pm$0.0004 & -- & -- & False \\
+al_rand_naca2415_re6e6_a0 & random & 2415 & 6e+06 & 0 & converged & 0.009461 & 0.00868 & 0.00923$\pm$0.0002 & -- & -- & False \\
+al_rand_naca33012_re6e6_am6 & random & 33012 & 6e+06 & -6 & converged & 0.0102 & 0.009421 & 0.009883$\pm$0.0005 & -- & -- & False \\
+al_rand_naca4415_re2e6_a0 & random & 4415 & 2e+06 & 0 & converged & 0.01167 & 0.01089 & 0.01272$\pm$0.0006 & -- & -- & False \\
+gridstudy_naca0012_re3e6_a5_L2 & gridstudy & 0012 & 3e+06 & 5 & converged & 0.01076 & 0.009975 & 0.01199$\pm$0.0005 & -- & -- & False \\
+offset_1_naca0016_a2p4 & offset & 0016 & 3.9e+06 & 2.4 & converged & 0.01048 & 0.009702 & 0.0097$\pm$4e-06 & -- & -- & True \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering
+\caption{Solver offset: six AirfRANS replicas.}
+\label{tab:fluent_offset}
+\small
+\begin{tabular}{llllllll}
+\toprule
+replica & CD\_AF & CL\_AF & CD\_SA & CD\_SST & dCD & rel dCD & dCL \\
+\midrule
+offset_4_naca2710_am1p6 & 0.009226 & 0.0513 & 0.009719 & 0.009553 & 0.000493 & 0.0534 & 0.0122 \\
+offset_1_naca0016_a2p4 & 0.009702 & 0.251 & 0.01048 & 0.01019 & 0.00078 & 0.0804 & 0.00997 \\
+offset_2_naca0109_a8p6 & 0.01151 & 0.926 & 0.01301 & 0.01304 & 0.0015 & 0.13 & 0.0152 \\
+offset_6_naca5_17_a0p9 & 0.009805 & 0.219 & 0.01082 & -- & 0.00101 & 0.103 & 0.0112 \\
+offset_3_naca2211_a3p3 & 0.009052 & 0.607 & 0.009919 & 0.009786 & 0.000867 & 0.0958 & 0.0175 \\
+offset_5_naca0010_a3p8 & 0.008058 & 0.419 & 0.00881 & 0.008599 & 0.000752 & 0.0933 & 0.00729 \\
+\bottomrule
+\end{tabular}
+\end{table}

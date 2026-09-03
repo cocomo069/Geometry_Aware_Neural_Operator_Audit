@@ -2,7 +2,7 @@
 
 Auto-generated 2026-09-03 by `scripts/make_results_digest.py` (regenerated automatically as new runs land). For interpretation see [RESULTS.md](RESULTS.md); for concepts see [OVERVIEW.md](OVERVIEW.md).
 
-## Run inventory (76 runs with metrics)
+## Run inventory (107 runs with metrics)
 
 ```
 constant_aoa_s0
@@ -24,6 +24,7 @@ gnn_full_n25_s1
 gnn_full_n25_s2
 gnn_full_n400_s0
 gnn_full_n400_s1
+gnn_full_n400_s2
 gnn_full_n50_s0
 gnn_full_n50_s1
 gnn_full_n50_s2
@@ -43,6 +44,21 @@ sdf_fno_aoa_s2
 sdf_fno_aoa_s3
 sdf_fno_aoa_s4
 sdf_fno_combined_s0
+sdf_fno_full_n100_s0
+sdf_fno_full_n100_s1
+sdf_fno_full_n100_s2
+sdf_fno_full_n200_s0
+sdf_fno_full_n200_s1
+sdf_fno_full_n200_s2
+sdf_fno_full_n25_s0
+sdf_fno_full_n25_s1
+sdf_fno_full_n25_s2
+sdf_fno_full_n400_s0
+sdf_fno_full_n400_s1
+sdf_fno_full_n400_s2
+sdf_fno_full_n50_s0
+sdf_fno_full_n50_s1
+sdf_fno_full_n50_s2
 sdf_fno_full_s0
 sdf_fno_full_s1
 sdf_fno_full_s2
@@ -65,6 +81,21 @@ transolver_aoa_s2
 transolver_aoa_s3
 transolver_aoa_s4
 transolver_combined_s0
+transolver_full_n100_s0
+transolver_full_n100_s1
+transolver_full_n100_s2
+transolver_full_n200_s0
+transolver_full_n200_s1
+transolver_full_n200_s2
+transolver_full_n25_s0
+transolver_full_n25_s1
+transolver_full_n25_s2
+transolver_full_n400_s0
+transolver_full_n400_s1
+transolver_full_n400_s2
+transolver_full_n50_s0
+transolver_full_n50_s1
+transolver_full_n50_s2
 transolver_full_s0
 transolver_full_s1
 transolver_full_s2
@@ -149,9 +180,9 @@ transolver_shape5_s4
 
 | model | full (in-dist.) | scarce | Reynolds shift | AoA shift | shape family | combined | full_n100 | full_n200 | full_n25 | full_n400 | full_n50 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| M1 GNN | 0.0737 | 0.154 | 0.223 | 0.188 | 0.13 | 0.27 | **0.146** | **0.117** | **0.292** | **0.0979** | **0.217** |
-| M2 SDF-FNO | 0.0259 | 0.0832 | 0.104 | 0.113 | 0.0665 | 0.153 | -- | -- | -- | -- | -- |
-| M3 Transolver | **0.0186** | **0.0666** | **0.0837** | **0.101** | **0.0526** | **0.139** | -- | -- | -- | -- | -- |
+| M1 GNN | 0.0737 | 0.154 | 0.223 | 0.188 | 0.13 | 0.27 | 0.146 | 0.117 | 0.292 | 0.0995 | 0.217 |
+| M2 SDF-FNO | 0.0259 | 0.0832 | 0.104 | 0.113 | 0.0665 | 0.153 | 0.134 | 0.072 | 0.325 | 0.0432 | 0.232 |
+| M3 Transolver | **0.0186** | **0.0666** | **0.0837** | **0.101** | **0.0526** | **0.139** | **0.1** | **0.0542** | **0.271** | **0.0292** | **0.181** |
 | Ridge | 1.42 | 1.4 | 1.62 | 1.18 | 1.6 | 1.86 | -- | -- | -- | -- | -- |
 | Constant | 1.42 | 1.4 | 1.62 | 1.18 | 1.6 | 1.86 | -- | -- | -- | -- | -- |
 
