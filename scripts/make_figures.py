@@ -526,6 +526,76 @@ def fig11_active_pool(outdir: Path, results: str) -> Path | None:
     return _save(fig, outdir, "fig11_active_pool")
 
 
+def fig11_active_verify(outdir: Path, results: str) -> Path | None:
+    """Fig 11(b): surrogate-vs-Fluent |CD error| by arm on the accepted set, with
+    the acquisition/variance arms shown as a 'no steady solution' band + their
+    ensemble sigma. Uses cd_head (input-robust surrogate CD; see compare_fluent)."""
+    svf = Path(results) / "fluent" / "surrogate_vs_fluent.csv"
+    if not svf.is_file():
+        print("TODO fig11b: no results/fluent/surrogate_vs_fluent.csv (compare_fluent not run)")
+        return None
+    df = pd.read_csv(svf)
+    t = df[df["model"] == "transolver"].copy()
+    if t.empty:
+        print("TODO fig11b: no transolver rows in surrogate_vs_fluent.csv")
+        return None
+
+    acc = t[t["status"].isin(["converged", "quasi_steady"])].copy()
+    unsolv = t[t["status"] == "diverged"].copy()
+    solvable_arms = ["random", "offset", "gridstudy"]
+    unsolv_arms = ["acquisition", "variance"]
+    xlabels = {"random": "random", "offset": "offset\nreplicas", "gridstudy": "grid\nstudy",
+               "acquisition": "acquisition", "variance": "variance"}
+    order = solvable_arms + unsolv_arms
+    xpos = {a: i for i, a in enumerate(order)}
+
+    fig, ax = plt.subplots(figsize=(6.0, 4.0))
+    # 90% conformal half-width reference band (cd_head)
+    half = float(t["q90_halfwidth_cd_int"].dropna().iloc[0]) if "q90_halfwidth_cd_int" in t and t["q90_halfwidth_cd_int"].notna().any() else None
+
+    rng = np.random.default_rng(1)
+    for arm in solvable_arms:
+        sub = acc[acc["arm"] == arm]
+        if sub.empty:
+            continue
+        for _, r in sub.iterrows():
+            err = abs(r["err_cd_head"]) if np.isfinite(r["err_cd_head"]) else np.nan
+            if not np.isfinite(err):
+                continue
+            filled = r["status"] == "converged"
+            jit = rng.uniform(-0.18, 0.18)
+            ax.errorbar(xpos[arm] + jit, err, yerr=float(r.get("cd_head_std", 0) or 0),
+                        marker="o", ms=6, capsize=2,
+                        mfc=(style.OKABE_ITO["blue"] if filled else "white"),
+                        mec=style.OKABE_ITO["blue"], ecolor=style.OKABE_ITO["grey"], lw=0.8, zorder=5)
+        ax.annotate(f"n={len(sub)}", (xpos[arm], 0), xytext=(0, -28),
+                    textcoords="offset points", ha="center", fontsize=7, color="dimgray")
+
+    # unsolvable arms: vertical band at the top + sigma_CD annotation
+    ymax = ax.get_ylim()[1]
+    top = ymax * 0.92 if ymax > 0 else 0.05
+    for arm in unsolv_arms:
+        sub = unsolv[unsolv["arm"] == arm]
+        ax.axvspan(xpos[arm] - 0.4, xpos[arm] + 0.4, color=style.OKABE_ITO["vermillion"], alpha=0.08)
+        sig = sub["cd_head_std"].astype(float).mean() if not sub.empty else float("nan")
+        ax.annotate(f"no steady soln\n(S0, r1)\nn={len(sub)}\n$\\sigma_{{CD}}\\approx${sig:.2g}",
+                    (xpos[arm], top), ha="center", va="top", fontsize=7,
+                    color=style.OKABE_ITO["vermillion"])
+
+    if half is not None:
+        ax.axhspan(0, half, color=style.OKABE_ITO["green"], alpha=0.12, zorder=0)
+        ax.axhline(half, color=style.OKABE_ITO["green"], lw=1.0, ls="--",
+                   label=f"90% conformal half-width ({half:.2g})")
+
+    ax.set_xticks(list(xpos.values()))
+    ax.set_xticklabels([xlabels[a] for a in order])
+    ax.set_ylabel(r"$|C_D^{\mathrm{surrogate}} - C_D^{\mathrm{Fluent,corr}}|$ (cd\_head)")
+    ax.set_title("Surrogate vs Fluent by arm (accepted set); unsolvable arms shown as regime bands")
+    ax.legend(frameon=False, fontsize=7, loc="upper center")
+    ax.grid(True, axis="y", alpha=0.3)
+    return _save(fig, outdir, "fig11_active_verify")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--results", default="results")
@@ -545,7 +615,8 @@ def main(argv: list[str] | None = None) -> int:
         p = fn(df, outdir)
         if p:
             written.append(p)
-    for fn in (fig6_reliability, fig7_coverage_vs_shift, fig8_interval_width, fig11_active_pool):
+    for fn in (fig6_reliability, fig7_coverage_vs_shift, fig8_interval_width,
+               fig11_active_pool, fig11_active_verify):
         p = fn(outdir, args.results)
         if p:
             written.append(p)

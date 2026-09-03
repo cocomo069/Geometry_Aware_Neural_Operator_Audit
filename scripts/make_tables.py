@@ -272,6 +272,151 @@ def table3_calibration(results: str, outdir: Path) -> list[Path]:
     return paths
 
 
+def _read_csv_dicts(path: Path):
+    import csv
+    if not path.exists():
+        return []
+    return list(csv.DictReader(path.open(encoding="utf-8")))
+
+
+def _num(x, prec=5):
+    try:
+        v = float(x)
+        return DASH if (v != v) else f"{v:.{prec}g}"
+    except (TypeError, ValueError):
+        return DASH
+
+
+def table5_fluent(results: str, outdir: Path) -> list[Path]:
+    """Table 5 (a/b/c): AL selection+outcome, solver offset, verified comparison.
+
+    Reads results/fluent/{fluent_summary.csv, offset.csv, surrogate_vs_fluent.csv}.
+    Bespoke stacked table (case rows), independent of the model-row _render helper.
+    Uses cd_head as the surrogate CD (input-robust; see compare_fluent).
+    """
+    import json as _json
+    fdir = Path(results) / "fluent"
+    summ = _read_csv_dicts(fdir / "fluent_summary.csv")
+    off = _read_csv_dicts(fdir / "offset.csv")
+    svf = _read_csv_dicts(fdir / "surrogate_vs_fluent.csv")
+    if not summ:
+        print("TODO table5: results/fluent/fluent_summary.csv missing")
+        return []
+
+    # ---- 5a: acquisition selection + steady outcome (S0/r1) + surrogate cd_head
+    def status_of(cid, model, variant):
+        for r in summ:
+            if r["case_id"] == cid and r["model"] == model and r["variant"] == variant:
+                return r["status"]
+        return "not_run"
+    acq = sorted({r["case_id"] for r in summ if r["arm"] == "acquisition"})
+    svf_t = {r["case_id"]: r for r in svf if r["model"] == "transolver"}
+    a_rows = []
+    for cid in acq:
+        base = next(r for r in summ if r["case_id"] == cid and r["model"] == "sa")
+        s0 = status_of(cid, "sa", "s0")
+        r1 = status_of(cid, "sa", "r1")
+        sr = svf_t.get(cid, {})
+        cdh = _num(sr.get("cd_head_mean"), 4)
+        cds = _num(sr.get("cd_head_std"), 2)
+        a_rows.append([cid.replace("al_acq_", ""), base["naca"], _num(base["re"], 2),
+                       _num(base["aoa_deg"], 3), s0, r1,
+                       (cdh + " $\\pm$ " + cds) if cdh != DASH else DASH])
+    a_head = ["case", "NACA", "Re", "alpha", "S0", "r1", "surrogate CD_head"]
+
+    # ---- 5b: solver offset
+    b_rows = []
+    off_sa = {r["sim"]: r for r in off if r["model"] == "sa"}
+    off_sst = {r["sim"]: r for r in off if r["model"] == "sst"}
+    for sim in sorted(off_sa):
+        r = off_sa[sim]
+        rst = off_sst.get(sim, {})
+        b_rows.append([r["case_id"], _num(r["cd_airfrans"], 4), _num(r["cl_airfrans"], 3),
+                       _num(r["cd_fluent"], 4), _num(rst.get("cd_fluent"), 4),
+                       _num(r["delta_cd"], 3), _num(r["reldelta_cd"], 3), _num(r["delta_cl"], 3)])
+    b_head = ["replica", "CD_AF", "CL_AF", "CD_SA", "CD_SST", "dCD", "rel dCD", "dCL"]
+    # footer mean+/-s
+    osum = {}
+    p = fdir / "offset_summary.json"
+    if p.exists():
+        osum = _json.loads(p.read_text(encoding="utf-8"))
+
+    # ---- 5c: verified comparison on the accepted set (all models, cd_head)
+    svf_by_case = {}
+    for r in svf:
+        if r["status"] in ("converged", "quasi_steady"):
+            svf_by_case.setdefault(r["case_id"], {})[r["model"]] = r
+    c_rows = []
+    for cid in sorted(svf_by_case):
+        d = svf_by_case[cid]
+        ref = d.get("transolver") or next(iter(d.values()))
+        def sc(m):
+            r = d.get(m)
+            if not r:
+                return DASH
+            return _num(r["cd_head_mean"], 4) + "$\\pm$" + _num(r["cd_head_std"], 1)
+        cov = d.get("transolver", {}).get("covered90_cd_head", "")
+        c_rows.append([cid, ref["arm"], ref["naca"], _num(ref["re"], 2), _num(ref["aoa_deg"], 3),
+                       ref["status"], _num(ref["cd_fluent"], 4), _num(ref["cd_fluent_corrected"], 4),
+                       sc("transolver"), sc("sdf_fno"), sc("gnn"), str(cov)])
+    c_head = ["case", "arm", "NACA", "Re", "alpha", "status", "CD_fl", "CD_fl-dbar",
+              "Transolver", "SDF-FNO", "GNN", "cov90"]
+
+    def md_table(head, rows):
+        L = ["| " + " | ".join(head) + " |", "| " + " | ".join("---" for _ in head) + " |"]
+        L += ["| " + " | ".join(str(c) for c in r) + " |" for r in rows]
+        return "\n".join(L)
+
+    n_acc = len(c_rows)
+    gci_note = ""
+    gp = fdir / "gci.json"
+    if gp.exists():
+        g = _json.loads(gp.read_text(encoding="utf-8"))
+        if "sa" in g:
+            gci_note = f"GCI_fine CD(SA)={100*g['sa']['cd']['gci_fine']:.2f}%"
+    md = ["# Table 5 -- Fluent verification (a selection+outcome, b offset, c verified)",
+          "",
+          f"Caption: grid-converged at L2 ({gci_note}); n = {n_acc}, "
+          "qualitative external check. Surrogate CD is the input-robust cd_head.",
+          "", "## 5a Acquisition selection + steady outcome",
+          md_table(a_head, a_rows), "",
+          "## 5b Solver offset (6 AirfRANS replicas)",
+          md_table(b_head, b_rows)]
+    if osum:
+        for m in ("sa", "sst"):
+            if m in osum:
+                s = osum[m]
+                md.append(f"- {m.upper()}: dbar_CD={s['dbar_cd']:+.4g} (s={s['s_cd']:.2g}), "
+                          f"dbar_CL={s['dbar_cl']:+.3g} (s={s['s_cl']:.2g}), n={s['n']}")
+    md += ["", "## 5c Verified surrogate-vs-Fluent comparison (accepted set)",
+           md_table(c_head, c_rows), ""]
+
+    outdir.mkdir(parents=True, exist_ok=True)
+    md_path = outdir / "tab5_fluent.md"
+    md_path.write_text("\n".join(md) + "\n", encoding="utf-8")
+
+    # a compact LaTeX version (5c is the headline; 5a/5b as separate tabulars)
+    def tex_table(head, rows, caption, label):
+        ncol = len(head)
+        L = [r"\begin{table}[t]", r"\centering", f"\\caption{{{caption}}}",
+             f"\\label{{{label}}}", r"\small",
+             r"\begin{tabular}{" + "l" * ncol + "}", r"\toprule",
+             " & ".join(h.replace("_", r"\_") for h in head) + r" \\", r"\midrule"]
+        L += [" & ".join(str(c) for c in r) + r" \\" for r in rows]
+        L += [r"\bottomrule", r"\end{tabular}", r"\end{table}", ""]
+        return "\n".join(L)
+    tex = tex_table(c_head, c_rows,
+                    f"Surrogate vs Fluent on the accepted steady set (n={n_acc}, "
+                    f"grid-converged at L2, {gci_note}; qualitative external check). "
+                    "Surrogate CD is the input-robust coefficient head.",
+                    "tab:fluent_verify")
+    tex += "\n" + tex_table(b_head, b_rows, "Solver offset: six AirfRANS replicas.",
+                            "tab:fluent_offset")
+    tex_path = outdir / "tab5_fluent.tex"
+    tex_path.write_text(tex, encoding="utf-8")
+    return [md_path, tex_path]
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--results", default="results")
@@ -284,6 +429,7 @@ def main(argv: list[str] | None = None) -> int:
     written += table1_indist(df, outdir)
     written += table2_ood(df, outdir)
     written += table3_calibration(args.results, outdir)
+    written += table5_fluent(args.results, outdir)
 
     print(f"\n{len(written)} table file(s) written to {outdir}:")
     for p in written:
