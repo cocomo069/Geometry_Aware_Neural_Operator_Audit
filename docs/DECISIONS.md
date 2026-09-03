@@ -224,3 +224,30 @@ detached (~24h, 6 cores, sequential, resumable). 20/24 AL cases are post-stall A
 steady RANS may not flat-converge -- that non-convergence IS the AL result (acquisition
 picked the hard envelope), not a bug. Post: ParaView field contours via mcp__paraview__ +
 native baked Fluent display objects; surface.csv feeds surrogate-vs-Fluent comparison (C4).
+
+**D-026 · 2026-09-03 · Fluent campaign outcome + C4 reframing (PLAN_FLUENT_POST executed)**
+The SA batch finished: grid study clean and grid-converged at L2; 4 low-AoA random cases
+converged; 20 cases diverged (all 16 acquisition+variance picks at α=18°, the 3 random α=18°,
+and the random α=12° case). Three decisions, executed by Opus per Fable's plan:
+(1) **No URANS for v1.** A URANS time-average is a different object from the steady operator
+the surrogate learned; |CD_surr - CD_URANS| would be uninterpretable. URANS is future work
+(one optional demonstrator only on explicit user go).
+(2) **Steady robustness retry `r1`** on all 20 diverged cases (longer first-order start,
+reduced URFs incl. turbulence, no cd-steady stop; `templates/case_template_r1.jou`). The
+α=12° random case runs FIRST as a control gate: if r1 does not rescue it, the 18° set is not
+attempted (don't burn licence). Converts "diverged on first attempt" into a documented
+converged / quasi_steady / diverged outcome per case.
+(3) **Six frozen AirfRANS-replica offset cases** (continuous NACA params via
+`airfrans.naca_generator`; per-case μ so Fluent's U matches each sim exactly) to bound the
+solver offset Δ = CD_fluent - CD_airfrans and give a three-way AirfRANS/Fluent/surrogate check.
+C4 becomes a three-part statement: (a) qualitative — the label-free score put 16/16 picks at
+α=18°, outside the steady-RANS-solvable envelope (evidence it detects extrapolation);
+(b) quantitative on the solvable subset (random + 6 replicas + grid case + any r1 rescue),
+surrogate-vs-Fluent CD/CL offset-corrected with conformal coverage; (c) the falsifiable claim
+split — half 1 (random picks are cases the surrogate gets right) is testable and holds; half 2
+(acquired picks have higher error) is undefined against a steady truth that does not exist
+there, reported as the finding. Implementation note: the integrated cd_int on the SYNTHETIC
+pool geometry is an input-representation artifact (~5x vs the real mesh), so cd_head (the
+coefficient head) is the surrogate CD used in the comparison; cd_int stays reliable on the
+replicas (real mesh). Scripts: `scripts/{collect_fluent,compare_fluent}.py`,
+`fluent/make_offset.py`, `run_batch.py --variant/--only-file`. No hand-tuning of any selection.

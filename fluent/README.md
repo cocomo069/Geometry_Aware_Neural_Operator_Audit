@@ -4,12 +4,15 @@ Independent solver-side verification for the neural-operator study: a
 parameterised, reproducible Ansys Fluent pipeline for 2D steady incompressible
 RANS over NACA 4- and 5-digit airfoils.
 
-**Nothing in here has been executed.** Fluent runs are CPU-heavy and deferred by
-decision **D-007** until the user green-lights CPU use. Everything is authored so
-that the runs are a button-press later. The design rationale, the grid study,
-the y+ mathematics and the acceptance criteria live in
-[`../docs/FLUENT_PLAN.md`](../docs/FLUENT_PLAN.md); this file is the operating
-manual.
+**The campaign has run** (D-025, D-026; v211, 6 cores). The grid study is
+grid-converged at L2; the 4 low-AoA random cases converged; 20 cases (all 16
+acquisition+variance α=18° picks, 3 random α=18°, 1 random α=12°) diverged and
+are being retried with the conservative `r1` variant. The solver-offset study
+(6 AirfRANS replicas) is running. Post-processing lives in
+`scripts/collect_fluent.py` (classify + GCI) and `scripts/compare_fluent.py`
+(surrogate vs Fluent). The design rationale, grid study, y+ mathematics and
+acceptance criteria live in [`../docs/FLUENT_PLAN.md`](../docs/FLUENT_PLAN.md);
+this file is the operating manual.
 
 ## Why this component exists
 
@@ -33,10 +36,13 @@ qualitative external check, not a statistical test.
 
 | Path | What it is |
 |---|---|
-| `mesh_gen.py` | Parametric C-grid generator. Pure numpy → native Fluent 2D `.msh`. Includes the y+ → first-cell-height sizing and a self-check on the written file. |
-| `make_cases.py` | Reads `cases_to_run.json`, instantiates journals + params into `cases/<case_id>/`, writes `cases/MANIFEST.json` and `cases/RUNBOOK.md`. |
-| `cases_to_run.json` | The case manifest. Two placeholder cases (replaced later by the active-learning selection) plus the three-level grid-independence family. |
+| `mesh_gen.py` | Parametric C-grid generator. Pure numpy → native Fluent 2D `.msh`. y+ → first-cell-height sizing + self-check. `--naca DDDD` for integer digits, or `--naca-params M,P,T` / `L,P,Q,T` (continuous, via `airfrans.naca_generator`) for the offset replicas. |
+| `make_cases.py` | Reads `cases_to_run.json`, instantiates journals + params into `cases/<case_id>/`, writes `cases/MANIFEST.json` + `RUNBOOK.md`. `--variant r1` renders the `<case>_<model>_r1` retry journals (+ `MANIFEST_r1.json`); `--only-file` restricts to a case-id list; per-case `mu`/`naca_params` supported. |
+| `make_offset.py` | Freezes the 6 AirfRANS-replica offset cases, runs the geometry gate vs cached `surf_pos`, appends them (per-case `mu`/`re`) to `cases_to_run.json`, writes `offset_cases.txt`. |
+| `cases_to_run.json` | The case manifest: grid-independence trio + 24 active-learning picks (from `run_active.py`) + 6 offset replicas. |
 | `templates/case_template.jou` | The Fluent TUI journal template, one `{{SLOT}}` per parameter. |
+| `templates/case_template_r1.jou` | The `r1` robustness-retry template (longer first-order start, reduced URFs, no cd-steady stop). |
+| `diverged_cases.txt` / `offset_cases.txt` | Case-id lists for `run_batch.py --only-file` (the 20 diverged / the 6 offset). |
 | `templates/probe_bc_keywords.jou` | **Step 0.** Dumps the TUI keyword names this Fluent build actually accepts. |
 | `templates/mesh_cgrid.rpl` | ICEM CFD Tcl replay, the fallback meshing route. |
 | `cases/` | Generated output. Regenerate at will; nothing here is hand-edited. |
