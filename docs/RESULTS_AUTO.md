@@ -1,6 +1,6 @@
 # RESULTS_AUTO — machine-generated results digest
 
-Auto-generated 2026-09-03 by `scripts/make_results_digest.py` (regenerated automatically as new runs land). For interpretation see [RESULTS.md](RESULTS.md); for concepts see [OVERVIEW.md](OVERVIEW.md).
+Auto-generated 2026-09-04 by `scripts/make_results_digest.py` (regenerated automatically as new runs land). For interpretation see [RESULTS.md](RESULTS.md); for concepts see [OVERVIEW.md](OVERVIEW.md).
 
 ## Run inventory (108 runs with metrics)
 

@@ -39,5 +39,9 @@
     "sa",
     "sst"
   ],
-  "note": "Active-learning 'random' pick (rank 2, score 0.963). naca4 section NACA 4415 at Re 2e+06, AoA 0 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+  "note": "Active-learning 'random' pick (rank 2, score 0.963). naca4 section NACA 4415 at Re 2e+06, AoA 0 deg. Selected by scripts/run_active.py; NOT hand-tuned.",
+  "naca_params": null,
+  "airfrans_sim": "",
+  "cd_true": null,
+  "cl_true": null
 }

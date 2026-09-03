@@ -39,5 +39,9 @@
     "sa",
     "sst"
   ],
-  "note": "Grid-independence level 2 (medium, ~43.0k cells). This is the production resolution: every other case in the study runs at level 2, and the GCI computed from this trio is the numerical uncertainty band reported for all of them."
+  "note": "Grid-independence level 2 (medium, ~43.0k cells). This is the production resolution: every other case in the study runs at level 2, and the GCI computed from this trio is the numerical uncertainty band reported for all of them.",
+  "naca_params": null,
+  "airfrans_sim": "",
+  "cd_true": null,
+  "cl_true": null
 }

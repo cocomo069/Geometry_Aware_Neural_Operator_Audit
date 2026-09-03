@@ -39,5 +39,9 @@
     "sa",
     "sst"
   ],
-  "note": "Active-learning 'acquisition' pick (rank 5, score 3.714). naca4 section NACA 0010 at Re 3e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+  "note": "Active-learning 'acquisition' pick (rank 5, score 3.714). naca4 section NACA 0010 at Re 3e+06, AoA 18 deg. Selected by scripts/run_active.py; NOT hand-tuned.",
+  "naca_params": null,
+  "airfrans_sim": "",
+  "cd_true": null,
+  "cl_true": null
 }

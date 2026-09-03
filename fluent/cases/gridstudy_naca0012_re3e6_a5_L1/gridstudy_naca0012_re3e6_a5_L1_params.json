@@ -39,5 +39,9 @@
     "sa",
     "sst"
   ],
-  "note": "Grid-independence level 1 (coarse, ~18.8k cells). Representative case: symmetric section, mid-Re, attached flow at 5 deg, so CL and CD are both well posed and neither is near a bifurcation. Run all three levels before any other case."
+  "note": "Grid-independence level 1 (coarse, ~18.8k cells). Representative case: symmetric section, mid-Re, attached flow at 5 deg, so CL and CD are both well posed and neither is near a bifurcation. Run all three levels before any other case.",
+  "naca_params": null,
+  "airfrans_sim": "",
+  "cd_true": null,
+  "cl_true": null
 }
