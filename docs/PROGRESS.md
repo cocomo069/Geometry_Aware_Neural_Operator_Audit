@@ -1350,3 +1350,33 @@ deferred until the offset + r1 batches complete.
 Not run here (per brief). `fluent/paraview/PARAVIEW_TODO.md` lists the ready
 `.encas` cases and the exact figure specs (B1 grid, B3 the 4 random, B4 offset_2
 SA vs SST, B5 any r1-rescued) for the orchestrator's ParaView step.
+
+### 2026-09-03 (Opus) — background tasks killed; moved to Task Scheduler (durable)
+
+The environment kills Claude-session background tasks (Bash AND PowerShell) after
+~1 h, so the detached offset/r1 batches did not survive (three kills). Completed
+work was preserved each time (batches are resumable). Switched the whole campaign
+to a **Windows Task Scheduler** job `FluentCampaign` (D-024 GeoOpCycle pattern):
+`fluent/campaign_tick.py` runs ONE ~10-21 min solve per 8-min tick
+(MultipleInstances=IgnoreNew serialises on the single licence), priority offset
+SA+SST -> r1 control gate -> the 19 (only if the alpha=12 control reaches a
+(quasi-)steady solution). On completion it auto-runs collect_fluent --gci +
+compare_fluent + make_tables + make_figures and disables its own task. Survives
+session idle and any hourly reaper (each tick is well under an hour).
+
+State at handoff: offset study essentially done (offset_1..5 SA+SST + offset_6 SA;
+offset_6 SST + the r1 retry run under the scheduler). Measured solver offset
+(SA, n>=5): Delta_CD ~ +0.0009 (s 0.0003), all replicas positive; SA<->SST spread
+< |Delta_CD|. RESULTS section 6 rewritten with the qualitative-external-check
+reframe + limitation text; FLUENT_PLAN 5.2 + D-026 updated.
+
+**Orchestrator handoff:** when `logs/fluent_campaign.FINALIZED` appears, the
+scheduled task has regenerated `results/fluent/*` + Table 5 + Fig 11. Then:
+(1) `git add results/fluent/*.csv *.json paper/tables/tab5_fluent.* paper/figures/fig11_active_verify.*`
+and commit; (2) splice the final surrogate MAE/coverage numbers + the r1 outcome
+into RESULTS section 6.4 / Table 5a (values in surrogate_vs_fluent_summary.json);
+(3) run the ParaView step (fluent/paraview/PARAVIEW_TODO.md); (4) remove the
+`FluentCampaign` scheduled task if it did not self-disable
+(`schtasks /Delete /TN FluentCampaign /F`). A collect classifies a still-running
+solve from its partial coeffs, so trust `has_cas`/the FINALIZED run, not an
+interim snapshot.
