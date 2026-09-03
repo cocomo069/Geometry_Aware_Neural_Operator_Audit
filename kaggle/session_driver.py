@@ -109,12 +109,18 @@ def main():
     # mount path: Kaggle mounts datasets inconsistently at /kaggle/input/<slug> vs
     # /kaggle/input/datasets/<owner>/<slug> (D-020), which silently broke the
     # ablations launch. Same content-search robustness already used for the cache.
-    extracted = None
-    for cand in Path("/kaggle/input").glob("**/repo"):
-        if cand.is_dir() and (cand / "scripts").is_dir() and (cand / "src").is_dir():
-            extracted = cand
-            break
-    snapshots = list(Path("/kaggle/input").glob("**/repo.tar.gz"))
+    # PREFER the geo-op-code dataset: a stale repo/ also lives in airfrans-cache
+    # (an early push_cache bundled repo.tar.gz from an old commit), so a bare
+    # first-match can pick outdated code missing newer sweep specs. Sort geo-op-code
+    # first, then by freshest COMMIT.txt mtime as a tiebreak.
+    def _pref(p):
+        return (0 if "geo-op-code" in str(p).replace("\\", "/") else 1, str(p))
+    repo_dirs = sorted(
+        (c for c in Path("/kaggle/input").glob("**/repo")
+         if c.is_dir() and (c / "scripts").is_dir() and (c / "src").is_dir()),
+        key=_pref)
+    extracted = repo_dirs[0] if repo_dirs else None
+    snapshots = sorted(Path("/kaggle/input").glob("**/repo.tar.gz"), key=_pref)
     if extracted is not None:
         print(f"[diag] code: copying extracted repo from {extracted}")
         shutil.copytree(extracted, REPO, dirs_exist_ok=True)
