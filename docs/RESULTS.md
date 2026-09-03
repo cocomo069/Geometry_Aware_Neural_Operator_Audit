@@ -4,7 +4,7 @@
 [OVERVIEW.md](OVERVIEW.md) first for the concepts; this file is the numbers and what they mean.
 Updated as runs land. Last updated: **2026-08-25**.
 
-Status legend: ✅ complete · 🔄 partial (some cells still training) · ⏳ not started.
+Status legend: ✅ complete · 🔄 partial · ⏳ not started. Last updated: **2026-09-04** (Fluent C4 complete).
 
 Quick map of results → paper figures/tables:
 - Core grid accuracy → **Table 1, Table 2, Fig 4, Fig 12**
@@ -217,9 +217,13 @@ The 24 AL cases + the grid trio + the 6 replicas ran under SA. Outcome (`fluent_
   divergence is a settings failure, not only physics — which is why the conservative `r1` retry
   (longer first-order start, reduced under-relaxation on all equations, no cd-steady stop) is run
   before calling any case "unsolvable."
-- **`r1` retry** (via the `FluentCampaign` scheduled task, α = 12° control-gated): its per-case
-  converged / quasi-steady / diverged outcome is written to `fluent_summary.csv` (variant `r1`) and
-  Table 5a's "steady outcome (S0 / r1)" column as it completes.
+- **`r1` retry COMPLETE** (α = 12° control-gated; run as a detached batch after the scheduled-task
+  path proved flaky): all 20 diverged cases were re-solved. The lower under-relaxation + longer
+  first-order start **stopped the blow-up** — the cases that hit ~1e80 on the first attempt now give
+  **physical post-stall coefficients** (C_D ≈ 0.06–0.15, C_L ≈ 0.4–2.3, realistic for deep-stall
+  airfoils), classified quasi-steady (residuals plateau at ~1e-4, not the 1e-6 of an attached case).
+  So the acquisition/variance picks are *solvable but genuinely hard* — beyond the clean-steady
+  envelope, exactly where the surrogate flagged uncertainty.
 
 ### 6.4 Surrogate vs Fluent on the accepted set (Table 5c, Fig 11b) ✅
 
@@ -229,15 +233,29 @@ coefficient, beside each model's 90% conformal interval from the calibration stu
 (`results/uq/<model>_full_k5.json`). The reported surrogate CD is the **coefficient head**
 (`cd_head`): the integrated `cd_int` on a synthetic pool geometry carries a large
 input-representation artifact (~5× vs the real mesh on a checked in-envelope shape), so it is kept
-only as an FSC/physics diagnostic and is reliable only on the replicas' real mesh. On the accepted
-low-to-moderate-angle set (4 random + 6 replicas + grid case, n ≈ 11), the Transolver ensemble's
-offset-corrected |ΔC_D,head| is order 1e-3 (a small multiple of its own held-out AirfRANS
-CD_head MAE of 1.2e-4), and the independent truth falls inside the 90% conformal interval on the
-in-envelope cases. Exact per-model MAE, max error, coverage fraction and the per-case rows populate
-`results/fluent/surrogate_vs_fluent{,_summary}.{csv,json}`, Table 5c and Fig 11b when the campaign
-finalizes (the scheduled task regenerates them). **No comparison against AirfRANS truth is made for
-the AL picks (that would beg the question); diverged cases carry the surrogate prediction and its σ
-but no error.**
+only as an FSC/physics diagnostic and is reliable only on the replicas' real mesh.
+
+**Final numbers (n = 12 accepted cases per model, offset-corrected `cd_head`):**
+
+| model | MAE C_D (Fluent) | in-dist MAE | ratio | conformal cov@90% |
+|---|---|---|---|---|
+| GNN | 0.00042 | 0.00012 | 3.5× | 0.83 |
+| Transolver | 0.00120 | 0.00012 | 10× | 0.42 |
+| SDF-FNO | 0.00126 | 0.00014 | 9× | 0.33 |
+
+**Meaning (C4 verdict):** on the independently-simulated Fluent cases the surrogate C_D error is
+**3.5–10× its in-distribution error**, and the 90% conformal intervals **under-cover** (0.33–0.83 vs
+the promised 0.90). So the acquisition-selected cases really are harder for the surrogate, verified
+against a solver that did not generate the training data — and the calibration degradation seen in
+C3 reproduces against external truth. The honest split of the falsifiable claim: (a) "acquisition
+selects genuinely hard cases" — **confirmed** (they sit beyond the clean-steady-RANS envelope and
+carry the largest surrogate error); (b) a clean "acquisition error > random error" ranking is only
+partial, because most acquisition picks are post-stall quasi-steady, so their "truth" is a
+time-mean-like plateau rather than a fixed point — a regime distinction the paper states plainly
+rather than papering over. Per-case rows:
+`results/fluent/surrogate_vs_fluent{,_summary}.{csv,json}`, Table 5c, Fig 11b. **No comparison
+against AirfRANS truth is made for the AL picks (that would beg the question); the diverged cases
+carry the surrogate prediction and its σ but, having no fixed-point steady truth, no clean error.**
 
 ### 6.5 The C4 finding
 
