@@ -1,0 +1,1 @@
+.venv/Scripts/python.exe fluent/mesh_gen.py --naca-params 1.956,3.115,0,17.336 --re 4.13882e+06 --aoa 0.932 --level 2 --chord 1 --rho 1.184 --mu 1.83498e-05 --y-plus 0.25 --r-far 30 --x-out 30 --smooth-sweeps 0 --out fluent/cases/offset_6_naca5_17_a0p9/offset_6_naca5_17_a0p9.msh --json fluent/cases/offset_6_naca5_17_a0p9/offset_6_naca5_17_a0p9_mesh.json

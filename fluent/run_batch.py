@@ -129,14 +129,15 @@ def build_plan(cases, models, sst_gridstudy, only):
 # per-case file helpers
 # ---------------------------------------------------------------------------
 
-def case_paths(case_id, model):
+def case_paths(case_id, model, variant=""):
     cdir = CASES_DIR / case_id
+    label = model if not variant else "%s_%s" % (model, variant)
     return dict(
         cdir=cdir,
         mesh=cdir / (case_id + ".msh"),
-        journal=cdir / ("%s_%s.jou" % (case_id, model)),
-        coeffs=cdir / ("%s_%s_coeffs.out" % (case_id, model)),
-        cas=cdir / ("%s_%s.cas.h5" % (case_id, model)),
+        journal=cdir / ("%s_%s.jou" % (case_id, label)),
+        coeffs=cdir / ("%s_%s_coeffs.out" % (case_id, label)),
+        cas=cdir / ("%s_%s.cas.h5" % (case_id, label)),
         mesh_cmd=cdir / (case_id + "_mesh.cmd"),
     )
 
@@ -225,13 +226,14 @@ def make_smoke_journal(journal: Path, n: int) -> Path:
 # solve
 # ---------------------------------------------------------------------------
 
-def run_one(case, model, fluent_exe, procs, dim, timeout_min, smoke_iters):
+def run_one(case, model, fluent_exe, procs, dim, timeout_min, smoke_iters, variant=""):
     cid = case["case_id"]
-    p = case_paths(cid, model)
+    p = case_paths(cid, model, variant)
+    mlabel = model if not variant else "%s_%s" % (model, variant)
 
     if not p["journal"].exists():
         log("  SKIP %s [%s]: journal %s missing (run make_cases.py)"
-            % (cid, model, p["journal"].name))
+            % (cid, mlabel, p["journal"].name))
         return "missing-journal"
 
     if smoke_iters is None and is_complete(p):
@@ -290,6 +292,11 @@ def main(argv=None):
                     help="also run k-omega SST for the three gridstudy_* cases")
     ap.add_argument("--only", action="append", default=None,
                     help="restrict to these case_ids (repeatable, or comma-separated)")
+    ap.add_argument("--only-file", default=None,
+                    help="restrict to the case_ids listed one-per-line in this file")
+    ap.add_argument("--variant", default="",
+                    help="solver variant suffix (e.g. r1): uses journals / outputs "
+                         "named <case>_<model>_<variant> (see make_cases.py --variant)")
     ap.add_argument("--dry-run", action="store_true",
                     help="print the plan (with skip/run status) and exit")
     ap.add_argument("--smoke-iters", type=int, default=None,
@@ -301,7 +308,13 @@ def main(argv=None):
     ap.add_argument("--dim", default="2ddp", help="Fluent dimension flag (default 2ddp)")
     ap.add_argument("--timeout-min", type=int, default=180,
                     help="per-case wall-clock cap in minutes; 0 = no limit (default 180)")
+    ap.add_argument("--log-file", default=None,
+                    help="append the batch log here instead of logs/fluent_batch.log")
     args = ap.parse_args(argv)
+
+    if args.log_file:
+        global LOG_FILE
+        LOG_FILE = Path(args.log_file)
 
     models = [m.strip() for m in args.models.split(",") if m.strip()]
     only = None
@@ -309,6 +322,12 @@ def main(argv=None):
         only = set()
         for tok in args.only:
             only.update(t for t in tok.split(",") if t)
+    if args.only_file:
+        only = only or set()
+        for line in Path(args.only_file).read_text(encoding="utf-8").splitlines():
+            cid = line.strip()
+            if cid and not cid.startswith("#"):
+                only.add(cid)
 
     cases = load_cases()
     plan = build_plan(cases, models, args.sst_gridstudy, only)
@@ -323,7 +342,7 @@ def main(argv=None):
 
     # Show the plan (and, for a real run, the skip/run status of each).
     for case, model in plan:
-        p = case_paths(case["case_id"], model)
+        p = case_paths(case["case_id"], model, args.variant)
         if args.smoke_iters is not None:
             status = "SMOKE-RUN"
         elif is_complete(p):
@@ -345,7 +364,7 @@ def main(argv=None):
     tally = {}
     for case, model in plan:
         res = run_one(case, model, args.fluent, args.processors, args.dim,
-                      args.timeout_min, args.smoke_iters)
+                      args.timeout_min, args.smoke_iters, args.variant)
         tally[res] = tally.get(res, 0) + 1
 
     log("BATCH DONE  " + "  ".join("%s=%d" % (k, v) for k, v in sorted(tally.items())))

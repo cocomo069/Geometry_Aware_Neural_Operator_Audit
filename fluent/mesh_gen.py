@@ -198,7 +198,31 @@ def naca5_halves(digits: str, x: np.ndarray):
     return yc, dyc, yt
 
 
-def airfoil_loop(digits: str, na: int, chord: float, aoa_deg: float):
+def naca_params_halves(params, x: np.ndarray):
+    """Camber line, slope and half-thickness from CONTINUOUS NACA parameters,
+    using AirfRANS's own generator (``airfrans.naca_generator``).
+
+    ``params`` is ``[M, P, T]`` (4-digit) or ``[L, P, Q, T]`` (5-digit), in the
+    SAME units AirfRANS indexes its sims with (e.g. M = 0.081, T = 16.295): the
+    camber parameters go to ``camber_line`` verbatim and the thickness ``T`` is
+    scaled by 1/100 for ``thickness_dist`` (which expects a chord fraction). This
+    is the path the solver-offset replicas need, because the test sims have
+    non-integer "digits" that the integer parsers above cannot represent.
+    """
+    from airfrans.naca_generator import camber_line, thickness_dist
+
+    params = [float(v) for v in params]
+    if len(params) not in (3, 4):
+        raise ValueError(f"naca_params must be [M,P,T] or [L,P,Q,T], got {params}")
+    params_c = np.asarray(params[:-1], dtype=np.float64)
+    t = params[-1] / 100.0
+    yc, dyc = camber_line(params_c, x)
+    yt = thickness_dist(t, x, CTE=True)   # closed TE, matches naca4/5_halves
+    return np.asarray(yc, float), np.asarray(dyc, float), np.asarray(yt, float)
+
+
+def airfoil_loop(digits: str, na: int, chord: float, aoa_deg: float,
+                 naca_params=None):
     """Closed airfoil contour, TE -> lower -> LE -> upper -> TE, `na` cells.
 
     Returns an (na+1, 2) array whose first and last rows are the *same* point
@@ -207,6 +231,10 @@ def airfoil_loop(digits: str, na: int, chord: float, aoa_deg: float):
 
     The section is rotated by -aoa about the quarter chord, so the freestream
     stays along +x (see module docstring).
+
+    When ``naca_params`` (``[M,P,T]`` or ``[L,P,Q,T]``) is given, the continuous
+    AirfRANS generator is used instead of the integer-``digits`` parser; ``digits``
+    is then ignored for the shape (still used only for the header label).
     """
     if na % 2 != 0:
         raise ValueError(f"na must be even so the LE lands on a node (got {na})")
@@ -215,7 +243,9 @@ def airfoil_loop(digits: str, na: int, chord: float, aoa_deg: float):
     xc = 0.5 * (1.0 + np.cos(2.0 * np.pi * s))     # 1 -> 0 -> 1, clustered at both ends
     xc = np.clip(xc, 0.0, 1.0)
 
-    if len(digits) == 4:
+    if naca_params is not None:
+        yc, dyc, yt = naca_params_halves(naca_params, xc)
+    elif len(digits) == 4:
         yc, dyc, yt = naca4_halves(digits, xc)
     elif len(digits) == 5:
         yc, dyc, yt = naca5_halves(digits, xc)
@@ -820,7 +850,7 @@ def generate(naca: str, re: float, aoa_deg: float, level: int, out: Path,
              chord: float = 1.0, rho: float = RHO_DEFAULT, mu: float = MU_DEFAULT,
              y_plus: float = 0.25, r_far: float = 30.0, x_out: float = 30.0,
              smooth_sweeps: int = 0, outer_uniformity: float = 1.0,
-             overrides: dict | None = None,
+             overrides: dict | None = None, naca_params=None,
              verbose: bool = True) -> dict:
     """Generate one mesh; returns the full parameter/quality record."""
     res = dict(GRID_LEVELS[level])
@@ -831,7 +861,7 @@ def generate(naca: str, re: float, aoa_deg: float, level: int, out: Path,
     yp = y_plus * LEVEL_YPLUS_SCALE[level]
     bl = first_cell_height(u_inf, chord, rho, mu, yp)
 
-    surface = airfoil_loop(naca, res["na"], chord, aoa_deg)
+    surface = airfoil_loop(naca, res["na"], chord, aoa_deg, naca_params=naca_params)
     X, Y, meta = build_cgrid(surface, res["nw"], res["nj"], chord,
                              bl["first_cell_height"], r_far * chord,
                              x_out * chord, smooth_sweeps=smooth_sweeps,
@@ -845,6 +875,7 @@ def generate(naca: str, re: float, aoa_deg: float, level: int, out: Path,
                   chord=chord, rho=rho, mu=mu, nu=mu / rho, u_inf=u_inf,
                   a_ref=chord * 1.0, y_plus_target=yp,
                   boundary_layer=bl, grid=meta, quality=qual, counts=counts,
+                  naca_params=(list(naca_params) if naca_params is not None else None),
                   mesh_file=str(out))
 
     if verbose:
@@ -878,7 +909,11 @@ def main(argv=None):
         description="Parametric 2D C-grid generator for NACA airfoils "
                     "-> native Fluent .msh",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    ap.add_argument("--naca", required=True, help="4- or 5-digit designation, e.g. 0012 or 23012")
+    ap.add_argument("--naca", default=None, help="4- or 5-digit designation, e.g. 0012 or 23012")
+    ap.add_argument("--naca-params", default=None,
+                    help="CONTINUOUS NACA parameters 'M,P,T' (4-digit) or 'L,P,Q,T' "
+                         "(5-digit), for the AirfRANS-replica offset study. Mutually "
+                         "exclusive with --naca; uses airfrans.naca_generator.")
     ap.add_argument("--re", type=float, required=True, help="chord Reynolds number")
     ap.add_argument("--aoa", type=float, default=0.0, help="angle of attack, degrees")
     ap.add_argument("--level", type=int, default=2, choices=sorted(GRID_LEVELS),
@@ -911,12 +946,20 @@ def main(argv=None):
                     help="also write the parameter/quality record here")
     args = ap.parse_args(argv)
 
-    rec = generate(args.naca, args.re, args.aoa, args.level, args.out,
+    naca_params = None
+    if args.naca_params:
+        naca_params = [float(v) for v in str(args.naca_params).replace(",", " ").split()]
+    if (args.naca is None) == (naca_params is None):
+        raise SystemExit("provide exactly one of --naca or --naca-params")
+    naca_label = args.naca if args.naca is not None else "params"
+
+    rec = generate(naca_label, args.re, args.aoa, args.level, args.out,
                    chord=args.chord, rho=args.rho, mu=args.mu, y_plus=args.y_plus,
                    r_far=args.r_far, x_out=args.x_out,
                    smooth_sweeps=args.smooth_sweeps,
                    outer_uniformity=args.outer_uniformity,
-                   overrides=dict(na=args.na, nw=args.nw, nj=args.nj))
+                   overrides=dict(na=args.na, nw=args.nw, nj=args.nj),
+                   naca_params=naca_params)
     if args.self_check:
         chk = validate_msh(args.out)
         rec["self_check"] = chk

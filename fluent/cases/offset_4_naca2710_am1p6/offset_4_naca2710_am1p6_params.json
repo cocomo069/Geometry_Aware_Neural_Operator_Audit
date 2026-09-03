@@ -1,0 +1,51 @@
+{
+  "case_id": "offset_4_naca2710_am1p6",
+  "naca_digits": "2710",
+  "re": 2055923.1172781568,
+  "aoa_deg": -1.5800000429153442,
+  "mesh_level": 2,
+  "chord": 1.0,
+  "rho": 1.184,
+  "mu": 1.8349807302001863e-05,
+  "nu": 1.5498148059123196e-05,
+  "u_inf": 31.863000869750973,
+  "mach_estimate": 0.09208959788945367,
+  "a_ref": 1.0,
+  "x_moment": 0.25,
+  "y_plus": 0.25,
+  "y_plus_target": 0.25,
+  "boundary_layer": {
+    "re_c": 2055923.1172781566,
+    "cf": 0.0032592316098208605,
+    "tau_w": 1.9588910466881373,
+    "u_tau": 1.2862615556070034,
+    "y1_centre": 3.0122466133665596e-06,
+    "first_cell_height": 6.024493226733119e-06
+  },
+  "grid": {
+    "na": 256,
+    "nw": 64,
+    "nj": 112,
+    "n_cells": 43008,
+    "normal_growth": 1.1266358157819005
+  },
+  "r_far": 30.0,
+  "x_out": 30.0,
+  "smooth_sweeps": 0,
+  "iter_stage1": 300,
+  "iter_stage2": 4000,
+  "cd_stop_criterion": 1e-05,
+  "models": [
+    "sa",
+    "sst"
+  ],
+  "note": "Offset replica 4 (4-digit, low-Re edge). AirfRANS test sim airFoil2D_SST_31.863_-1.58_1.567_6.956_10.028; continuous NACA params [1.567, 6.956, 10.028], U=31.863 m/s, nu=1.54981e-05, Re=2.056e+06, AoA=-1.580 deg. Per-case mu reproduces the sim freestream exactly. NOT hand-tuned.",
+  "naca_params": [
+    1.567,
+    6.956,
+    10.028
+  ],
+  "airfrans_sim": "airFoil2D_SST_31.863_-1.58_1.567_6.956_10.028",
+  "cd_true": 0.009225948713719845,
+  "cl_true": 0.05126406252384186
+}

@@ -368,6 +368,139 @@
       "score": 0.9796887085096565,
       "rank": 7,
       "note": "Active-learning 'random' pick (rank 7, score 0.9797). naca5 section NACA 22012 at Re 3e+06, AoA 12 deg. Selected by scripts/run_active.py; NOT hand-tuned."
+    },
+    {
+      "case_id": "offset_1_naca0016_a2p4",
+      "naca_digits": "0016",
+      "naca_params": [
+        0.081,
+        0.0,
+        16.295
+      ],
+      "re": 3906337.720820305,
+      "aoa_deg": 2.4010000228881836,
+      "mesh_level": 2,
+      "mu": 1.8349807302001863e-05,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "arm": "offset",
+      "airfrans_sim": "airFoil2D_SST_60.541_2.401_0.081_0.0_16.295",
+      "cd_true": 0.009701866656541824,
+      "cl_true": 0.25090283155441284,
+      "note": "Offset replica 1 (near-symmetric 4-digit, low alpha, mid Re). AirfRANS test sim airFoil2D_SST_60.541_2.401_0.081_0.0_16.295; continuous NACA params [0.081, 0.0, 16.295], U=60.541 m/s, nu=1.54981e-05, Re=3.906e+06, AoA=2.401 deg. Per-case mu reproduces the sim freestream exactly. NOT hand-tuned."
+    },
+    {
+      "case_id": "offset_2_naca0109_a8p6",
+      "naca_digits": "1009",
+      "naca_params": [
+        0.875,
+        0.0,
+        8.812
+      ],
+      "re": 4039643.846785233,
+      "aoa_deg": 8.57800006866455,
+      "mesh_level": 2,
+      "mu": 1.8349807302001863e-05,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "arm": "offset",
+      "airfrans_sim": "airFoil2D_SST_62.607_8.578_0.875_0.0_8.812",
+      "cd_true": 0.011507520452141762,
+      "cl_true": 0.9258393049240112,
+      "note": "Offset replica 2 (near-symmetric 4-digit, higher alpha, mid Re). AirfRANS test sim airFoil2D_SST_62.607_8.578_0.875_0.0_8.812; continuous NACA params [0.875, 0.0, 8.812], U=62.607 m/s, nu=1.54981e-05, Re=4.04e+06, AoA=8.578 deg. Per-case mu reproduces the sim freestream exactly. NOT hand-tuned."
+    },
+    {
+      "case_id": "offset_3_naca2211_a3p3",
+      "naca_digits": "2211",
+      "naca_params": [
+        2.424,
+        2.411,
+        10.928
+      ],
+      "re": 4595774.775998254,
+      "aoa_deg": 3.3329999446868896,
+      "mesh_level": 2,
+      "mu": 1.8349807302001863e-05,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "arm": "offset",
+      "airfrans_sim": "airFoil2D_SST_71.226_3.333_2.424_2.411_10.928",
+      "cd_true": 0.009051933884620667,
+      "cl_true": 0.6070307493209839,
+      "note": "Offset replica 3 (cambered 4-digit, mid alpha, mid Re). AirfRANS test sim airFoil2D_SST_71.226_3.333_2.424_2.411_10.928; continuous NACA params [2.424, 2.411, 10.928], U=71.226 m/s, nu=1.54981e-05, Re=4.596e+06, AoA=3.333 deg. Per-case mu reproduces the sim freestream exactly. NOT hand-tuned."
+    },
+    {
+      "case_id": "offset_4_naca2710_am1p6",
+      "naca_digits": "2710",
+      "naca_params": [
+        1.567,
+        6.956,
+        10.028
+      ],
+      "re": 2055923.1172781568,
+      "aoa_deg": -1.5800000429153442,
+      "mesh_level": 2,
+      "mu": 1.8349807302001863e-05,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "arm": "offset",
+      "airfrans_sim": "airFoil2D_SST_31.863_-1.58_1.567_6.956_10.028",
+      "cd_true": 0.009225948713719845,
+      "cl_true": 0.05126406252384186,
+      "note": "Offset replica 4 (4-digit, low-Re edge). AirfRANS test sim airFoil2D_SST_31.863_-1.58_1.567_6.956_10.028; continuous NACA params [1.567, 6.956, 10.028], U=31.863 m/s, nu=1.54981e-05, Re=2.056e+06, AoA=-1.580 deg. Per-case mu reproduces the sim freestream exactly. NOT hand-tuned."
+    },
+    {
+      "case_id": "offset_5_naca0010_a3p8",
+      "naca_digits": "0010",
+      "naca_params": [
+        0.418,
+        0.0,
+        9.665
+      ],
+      "re": 6014460.378164495,
+      "aoa_deg": 3.7899999618530273,
+      "mesh_level": 2,
+      "mu": 1.8349807302001863e-05,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "arm": "offset",
+      "airfrans_sim": "airFoil2D_SST_93.213_3.79_0.418_0.0_9.665",
+      "cd_true": 0.008057542145252228,
+      "cl_true": 0.4185880720615387,
+      "note": "Offset replica 5 (4-digit, high-Re edge). AirfRANS test sim airFoil2D_SST_93.213_3.79_0.418_0.0_9.665; continuous NACA params [0.418, 0.0, 9.665], U=93.213 m/s, nu=1.54981e-05, Re=6.014e+06, AoA=3.790 deg. Per-case mu reproduces the sim freestream exactly. NOT hand-tuned."
+    },
+    {
+      "case_id": "offset_6_naca5_17_a0p9",
+      "naca_digits": "5_17",
+      "naca_params": [
+        1.956,
+        3.115,
+        0.0,
+        17.336
+      ],
+      "re": 4138816.905586573,
+      "aoa_deg": 0.9319999814033508,
+      "mesh_level": 2,
+      "mu": 1.8349807302001863e-05,
+      "models": [
+        "sa",
+        "sst"
+      ],
+      "arm": "offset",
+      "airfrans_sim": "airFoil2D_SST_64.144_0.932_1.956_3.115_0.0_17.336",
+      "cd_true": 0.009805364534258842,
+      "cl_true": 0.21855337917804718,
+      "note": "Offset replica 6 (5-digit (non-reflex), mid conditions). AirfRANS test sim airFoil2D_SST_64.144_0.932_1.956_3.115_0.0_17.336; continuous NACA params [1.956, 3.115, 0.0, 17.336], U=64.144 m/s, nu=1.54981e-05, Re=4.139e+06, AoA=0.932 deg. Per-case mu reproduces the sim freestream exactly. NOT hand-tuned."
     }
   ]
 }

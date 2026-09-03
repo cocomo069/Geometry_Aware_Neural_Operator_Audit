@@ -165,12 +165,20 @@ def validate(cases, defaults):
         if cid in seen:
             errs.append("%s: duplicate case_id '%s'" % (where, cid))
         seen.add(cid)
-        d = str(c.get("naca_digits", ""))
-        if len(d) not in (4, 5) or not d.isdigit():
-            errs.append("%s: naca_digits '%s' must be 4 or 5 digits" % (where, d))
-        if len(d) == 5 and d[2] == "1":
-            errs.append("%s: NACA %s is a reflex 5-digit mean line, which "
-                        "fluent/mesh_gen.py does not implement" % (where, d))
+        # Offset-study replicas carry CONTINUOUS naca_params (from AirfRANS's own
+        # generator) instead of integer digits; the digit checks are skipped for
+        # them and airfrans.naca_generator handles reflex / off-table shapes.
+        if "naca_params" in c:
+            pr = c["naca_params"]
+            if not (isinstance(pr, (list, tuple)) and len(pr) in (3, 4)):
+                errs.append("%s: naca_params must be [M,P,T] or [L,P,Q,T]" % where)
+        else:
+            d = str(c.get("naca_digits", ""))
+            if len(d) not in (4, 5) or not d.isdigit():
+                errs.append("%s: naca_digits '%s' must be 4 or 5 digits" % (where, d))
+            if len(d) == 5 and d[2] == "1":
+                errs.append("%s: NACA %s is a reflex 5-digit mean line, which "
+                            "fluent/mesh_gen.py does not implement" % (where, d))
         if c.get("mesh_level") not in (1, 2, 3):
             errs.append("%s: mesh_level must be 1, 2 or 3" % where)
         for m in c.get("models", defaults["models"]):
@@ -227,6 +235,10 @@ def derive(case, defaults):
         cd_stop_criterion=float(p["cd_stop_criterion"]),
         models=list(case.get("models", defaults["models"])),
         note=case.get("note", ""),
+        naca_params=(list(case["naca_params"]) if "naca_params" in case else None),
+        airfrans_sim=case.get("airfrans_sim", ""),
+        cd_true=case.get("cd_true"),
+        cl_true=case.get("cl_true"),
     )
 
 
@@ -268,11 +280,13 @@ def instantiate(template, d, model, mesh_path, out_dir):
 
 
 def mesh_command(d, mesh_path, json_path):
+    shape = ("--naca-params %s" % ",".join("%g" % v for v in d["naca_params"])
+             if d.get("naca_params") else "--naca %s" % d["naca_digits"])
     return (".venv/Scripts/python.exe fluent/mesh_gen.py"
-            " --naca %s --re %g --aoa %g --level %d --chord %g"
+            " %s --re %g --aoa %g --level %d --chord %g"
             " --rho %g --mu %g --y-plus %g --r-far %g --x-out %g"
             " --smooth-sweeps %d --out %s --json %s"
-            % (d["naca_digits"], d["re"], d["aoa_deg"], d["mesh_level"],
+            % (shape, d["re"], d["aoa_deg"], d["mesh_level"],
                d["chord"], d["rho"], d["mu"], d["y_plus"], d["r_far"],
                d["x_out"], d["smooth_sweeps"],
                mesh_path.relative_to(REPO).as_posix(),
@@ -373,7 +387,8 @@ def main(argv=None):
             rec = generate(d["naca_digits"], d["re"], d["aoa_deg"], d["mesh_level"],
                            mesh_path, chord=d["chord"], rho=d["rho"], mu=d["mu"],
                            y_plus=d["y_plus"], r_far=d["r_far"], x_out=d["x_out"],
-                           smooth_sweeps=d["smooth_sweeps"])
+                           smooth_sweeps=d["smooth_sweeps"],
+                           naca_params=d.get("naca_params"))
             mjson.write_text(json.dumps(rec, indent=2), encoding="utf-8")
 
         total_cells += d["grid"]["n_cells"] * len(d["models"])

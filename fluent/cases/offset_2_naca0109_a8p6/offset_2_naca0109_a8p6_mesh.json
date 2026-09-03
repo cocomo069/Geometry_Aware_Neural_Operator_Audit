@@ -1,0 +1,67 @@
+{
+  "naca_digits": "1009",
+  "re": 4039643.846785233,
+  "aoa_deg": 8.57800006866455,
+  "mesh_level": 2,
+  "chord": 1.0,
+  "rho": 1.184,
+  "mu": 1.8349807302001863e-05,
+  "nu": 1.5498148059123196e-05,
+  "u_inf": 62.606998443603516,
+  "a_ref": 1.0,
+  "y_plus_target": 0.25,
+  "boundary_layer": {
+    "re_c": 4039643.846785233,
+    "cf": 0.0029594434871092214,
+    "tau_w": 6.867165654578228,
+    "u_tau": 2.4083128933015376,
+    "y1_centre": 1.6088179511712973e-06,
+    "first_cell_height": 3.2176359023425947e-06
+  },
+  "grid": {
+    "na": 256,
+    "nw": 64,
+    "nj": 112,
+    "ni": 384,
+    "n_cells": 43008,
+    "n_nodes_logical": 43505,
+    "te": [
+      0.9916102940712141,
+      -0.11186675881425755
+    ],
+    "wake_growth": 1.096012144513144,
+    "normal_growth": 1.133607416168056,
+    "first_cell": 3.2176359023425947e-06,
+    "shortest_ray": 29.752747114939577,
+    "r_far": 30.0,
+    "x_out": 30.0,
+    "chord": 1.0,
+    "smooth_sweeps": 0,
+    "outer_uniformity": 1.0,
+    "wake_normal_blend": 1.0
+  },
+  "quality": {
+    "n_cells": 43008,
+    "min_area": 4.863973598889793e-10,
+    "max_area": 1.790431697695567,
+    "min_jacobian": 4.863971829954811e-10,
+    "max_aspect_ratio": 5229.03527722806,
+    "min_orthogonality": 0.21591236073883868,
+    "mean_orthogonality": 0.7612885481678452
+  },
+  "counts": {
+    "n_nodes": 43440,
+    "n_cells": 43008,
+    "n_faces": 86448,
+    "n_faces_airfoil": 256,
+    "n_faces_farfield": 384,
+    "n_faces_outlet": 224,
+    "n_faces_interior": 85584
+  },
+  "naca_params": [
+    0.875,
+    0.0,
+    8.812
+  ],
+  "mesh_file": "D:\\Personal Projects\\geom_aware_neural_operator\\fluent\\cases\\offset_2_naca0109_a8p6\\offset_2_naca0109_a8p6.msh"
+}
