@@ -38,7 +38,20 @@ def main():
                if exists else
                [sys.executable, "-m", "kaggle", "datasets", "create", "-p", str(tdp), "--dir-mode", "zip"])
         subprocess.run(cmd, check=True)
-    print(f"pushed code dataset {slug} @ {head[:8]}")
+    # Wait for Kaggle to finish PROCESSING the new version before returning: a
+    # kernel launched against a still-processing dataset mounts no repo.tar.gz and
+    # dies with "no repo.tar.gz ... and no GH_TOKEN" (observed on the ablations
+    # launch). Poll status until "ready" so callers (cycle.py) can launch safely.
+    import time
+    for _ in range(40):  # ~10 min max
+        r = subprocess.run([sys.executable, "-m", "kaggle", "datasets", "status", slug],
+                           capture_output=True, text=True)
+        if "ready" in ((r.stdout or "") + (r.stderr or "")).lower():
+            break
+        time.sleep(15)
+    else:
+        print(f"WARNING: {slug} not confirmed ready after ~10 min; launching anyway")
+    print(f"pushed code dataset {slug} @ {head[:8]} (ready)")
 
 
 if __name__ == "__main__":
