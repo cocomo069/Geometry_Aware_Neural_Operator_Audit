@@ -26,6 +26,32 @@ Read order for a fresh session: this file → [CONTEXT.md](CONTEXT.md) (frozen i
   `gh auth switch -u cocomo069` before any push, switch back after. Kaggle token at
   `C:\Users\LAPTOP\.kaggle\access_token`.
 
+## Session-3 update (2026-09-04) — project complete except one quota-blocked item
+
+- **Everything is done and pushed** except the **GNN K=3 deep-ensemble** (upgrades ONE row of
+  Table 3: GNN calibration from K=1 → K=3). All other deliverables complete: core grid, K=5
+  ensembles (transolver + sdf_fno), data-efficiency, ablations (Table 4), full Fluent C4
+  verification (grid study + AL + offset + r1 salvage, Table 5), 22 figures, Tables 1–5,
+  RESULTS.md / OVERVIEW.md / RESULTS_AUTO.md. 98+ commits on `cocomo069/Geometry_Aware_Neural_Operator_Audit`.
+- **Why GNN K=3 is blocked (both GPU paths dead):**
+  1. `cocomo069` weekly GPU quota (30 h) is **exhausted** — a kernel push is rejected with
+     "Maximum weekly GPU quota of 30.00 hours reached". Clears on the weekly rolling reset.
+  2. Second account `taimooramin0699` (new token) **cannot use GPU**: verified 2026-09-04 via a
+     probe kernel — `enable_gpu:true` but `torch.cuda.is_available()==False`, device_count 0.
+     Root cause: the account is **not phone-verified** (Kaggle disables GPU + internet until then).
+     Only coco can phone-verify it. Its datasets are irrelevant while GPU is off, so the ports
+     were stopped (only tiny `geo-op-code` + a `geo-op-gpuprobe` kernel remain there — safe to delete).
+  - `cocomo069` token restored as active (`~/.kaggle/access_token.cocomo069.bak` → `access_token`).
+- **Autonomous finish (no human needed):** scheduled task **GeoOpCycle** (every 6 h) runs
+  `kaggle/cycle.py`. While quota is exhausted each tick is a fast no-op (6 h cooldown). When the
+  weekly quota resets, cycle.py launches `geo-op-gnnens` (gnn × {full,reynolds,aoa,shape5} ×
+  seed{1,2} = 8 runs), pulls results, reruns `run_uq`, regenerates figures + Table 3, and
+  commits+pushes under `cocomo069` (`regenerate_and_commit()`). Queue: `kaggle/cycle_queue.json`,
+  only `geo-op-gnnens` pending.
+- **To finish TODAY instead of waiting for reset:** coco phone-verifies `taimooramin0699`, then
+  re-run the three dataset ports + `kaggle/launch.py --kernel-slug taimooramin0699/geo-op-gnnens
+  --runs-dataset taimooramin0699/geo-op-runs --sweep configs/sweeps/kaggle_gnn_ens_k3.yaml`.
+
 ---
 
 ## 1. What this project is
