@@ -1,8 +1,8 @@
 # RESULTS_AUTO — machine-generated results digest
 
-Auto-generated 2026-09-04 by `scripts/make_results_digest.py` (regenerated automatically as new runs land). For interpretation see [RESULTS.md](RESULTS.md); for concepts see [OVERVIEW.md](OVERVIEW.md).
+Auto-generated 2026-09-05 by `scripts/make_results_digest.py` (regenerated automatically as new runs land). For interpretation see [RESULTS.md](RESULTS.md); for concepts see [OVERVIEW.md](OVERVIEW.md).
 
-## Run inventory (114 runs with metrics)
+## Run inventory (118 runs with metrics)
 
 ```
 constant_aoa_s0
@@ -32,7 +32,11 @@ gnn_full_n50_s2
 gnn_full_s0
 gnn_full_s0_lamF
 gnn_full_s0_smoke_dryrun
+gnn_full_s1
+gnn_full_s2
 gnn_reynolds_s0
+gnn_reynolds_s1
+gnn_reynolds_s2
 gnn_scarce_s0
 gnn_shape5_s0
 ridge_aoa_s0
@@ -177,7 +181,7 @@ transolver_shape5_s4
 
 | model | $p$ rel-$L_2$ | $\tau_w$ rel-$L_2$ | $C_D$ MAE | $C_D$ $\rho$ | FSC $C_D$ | sym | GPU-h |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| M1 GNN | 0.376 | 0.365 | 0.00216 | 0.992 | 0.006 | 3.16 | 2.06 |
+| M1 GNN | 0.256 | 0.247 | 0.00135 | 0.994 | 0.00578 | 3.68 | 2.36 |
 | M2 SDF-FNO | 0.0271 | 0.0313 | 0.000143 | 0.998 | 0.00166 | 4.57 | 0.427 |
 | M3 Transolver | **0.0186** | **0.0192** | **0.000135** | **0.999** | **0.00129** | 4.47 | 0.408 |
 | Ridge | 1.42 | 1.16 | 0.0016 | 0.902 | 0.00604 | **0** | **0** |
@@ -187,7 +191,7 @@ transolver_shape5_s4
 
 | model | full (in-dist.) | scarce | Reynolds shift | AoA shift | shape family | combined | full_n100 | full_n200 | full_n25 | full_n400 | full_n50 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| M1 GNN | 0.376 | 0.154 | 0.223 | 0.188 | 0.13 | 0.264 | 0.146 | 0.117 | 0.292 | 0.0995 | 0.217 |
+| M1 GNN | 0.256 | 0.154 | 0.214 | 0.188 | 0.13 | 0.264 | 0.146 | 0.117 | 0.292 | 0.0995 | 0.217 |
 | M2 SDF-FNO | 0.0271 | 0.0832 | 0.104 | 0.113 | 0.0667 | 0.153 | 0.134 | 0.072 | 0.325 | 0.0432 | 0.232 |
 | M3 Transolver | **0.0186** | **0.0666** | **0.0837** | **0.101** | **0.0526** | **0.139** | **0.1** | **0.0542** | **0.271** | **0.0292** | **0.181** |
 | Ridge | 1.42 | 1.4 | 1.62 | 1.18 | 1.6 | 1.86 | -- | -- | -- | -- | -- |
@@ -197,10 +201,10 @@ transolver_shape5_s4
 
 | model | split | cov@.8 | cov@.9 | cov@.95 | cov@.9 (tr) | width@.9 | ECE |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| M1 GNN | full (in-dist.) | 0.755 | 0.845 | 0.915 | 0.845 | 0.0445 | 0.045 |
+| M1 GNN | full (in-dist.) | 0.735 | 0.82 | 0.92 | 0.82 | 0.0332 | 0.0583 |
 | M1 GNN | shape family | 0.755 | 0.945 | 0.965 | 0.841 | 0.0537 | 0.0349 |
-| M1 GNN | Reynolds shift | 0.504 | 0.698 | 0.806 | 0.825 | 0.0346 | 0.214 |
-| M1 GNN | AoA shift | 0.689 | 0.791 | 0.908 | 0.791 | 0.0329 | 0.0874 |
+| M1 GNN | Reynolds shift | 0.933 | 0.966 | 0.972 | 0.917 | 0.228 | 0.0737 |
+| M1 GNN | AoA shift | 0.658 | 0.755 | 0.832 | 0.801 | 0.0614 | 0.135 |
 | M2 SDF-FNO | full (in-dist.) | 0.885 | 0.955 | 0.98 | 0.955 | 0.00854 | 0.0567 |
 | M2 SDF-FNO | shape family | 0.648 | 0.763 | 0.879 | 0.847 | 0.00731 | 0.12 |
 | M2 SDF-FNO | Reynolds shift | 0.75 | 0.895 | 0.938 | 0.942 | 0.0218 | 0.0224 |
@@ -208,7 +212,7 @@ transolver_shape5_s4
 | M3 Transolver | full (in-dist.) | 0.805 | 0.91 | 0.955 | 0.91 | 0.00562 | 0.00667 |
 | M3 Transolver | shape family | 0.793 | 0.867 | 0.908 | 0.814 | 0.00746 | 0.0275 |
 | M3 Transolver | Reynolds shift | 0.76 | 0.938 | 0.978 | 0.915 | 0.021 | 0.0351 |
-| M3 Transolver | AoA shift | 0.821 | 0.949 | 0.959 | 0.949 | 0.0198 | 0.0265 |
+| M3 Transolver | AoA shift | 0.821 | 0.949 | 0.959 | 0.949 | 0.0199 | 0.0265 |
 
 ### Table 4 — ablations
 

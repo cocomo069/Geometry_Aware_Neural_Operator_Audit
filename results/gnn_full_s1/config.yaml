@@ -38,8 +38,8 @@ train:
 data:
   split: full
   splits_dir: data/splits
-  processed_dir: /kaggle/input/datasets/cocomo069/airfrans-cache/processed/airfrans
-  norm_stats: /kaggle/input/datasets/cocomo069/airfrans-cache/processed/airfrans/norm_stats.json
+  processed_dir: /kaggle/input/airfrans-cache/processed/airfrans
+  norm_stats: /kaggle/input/airfrans-cache/processed/airfrans/norm_stats.json
   load_volume: false
   cache_in_ram: true
 paths:
@@ -55,7 +55,7 @@ _meta:
   - train.batch_size=16
   - split=full
   - seed=1
-  - data.processed_dir=/kaggle/input/datasets/cocomo069/airfrans-cache/processed/airfrans
-  - data.norm_stats=/kaggle/input/datasets/cocomo069/airfrans-cache/processed/airfrans/norm_stats.json
+  - data.processed_dir=/kaggle/input/airfrans-cache/processed/airfrans
+  - data.norm_stats=/kaggle/input/airfrans-cache/processed/airfrans/norm_stats.json
   - paths.results_root=results
   run_id: gnn_full_s1
