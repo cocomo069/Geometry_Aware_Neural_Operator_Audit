@@ -429,7 +429,7 @@ Stated in three parts, each backed by a file:
     0.05–0.13 (~640–900× in-dist), vastly larger than any moderate case — the acquisition/variance arm
     really did select cases the surrogate fails on. The other 17 α = 18° picks remain bounded-but-non-
     settling, so for them the "error" is still only indicative (surrogate `cd_head` ≈ 0.03–0.06 vs
-    bounded r1 C_D ≈ 0.06–0.17), but two of the arm's own picks now carry a hard number.
+    bounded r1 C_D ≈ 0.06–0.15), but two of the arm's own picks now carry a hard number.
   Fig 11b shows the regime split (moderate accepted, post-stall accepted, non-settling).
 
 > **Solver verification is a qualitative external check, strongest on the solvable subset.** The
@@ -438,7 +438,7 @@ Stated in three parts, each backed by a file:
 > first attempt, a conservative retry (longer first-order start, reduced under-relaxation) recovered
 > the in-envelope α = 12° case to a clean quasi-steady point and **settled two of the α = 18° picks**
 > (converged/quasi-steady, C_D 0.113 and 0.167); the remaining 17 α = 18° picks stayed **bounded and
-> physical in magnitude (final C_D ≈ 0.06–0.17) but did not settle** — drifting 7–21 % over the last
+> physical in magnitude (final C_D ≈ 0.06–0.15) but did not settle** — drifting 7–21 % over the last
 > 500 iterations. So the label-free score concentrated on the corner of the pool where the steady
 > operator the surrogate learned mostly has no settled solution, which supports the score as an
 > extrapolation detector (with the §6.5a score-construction caveat), and where the solver *could*
