@@ -77,7 +77,7 @@ GNN in-distribution. This matches the operator-learning literature.
 |---|---|---|---|---|---|---|
 | Transolver | 0.999 | 0.996 | 0.976 | 0.947 | 0.983 | 0.972 |
 | SDF-FNO | 0.999 | 0.992 | 0.982 | 0.955 | 0.984 | 0.968 |
-| GNN | 0.999 | 0.996 | 0.977 | 0.945 | 0.983 | 0.970 |
+| GNN | 0.999 | 0.996 | 0.977 | 0.945 | 0.983 | 0.969 |
 
 **Meaning — this is the paper's headline.** On the metric engineers actually use (ranking designs
 by drag), **all three architectures are nearly identical** (ρ within ~0.01 of each other), and the

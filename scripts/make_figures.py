@@ -597,6 +597,8 @@ def fig11_active_verify(outdir: Path, results: str) -> Path | None:
 
     if plotted_any:
         ax.set_yscale("log")
+        lo, hi = ax.get_ylim()
+        ax.set_ylim(lo, hi * 3.0)  # headroom so the acc/div annotations clear the top markers
     if half is not None:
         ax.axhspan(ax.get_ylim()[0], half, color=style.OKABE_ITO["green"], alpha=0.12, zorder=0)
         ax.axhline(half, color=style.OKABE_ITO["green"], lw=1.0, ls="--",
@@ -613,7 +615,7 @@ def fig11_active_verify(outdir: Path, results: str) -> Path | None:
 
     ax.set_xticks(list(xpos.values()))
     ax.set_xticklabels([xlabels[a] for a in order])
-    ax.set_ylabel(r"$|C_D^{\mathrm{surrogate}} - C_D^{\mathrm{Fluent,corr}}|$ (cd\_head, log)")
+    ax.set_ylabel(r"$|C_D^{\mathrm{surrogate}} - C_D^{\mathrm{Fluent,corr}}|$ (cd_head, log)")
     ax.set_title("Surrogate vs Fluent by arm (accepted set); markers = post-stall regime")
     ax.legend(handles=proxies, frameon=False, fontsize=7, loc="center right")
     ax.grid(True, axis="y", which="both", alpha=0.3)

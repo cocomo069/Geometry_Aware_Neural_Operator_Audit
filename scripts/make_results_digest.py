@@ -21,6 +21,9 @@ from src.viz import style
 ROOT = Path(__file__).resolve().parents[1]
 SPLIT_ORDER = ["full", "scarce", "reynolds", "aoa", "shape5", "combined"]
 FIG_CAPTIONS = {
+    "fig01": "Protocol schematic (three families + shared harness)",
+    "fig02": "cp profiles, in-distribution + OOD",
+    "fig03": "Surface pressure fields (pred / truth / error)",
     "fig04": "Field error vs distribution shift (centerpiece)",
     "fig05": "Force self-consistency scatter (C_D int vs head)",
     "fig06": "Reliability diagram (empirical vs nominal coverage)",
@@ -28,7 +31,8 @@ FIG_CAPTIONS = {
     "fig08": "Interval width, in-distribution vs OOD",
     "fig09": "Data-efficiency curves (rel-L2 vs train size)",
     "fig10": "Symmetry residual per model",
-    "fig11": "Active-learning pool / selections",
+    "fig11_active_pool": "Active-learning pool scoring (selection)",
+    "fig11_active_verify": "Surrogate-vs-Fluent by arm (accepted set)",
     "fig12": "Cost vs accuracy (Pareto)",
 }
 METRIC_GRIDS = [

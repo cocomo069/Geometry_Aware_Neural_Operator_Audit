@@ -271,11 +271,11 @@ compute until phone-verified, so verify that first before porting datasets to it
 as a regime split.** Round-2 review found `collect_fluent` was flagging settled post-stall cases as
 "diverged" because it applied the |C_D|>10 blow-up test to every iteration, including the
 iteration-1 impulsive start (peak |C_D| ~10-14 on every case before the field develops; max after
-iteration 50 is <0.62). Fix: `STARTUP_GUARD=50` excludes the first 50 iterations from the blow-up
+iteration 50 is <0.63). Fix: `STARTUP_GUARD=50` excludes the first 50 iterations from the blow-up
 test only (a genuine blow-up goes non-finite / >>10 well after that and is still caught). Effect: two
 α=18° active-learning picks (`al_var_naca32012_re6e6` converged, `al_rand_naca4412_re7e6`
 quasi-steady) are correctly accepted, so the surrogate-vs-Fluent comparison is n=14. Because those two
-carry ~700-900x the in-distribution error while the 12 moderate-α cases carry 3-10x, C4 §6.4 is now
+carry ~640-900x the in-distribution error while the 12 moderate-α cases carry 3-10x, C4 §6.4 is now
 reported as a **regime split** (moderate vs post-stall) rather than one averaged MAE, which would hide
 the finding. This also gives the falsifiable-claim Half 2 ("acquisition picks have higher error") real
 settled-truth data for the first time. Figures were given the same tag filter as Tables 1-2
