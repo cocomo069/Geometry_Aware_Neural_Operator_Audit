@@ -1,0 +1,15 @@
+\caption{Surrogate vs.\ Fluent on the accepted steady set, split by regime (all cases at the grid-independent L2 level, Appendix~\ref{app:cfd}; qualitative external check, \S\ref{sec:activelearning}). Surrogate $C_D$ is the coefficient head, compared against the offset-corrected Fluent value; cov@90 is the fraction inside that model's 90\% conformal interval from the \texttt{full}-split calibration study. In-dist.\ MAE is the same model's $C_D$ MAE on the \texttt{full} test set.}
+\label{tab:fluent_verify}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrr}
+\toprule
+& \multicolumn{4}{c}{moderate $\alpha$ ($-6\degrees..12\degrees$)} & \multicolumn{2}{c}{post-stall ($\alpha=18\degrees$)} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-7}
+model & $n$ & MAE $C_D$ & ratio to in-dist. & cov@90 & $n$ & MAE $C_D$ \\
+\midrule
+M1 GNN & 12 & 0.00037 & 3$\times$ & 0.83 & 2 & 0.1 \\
+M2 SDF-FNO & 12 & 0.0013 & 9.2$\times$ & 0.33 & 2 & 0.087 \\
+M3 Transolver & 12 & 0.0012 & 10$\times$ & 0.42 & 2 & 0.11 \\
+\bottomrule
+\end{tabular}

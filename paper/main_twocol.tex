@@ -1,15 +1,14 @@
 % =====================================================================
-% main.tex -- Geometry-aware neural operator surrogates for external
-% aerodynamics: single-column arXiv build.
+% main_twocol.tex -- two-column build of the same paper (shares body.tex
+% with main.tex; wide floats become figure*/table*).
 %
-% Build:  latexmk -pdf main.tex        (or: pdflatex, bibtex, pdflatex x2)
-% The two-column build is main_twocol.tex; both share body.tex.
+% Build:  latexmk -pdf main_twocol.tex
 % =====================================================================
-\documentclass[11pt,a4paper]{article}
+\documentclass[10pt,twocolumn]{article}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[margin=1in]{geometry}
+\usepackage[margin=0.75in,columnsep=0.28in]{geometry}
 \usepackage{amsmath,amssymb,amsthm}
 \usepackage{graphicx}
 \usepackage{booktabs}
@@ -28,10 +27,9 @@
 
 \input{macros}
 
-% Wide-float environments: in the single-column build they are ordinary
-% floats; main_twocol.tex maps them to figure*/table* instead.
-\newenvironment{widefigure}{\begin{figure}[t]\centering}{\end{figure}}
-\newenvironment{widetable}{\begin{table}[t]\centering}{\end{table}}
+% Wide floats span both columns in this build.
+\newenvironment{widefigure}{\begin{figure*}[t]\centering}{\end{figure*}}
+\newenvironment{widetable}{\begin{table*}[t]\centering}{\end{table*}}
 
 % Let paragraph breaking stretch a little before producing overfull lines.
 \emergencystretch=1.5em

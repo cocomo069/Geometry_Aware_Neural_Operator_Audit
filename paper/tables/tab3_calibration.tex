@@ -1,7 +1,7 @@
-\begin{table}[t]
-\centering
-\caption{Split-conformal calibration of the integrated drag band ($C_D^{\mathrm{int}}$): empirical coverage, mean interval width and ECE. Matched calibrates on the split's own cal set; transfer (tr) calibrates on \texttt{full}'s cal.}
+\caption{Split-conformal calibration of the integrated drag band ($C_D^{\mathrm{int}}$, normalized score, largest available ensemble: $K{=}3$ for the GNN, $K{=}5$ otherwise): empirical coverage, mean interval width and ECE. Matched calibrates on the split's own cal set; transfer (tr) calibrates on \texttt{full}'s cal. Coverage must be read next to width: the GNN's high shifted coverage rides on a near-vacuous band (\S\ref{sec:results_calibration}).}
 \label{tab:calibration}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
 \begin{tabular}{llrrrrrr}
 \toprule
 model & split & cov@.8 & cov@.9 & cov@.95 & cov@.9 (tr) & width@.9 & ECE \\
@@ -20,4 +20,3 @@ M3 Transolver & Reynolds shift & 0.76 & 0.938 & 0.978 & 0.915 & 0.021 & 0.0351 \
 M3 Transolver & AoA shift & 0.821 & 0.949 & 0.959 & 0.949 & 0.0198 & 0.0265 \\
 \bottomrule
 \end{tabular}
-\end{table}

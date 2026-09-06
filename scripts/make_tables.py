@@ -11,6 +11,11 @@ Each table is written as ``tab<N>_<slug>.tex`` (booktabs, \\input-able) and
 ``tab<N>_<slug>.md`` (README mirror). Missing cells render as ``--``; the best
 value per column is bolded. Runs that do not exist yet simply produce a table of
 whatever is present, so this is safe to run at any project stage.
+
+The .tex files contain the float BODY only (caption + label + tabular, no
+``\\begin{table}``): the paper wraps each ``\\input`` in its own float
+environment, which is what lets the same generated file serve both the
+single-column and the two-column (``table*``) layout.
 """
 from __future__ import annotations
 
@@ -25,6 +30,17 @@ from src.viz import data as vdata
 from src.viz import style
 
 DASH = "--"
+
+#: Models whose cells compete for the per-column bold "best" marker. The
+#: non-learned baselines are reference rows, not competitors: bolding ridge's
+#: zero training cost or the constant model's zero symmetry residual as "best"
+#: misread the table.
+NEURAL_MODELS = ("gnn", "sdf_fno", "transolver")
+
+
+def _esc(s: str) -> str:
+    """Escape LaTeX-active characters in verbatim identifiers (case ids etc.)."""
+    return str(s).replace("_", r"\_").replace("%", r"\%")
 
 
 def _fmt(x: float | None, prec: int = 4) -> str:
@@ -41,15 +57,17 @@ def _best_mask(series: pd.Series, lower_is_better: bool) -> pd.Series:
     return vals == target
 
 
-# column spec: (dataframe column, header, lower_is_better, precision)
+# column spec: (dataframe column, header, lower_is_better, precision, scale)
+# ``scale`` multiplies the displayed value (mean and std), so tiny coefficients
+# print as compact "0.132" instead of "0.000132 $\pm$ 1.5e-05" -- the raw form
+# made Table 1 overflow the text width by ~8 cm.
 TABLE1_COLS = [
-    ("field_p_rel_l2", r"$p$ rel-$L_2$", True, 3),
-    ("field_tau_rel_l2", r"$\tau_w$ rel-$L_2$", True, 3),
-    ("coef_cd_head_mae", r"$C_D$ MAE", True, 3),
-    ("coef_cd_head_spearman", r"$C_D$ $\rho$", False, 3),
-    ("consistency_fsc_cd", "FSC $C_D$", True, 3),
-    ("consistency_sym_residual", "sym", True, 3),
-    ("gpu_hours", "GPU-h", True, 3),
+    ("field_p_rel_l2", r"$p$ rel-$L_2$", True, 3, 1),
+    ("field_tau_rel_l2", r"$\tau_w$ rel-$L_2$", True, 3, 1),
+    ("coef_cd_head_mae", r"$C_D$ MAE", True, 3, 1e3),
+    ("coef_cd_head_spearman", r"$C_D$ $\rho$", False, 3, 1),
+    ("consistency_fsc_cd", r"FSC $C_D$", True, 3, 1e3),
+    ("gpu_hours", "GPU-h", True, 3, 1),
 ]
 
 
@@ -63,41 +81,47 @@ def _render(df: pd.DataFrame, cols, row_key: str, *, caption: str, label: str,
     Callers are expected to have already dropped tagged runs (smoke / ablation)
     and non-canonical splits so only comparable core runs reach here.
     """
-    num_cols = [c for c, _, _, _ in cols if c in df.columns]
+    num_cols = [c[0] for c in cols if c[0] in df.columns]
     means = (df.groupby(row_key, as_index=True)[num_cols].mean()
              if num_cols else pd.DataFrame())
     rows = style.sort_models(df[row_key].unique()) if row_key == "model" else sorted(df[row_key].unique())
-    best = {c: _best_mask(means[c], lo) for c, _, lo, _ in cols if c in means.columns}
+    # Best-per-column decided among the neural models only (see NEURAL_MODELS).
+    comp = means.loc[[m for m in means.index if m in NEURAL_MODELS]] if row_key == "model" else means
+    best = {c[0]: _best_mask(comp[c[0]], c[2]) for c in cols if c[0] in comp.columns}
     pm = r"$\pm$" if latex else "±"
 
-    def cell(rk: str, col: str, prec: int) -> str:
+    def cell(rk: str, col: str, prec: int, scale: float) -> str:
         if col not in df.columns:
             return DASH
         vals = pd.to_numeric(df.loc[df[row_key] == rk, col], errors="coerce").dropna()
         if vals.empty:
             return DASH
-        s = _fmt(vals.mean(), prec)
+        s = _fmt(vals.mean() * scale, prec)
         if s == DASH:
             return DASH
         if len(vals) > 1:
-            sd = vals.std(ddof=1)
+            sd = vals.std(ddof=1) * scale
             if np.isfinite(sd) and sd > 0:
-                s = f"{s} {pm} {_fmt(sd, prec)}"
+                sep = r"\,$\pm$\," if latex else " ± "
+                s = f"{s}{sep}{_fmt(sd, 2)}"
         if col in best and rk in best[col].index and bool(best[col].get(rk, False)):
             s = (r"\textbf{" + s + "}") if latex else f"**{s}**"
         return s
 
-    headers = [row_key] + [h for _, h, _, _ in cols]
+    headers = [row_key] + [c[1] for c in cols]
     body = [[style.model_label(rk) if row_key == "model" else str(rk)]
-            + [cell(rk, c, p) for c, _, _, p in cols] for rk in rows]
+            + [cell(rk, c[0], c[3], c[4] if len(c) > 4 else 1) for c in cols]
+            for rk in rows]
 
     if latex:
         ncol = len(headers)
-        out = [r"\begin{table}[t]", r"\centering", f"\\caption{{{caption}}}",
-               f"\\label{{{label}}}", r"\begin{tabular}{l" + "r" * (ncol - 1) + "}",
+        out = [f"\\caption{{{caption}}}", f"\\label{{{label}}}",
+               r"\footnotesize", r"\setlength{\tabcolsep}{3pt}",
+               r"\begin{adjustbox}{max width=\linewidth}",
+               r"\begin{tabular}{l" + "r" * (ncol - 1) + "}",
                r"\toprule", " & ".join(headers) + r" \\", r"\midrule"]
         out += [" & ".join(r) + r" \\" for r in body]
-        out += [r"\bottomrule", r"\end{tabular}", r"\end{table}", ""]
+        out += [r"\bottomrule", r"\end{tabular}", r"\end{adjustbox}", ""]
         return "\n".join(out)
     # markdown
     out = ["| " + " | ".join(headers) + " |",
@@ -124,7 +148,12 @@ def table1_indist(df: pd.DataFrame, outdir: Path) -> list[Path]:
         print("TODO table1: no full-split runs")
         return []
     return _write(outdir, "tab1_indist", sub, TABLE1_COLS,
-                  caption="In-distribution accuracy, consistency and cost (AirfRANS \\texttt{full}).",
+                  caption=("In-distribution accuracy, consistency and cost (AirfRANS "
+                           "\\texttt{full}). $C_D$ MAE and FSC $C_D$ in units of "
+                           "$10^{-3}$. Neural rows are seed mean $\\pm$ std over "
+                           "the 3--5 committed seeds; baselines are deterministic "
+                           "single fits. Bold marks the best neural model per column. "
+                           "The symmetry residual is Figure~\\ref{fig:symmetry}."),
                   label="tab:indist")
 
 
@@ -146,7 +175,8 @@ def table2_ood(df: pd.DataFrame, outdir: Path) -> list[Path]:
     piv_sd = (core.pivot_table(index="model", columns="split", values="field_p_rel_l2", aggfunc="std")
                  .reindex(columns=splits))
     models = style.sort_models(piv.index)
-    best = {s: _best_mask(piv[s], True) for s in splits}
+    comp = piv.loc[[m for m in piv.index if m in NEURAL_MODELS]]
+    best = {s: _best_mask(comp[s], True) for s in splits}
 
     def cell(m, s, latex):
         v = piv.loc[m, s] if (m in piv.index and s in piv.columns) else None
@@ -156,7 +186,7 @@ def table2_ood(df: pd.DataFrame, outdir: Path) -> list[Path]:
         sd = piv_sd.loc[m, s] if (m in piv_sd.index and s in piv_sd.columns) else None
         pm = r"$\pm$" if latex else "±"
         if sd is not None and np.isfinite(sd) and sd > 0:
-            txt = f"{txt} {pm} {_fmt(sd, 3)}"
+            txt = f"{txt} {pm} {_fmt(sd, 2)}"
         if bool(best[s].get(m, False)):
             txt = (r"\textbf{" + txt + "}") if latex else f"**{txt}**"
         return txt
@@ -166,12 +196,16 @@ def table2_ood(df: pd.DataFrame, outdir: Path) -> list[Path]:
         headers = ["model"] + [style.split_label(s) for s in splits]
         body = [[style.model_label(m)] + [cell(m, s, latex) for s in splits] for m in models]
         if latex:
-            lines = [r"\begin{table}[t]", r"\centering",
-                     r"\caption{Out-of-distribution field $p$ rel-$L_2$ by split.}",
-                     r"\label{tab:ood}", r"\begin{tabular}{l" + "r" * len(splits) + "}",
+            lines = [r"\caption{Out-of-distribution field $p$ rel-$L_2$ by split "
+                     r"(seed mean $\pm$ std where multiple seeds exist; "
+                     r"\texttt{scarce}/\texttt{combined} are single-seed). "
+                     r"Bold marks the best neural model per split.}",
+                     r"\label{tab:ood}", r"\footnotesize", r"\setlength{\tabcolsep}{3pt}",
+                     r"\begin{adjustbox}{max width=\linewidth}",
+                     r"\begin{tabular}{l" + "r" * len(splits) + "}",
                      r"\toprule", " & ".join(headers) + r" \\", r"\midrule"]
             lines += [" & ".join(r) + r" \\" for r in body]
-            lines += [r"\bottomrule", r"\end{tabular}", r"\end{table}", ""]
+            lines += [r"\bottomrule", r"\end{tabular}", r"\end{adjustbox}", ""]
             txt = "\n".join(lines)
         else:
             lines = ["| " + " | ".join(headers) + " |",
@@ -273,18 +307,22 @@ def table3_calibration(results: str, outdir: Path) -> list[Path]:
         ])
 
     caption = (r"Split-conformal calibration of the integrated drag band "
-               r"($C_D^{\mathrm{int}}$): empirical coverage, mean interval width and "
-               r"ECE. Matched calibrates on the split's own cal set; transfer (tr) "
-               r"calibrates on \texttt{full}'s cal.")
+               r"($C_D^{\mathrm{int}}$, normalized score, largest available ensemble: "
+               r"$K{=}3$ for the GNN, $K{=}5$ otherwise): empirical coverage, mean "
+               r"interval width and ECE. Matched calibrates on the split's own cal "
+               r"set; transfer (tr) calibrates on \texttt{full}'s cal. Coverage must "
+               r"be read next to width: the GNN's high shifted coverage rides on a "
+               r"near-vacuous band (\S\ref{sec:results_calibration}).")
     paths = []
     for ext, latex in (("tex", True), ("md", False)):
         if latex:
-            lines = [r"\begin{table}[t]", r"\centering", f"\\caption{{{caption}}}",
-                     r"\label{tab:calibration}",
+            lines = [f"\\caption{{{caption}}}",
+                     r"\label{tab:calibration}", r"\footnotesize",
+                     r"\setlength{\tabcolsep}{3.5pt}",
                      r"\begin{tabular}{ll" + "r" * (len(headers) - 2) + "}",
                      r"\toprule", " & ".join(headers) + r" \\", r"\midrule"]
             lines += [" & ".join(r) + r" \\" for r in rows]
-            lines += [r"\bottomrule", r"\end{tabular}", r"\end{table}", ""]
+            lines += [r"\bottomrule", r"\end{tabular}", ""]
             txt = "\n".join(lines)
         else:
             lines = ["| " + " | ".join(headers) + " |",
@@ -421,26 +459,127 @@ def table5_fluent(results: str, outdir: Path) -> list[Path]:
     md_path = outdir / "tab5_fluent.md"
     md_path.write_text("\n".join(md) + "\n", encoding="utf-8")
 
-    # a compact LaTeX version (5c is the headline; 5a/5b as separate tabulars)
-    def tex_table(head, rows, caption, label):
-        ncol = len(head)
-        L = [r"\begin{table}[t]", r"\centering", f"\\caption{{{caption}}}",
-             f"\\label{{{label}}}", r"\small",
-             r"\begin{tabular}{" + "l" * ncol + "}", r"\toprule",
-             " & ".join(h.replace("_", r"\_") for h in head) + r" \\", r"\midrule"]
-        L += [" & ".join(str(c) for c in r) + r" \\" for r in rows]
-        L += [r"\bottomrule", r"\end{tabular}", r"\end{table}", ""]
-        return "\n".join(L)
-    tex = tex_table(c_head, c_rows,
-                    f"Surrogate vs Fluent on the accepted steady set (n={n_acc}, "
-                    f"grid-converged at L2, {gci_note}; qualitative external check). "
-                    "Surrogate CD is the input-robust coefficient head.",
-                    "tab:fluent_verify")
-    tex += "\n" + tex_table(b_head, b_rows, "Solver offset: six AirfRANS replicas.",
-                            "tab:fluent_offset")
-    tex_path = outdir / "tab5_fluent.tex"
-    tex_path.write_text(tex, encoding="utf-8")
-    return [md_path, tex_path]
+    # ---- LaTeX: three float bodies (see module docstring). ------------------
+    def _f(x, prec=3):
+        return _num(x, prec)
+
+    # (1) tab5_summary.tex -- the headline regime-split summary per model,
+    # recomputed from the per-case rows exactly as RESULTS.md section 6.4 reads
+    # them: moderate = accepted with alpha < 17 deg, post-stall = accepted at
+    # alpha = 18 deg.
+    import json as _json2
+    ssum = {}
+    sp = fdir / "surrogate_vs_fluent_summary.json"
+    if sp.exists():
+        ssum = _json2.loads(sp.read_text(encoding="utf-8"))
+    acc_rows = [r for r in svf if r["status"] in ("converged", "quasi_steady")]
+    sum_lines = [
+        r"\caption{Surrogate vs.\ Fluent on the accepted steady set, split by regime "
+        r"(all cases at the grid-independent L2 level, Appendix~\ref{app:cfd}; "
+        r"qualitative external check, "
+        r"\S\ref{sec:activelearning}). Surrogate $C_D$ is the coefficient head, "
+        r"compared against the offset-corrected Fluent value; cov@90 is the fraction "
+        r"inside that model's 90\% conformal interval from the \texttt{full}-split "
+        r"calibration study. In-dist.\ MAE is the same model's $C_D$ MAE on the "
+        r"\texttt{full} test set.}",
+        r"\label{tab:fluent_verify}",
+        r"\small",
+        r"\setlength{\tabcolsep}{4pt}",
+        r"\begin{tabular}{lrrrrrr}",
+        r"\toprule",
+        r"& \multicolumn{4}{c}{moderate $\alpha$ ($-6\degrees..12\degrees$)} & "
+        r"\multicolumn{2}{c}{post-stall ($\alpha=18\degrees$)} \\",
+        r"\cmidrule(lr){2-5}\cmidrule(lr){6-7}",
+        r"model & $n$ & MAE $C_D$ & ratio to in-dist. & cov@90 & $n$ & MAE $C_D$ \\",
+        r"\midrule",
+    ]
+    for model in ("gnn", "sdf_fno", "transolver"):
+        rows_m = [r for r in acc_rows if r["model"] == model]
+        mod = [r for r in rows_m if float(r["aoa_deg"]) < 17.0]
+        post = [r for r in rows_m if float(r["aoa_deg"]) >= 17.0]
+        if not rows_m:
+            continue
+        mae = lambda rs: (sum(abs(float(r["err_cd_head"])) for r in rs) / len(rs)) if rs else None  # noqa: E731
+        mae_mod, mae_post = mae(mod), mae(post)
+        indist = (ssum.get(model, {}).get("indist_yardstick", {}) or {}).get("cd_head_mae")
+        ratio = (mae_mod / indist) if (mae_mod and indist) else None
+        cov = (sum(1 for r in mod if str(r.get("covered90_cd_head")).lower() in ("true", "1"))
+               / len(mod)) if mod else None
+        sum_lines.append(
+            f"{style.model_label(model)} & {len(mod)} & {_f(mae_mod, 2)} & "
+            f"{_f(ratio, 2)}$\\times$ & {_f(cov, 2)} & {len(post)} & {_f(mae_post, 2)} \\\\")
+    sum_lines += [r"\bottomrule", r"\end{tabular}", ""]
+    (outdir / "tab5_summary.tex").write_text("\n".join(sum_lines), encoding="utf-8")
+
+    # (2) tab5_offset.tex -- the six solver-offset replicas + the mean line.
+    off_lines = [
+        r"\caption{Solver offset: six AirfRANS test simulations re-solved in Fluent "
+        r"(SA, grid level L2). $\delta C_D = C_D^{\mathrm{Fluent}} - "
+        r"C_D^{\mathrm{AirfRANS}}$; every replica reads high, so the mean offset "
+        r"$\bar{\delta}_{C_D}$ is subtracted before any surrogate comparison.}",
+        r"\label{tab:fluent_offset}",
+        r"\small",
+        r"\setlength{\tabcolsep}{4pt}",
+        r"\begin{tabular}{lrrrrrr}",
+        r"\toprule",
+        r"replica & $C_D^{\mathrm{AF}}$ & $C_L^{\mathrm{AF}}$ & $C_D^{\mathrm{SA}}$ & "
+        r"$C_D^{\mathrm{SST}}$ & $\delta C_D$ & rel.\ $\delta C_D$ \\",
+        r"\midrule",
+    ]
+    for r in b_rows:
+        off_lines.append(" & ".join([_esc(r[0])] + [str(c) for c in r[1:7]]) + r" \\")
+    if osum and "sa" in osum:
+        s = osum["sa"]
+        off_lines += [r"\midrule",
+                      f"mean $\\pm$ s (SA, n={s['n']}) & & & & & "
+                      f"{s['dbar_cd']:+.2g} $\\pm$ {s['s_cd']:.2g} & \\\\"]
+    off_lines += [r"\bottomrule", r"\end{tabular}", ""]
+    (outdir / "tab5_offset.tex").write_text("\n".join(off_lines), encoding="utf-8")
+
+    # (3) tab5_cases.tex -- per-case accepted-set comparison (appendix width).
+    case_lines = [
+        r"\caption{Per-case surrogate vs.\ Fluent comparison on the accepted steady "
+        r"set; all drag values in units of $10^{-2}$. $C_D^{\mathrm{fl,corr}}$ is "
+        r"the offset-corrected Fluent drag; model columns are ensemble mean $\pm$ "
+        r"std of the coefficient head; cov@90 flags whether \Mtrans{} lands inside "
+        r"its 90\% conformal interval.}",
+        r"\label{tab:fluent_cases}",
+        r"\footnotesize",
+        r"\setlength{\tabcolsep}{3pt}",
+        r"\begin{adjustbox}{max width=\linewidth}",
+        r"\begin{tabular}{llrrlrrrrl}",
+        r"\toprule",
+        r"NACA & arm & Re & $\alpha$ & status & $C_D^{\mathrm{fl,corr}}$ & "
+        r"\Mtrans & \Mfno & \Mgnn & cov@90 \\",
+        r"\midrule",
+    ]
+    for cid in sorted(svf_by_case):
+        d = svf_by_case[cid]
+        ref = d.get("transolver") or next(iter(d.values()))
+
+        def _sc(mname):
+            r = d.get(mname)
+            if not r:
+                return DASH
+            return (_num(float(r["cd_head_mean"]) * 1e2, 3) + r"\,$\pm$\,"
+                    + _num(float(r["cd_head_std"]) * 1e2, 1))
+
+        cov = str(d.get("transolver", {}).get("covered90_cd_head", "")).lower() == "true"
+        re_m = float(ref["re"]) / 1e6
+        status = str(ref["status"]).replace("quasi_steady", "quasi-steady")
+        case_lines.append(
+            f"{_esc(ref['naca'])} & {_esc(ref['arm'])} & {re_m:.3g} & "
+            f"{_num(ref['aoa_deg'], 3)} & {_esc(status)} & "
+            f"{_num(float(ref['cd_fluent_corrected']) * 1e2, 3)} & {_sc('transolver')} & "
+            f"{_sc('sdf_fno')} & {_sc('gnn')} & {'yes' if cov else 'no'} \\\\")
+    case_lines += [r"\bottomrule", r"\end{tabular}", r"\end{adjustbox}", ""]
+    (outdir / "tab5_cases.tex").write_text("\n".join(case_lines), encoding="utf-8")
+
+    old_tex = outdir / "tab5_fluent.tex"
+    if old_tex.exists():
+        old_tex.unlink()  # superseded by the three float bodies above
+    return [md_path, outdir / "tab5_summary.tex", outdir / "tab5_offset.tex",
+            outdir / "tab5_cases.tex"]
 
 
 def _cell_metric(results: str, run_id: str, path: tuple) -> str:
@@ -481,12 +620,43 @@ def table4_ablation(results: str, outdir: Path) -> list[Path]:
                 ""]
     outdir.mkdir(parents=True, exist_ok=True)
     (outdir / "tab4_ablation.md").write_text("\n".join(lines_md) + "\n", encoding="utf-8")
-    # LaTeX: two small tabulars in one file
-    tex = (lines_md[0] + "\n\n" + "\n".join(lines_md)).replace("### ", "% ")
-    (outdir / "tab4_ablation.tex").write_text(
-        "% Table 4 -- ablations (see tab4_ablation.md for the readable form)\n"
-        "% M2 conditioning and M1 force-loss; values are field p rel-L2 / FSC.\n",
-        encoding="utf-8")
+
+    # LaTeX: one float body holding both ablation tabulars (seed-0 runs).
+    m = lambda rid: _cell_metric(results, rid, P)  # noqa: E731
+    f = lambda rid: _cell_metric(results, rid, F)  # noqa: E731
+    tex_lines = [
+        r"\caption{Ablations (seed 0). (a) \Mfno{} geometry conditioning: field $p$ "
+        r"rel-$L_2$ in distribution and under the shape-family shift. (b) \Mgnn{} "
+        r"force-consistency loss ($\lamF$): the physics term cuts the residual it "
+        r"penalises (FSC) at a cost in in-distribution field accuracy.}",
+        r"\label{tab:ablations}",
+        r"\small",
+        r"\begin{tabular}{lrr}",
+        r"\multicolumn{3}{l}{(a) \Mfno{} geometry conditioning ($p$ rel-$L_2$)} \\",
+        r"\toprule",
+        r"conditioning & \splitname{full} & \splitname{shape5} (OOD) \\",
+        r"\midrule",
+        f"SDF (baseline) & {m('sdf_fno_full_s0')} & {m('sdf_fno_shape5_s0')} \\\\",
+        f"binary mask & {m('sdf_fno_full_s0_cond_mask')} & {m('sdf_fno_shape5_s0_cond_mask')} \\\\",
+        f"SDF + normals & {m('sdf_fno_full_s0_cond_sdfnrm')} & {m('sdf_fno_shape5_s0_cond_sdfnrm')} \\\\",
+        r"\bottomrule",
+        r"\end{tabular}",
+        r"\par\vspace{1.2em}",
+        r"\begin{tabular}{lrrrr}",
+        r"\multicolumn{5}{l}{(b) \Mgnn{} force-consistency loss} \\",
+        r"\toprule",
+        r"variant & \splitname{full} $p$ rel-$L_2$ & \splitname{full} FSC & "
+        r"\splitname{combined} $p$ rel-$L_2$ & \splitname{combined} FSC \\",
+        r"\midrule",
+        f"baseline ($\\lamF=0$) & {m('gnn_full_s0')} & {f('gnn_full_s0')} & "
+        f"{m('gnn_combined_s0')} & {f('gnn_combined_s0')} \\\\",
+        f"+ force loss ($\\lamF>0$) & {m('gnn_full_s0_lamF')} & {f('gnn_full_s0_lamF')} & "
+        f"{m('gnn_combined_s0_lamF')} & {f('gnn_combined_s0_lamF')} \\\\",
+        r"\bottomrule",
+        r"\end{tabular}",
+        "",
+    ]
+    (outdir / "tab4_ablation.tex").write_text("\n".join(tex_lines), encoding="utf-8")
     return [outdir / "tab4_ablation.md", outdir / "tab4_ablation.tex"]
 
 

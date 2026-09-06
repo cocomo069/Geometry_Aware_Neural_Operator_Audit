@@ -1,16 +1,17 @@
-\begin{table}[t]
-\centering
-\caption{Out-of-distribution field $p$ rel-$L_2$ by split.}
+\caption{Out-of-distribution field $p$ rel-$L_2$ by split (seed mean $\pm$ std where multiple seeds exist; \texttt{scarce}/\texttt{combined} are single-seed). Bold marks the best neural model per split.}
 \label{tab:ood}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{adjustbox}{max width=\linewidth}
 \begin{tabular}{lrrrrrr}
 \toprule
 model & full (in-dist.) & scarce & Reynolds shift & AoA shift & shape family & combined \\
 \midrule
-M1 GNN & 0.0753 $\pm$ 0.00271 & 0.154 & 0.214 $\pm$ 0.0117 & 0.195 $\pm$ 0.00551 & 0.128 $\pm$ 0.00359 & 0.27 \\
-M2 SDF-FNO & 0.0259 $\pm$ 0.00128 & 0.0832 & 0.104 $\pm$ 0.0147 & 0.113 $\pm$ 0.00577 & 0.0665 $\pm$ 0.0026 & 0.153 \\
-M3 Transolver & \textbf{0.0186 $\pm$ 0.000933} & \textbf{0.0666} & \textbf{0.0837 $\pm$ 0.0063} & \textbf{0.101 $\pm$ 0.00699} & \textbf{0.0526 $\pm$ 0.00253} & \textbf{0.139} \\
+M1 GNN & 0.0753 $\pm$ 0.0027 & 0.154 & 0.214 $\pm$ 0.012 & 0.195 $\pm$ 0.0055 & 0.128 $\pm$ 0.0036 & 0.27 \\
+M2 SDF-FNO & 0.0259 $\pm$ 0.0013 & 0.0832 & 0.104 $\pm$ 0.015 & 0.113 $\pm$ 0.0058 & 0.0665 $\pm$ 0.0026 & 0.153 \\
+M3 Transolver & \textbf{0.0186 $\pm$ 0.00093} & \textbf{0.0666} & \textbf{0.0837 $\pm$ 0.0063} & \textbf{0.101 $\pm$ 0.007} & \textbf{0.0526 $\pm$ 0.0025} & \textbf{0.139} \\
 Ridge & 1.42 & 1.4 & 1.62 & 1.18 & 1.6 & 1.86 \\
 Constant & 1.42 & 1.4 & 1.62 & 1.18 & 1.6 & 1.86 \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{adjustbox}

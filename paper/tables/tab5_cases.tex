@@ -1,0 +1,26 @@
+\caption{Per-case surrogate vs.\ Fluent comparison on the accepted steady set; all drag values in units of $10^{-2}$. $C_D^{\mathrm{fl,corr}}$ is the offset-corrected Fluent drag; model columns are ensemble mean $\pm$ std of the coefficient head; cov@90 flags whether \Mtrans{} lands inside its 90\% conformal interval.}
+\label{tab:fluent_cases}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{llrrlrrrrl}
+\toprule
+NACA & arm & Re & $\alpha$ & status & $C_D^{\mathrm{fl,corr}}$ & \Mtrans & \Mfno & \Mgnn & cov@90 \\
+\midrule
+0010 & random & 7 & 6 & converged & 0.889 & 1.05\,$\pm$\,0.04 & 0.986\,$\pm$\,0.03 & 0.906\,$\pm$\,0.01 & no \\
+22012 & random & 3 & 12 & quasi-steady & 1.85 & 2.46\,$\pm$\,0.3 & 2.1\,$\pm$\,0.1 & 1.72\,$\pm$\,0.04 & no \\
+2415 & random & 6 & 0 & converged & 0.856 & 0.923\,$\pm$\,0.02 & 1.05\,$\pm$\,0.03 & 0.879\,$\pm$\,0.003 & no \\
+33012 & random & 6 & -6 & converged & 0.93 & 0.988\,$\pm$\,0.05 & 1.22\,$\pm$\,0.4 & 1\,$\pm$\,0.1 & no \\
+4412 & random & 7 & 18 & quasi-steady & 11.3 & 3.49\,$\pm$\,0.2 & 5.93\,$\pm$\,0.9 & 4.1\,$\pm$\,0.9 & no \\
+4415 & random & 2 & 0 & converged & 1.08 & 1.27\,$\pm$\,0.06 & 1.34\,$\pm$\,0.08 & 1.1\,$\pm$\,0.02 & no \\
+32012 & variance & 6 & 18 & converged & 16.5 & 3.37\,$\pm$\,0.2 & 4.46\,$\pm$\,0.6 & 3.77\,$\pm$\,0.6 & no \\
+0012 & gridstudy & 3 & 5 & converged & 0.985 & 1.2\,$\pm$\,0.05 & 1.25\,$\pm$\,0.04 & 1.01\,$\pm$\,0.01 & no \\
+0016 & offset & 3.91 & 2.4 & converged & 0.958 & 0.97\,$\pm$\,0.0004 & 0.97\,$\pm$\,0.001 & 0.97\,$\pm$\,0.001 & yes \\
+1009 & offset & 4.04 & 8.58 & converged & 1.21 & 1.15\,$\pm$\,0.005 & 1.15\,$\pm$\,0.01 & 1.15\,$\pm$\,0.0009 & no \\
+2211 & offset & 4.6 & 3.33 & converged & 0.902 & 0.905\,$\pm$\,0.002 & 0.908\,$\pm$\,0.003 & 0.905\,$\pm$\,0.002 & yes \\
+2710 & offset & 2.06 & -1.58 & converged & 0.882 & 0.92\,$\pm$\,0.002 & 0.923\,$\pm$\,0.007 & 0.925\,$\pm$\,0.009 & yes \\
+0010 & offset & 6.01 & 3.79 & converged & 0.791 & 0.806\,$\pm$\,0.001 & 0.806\,$\pm$\,0.003 & 0.813\,$\pm$\,0.002 & yes \\
+5\_17 & offset & 4.14 & 0.932 & quasi-steady & 0.992 & 0.977\,$\pm$\,0.0009 & 0.976\,$\pm$\,0.002 & 0.981\,$\pm$\,0.003 & yes \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}

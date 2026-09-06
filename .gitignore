@@ -56,3 +56,13 @@ kaggle/launches.jsonl
 kaggle/pulled_sessions.jsonl
 kaggle/runs_dataset_state.json
 kaggle/pulls/
+
+# LaTeX build artifacts
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.toc
