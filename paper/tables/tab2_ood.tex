@@ -2,15 +2,15 @@
 \centering
 \caption{Out-of-distribution field $p$ rel-$L_2$ by split.}
 \label{tab:ood}
-\begin{tabular}{lrrrrrrrrrrr}
+\begin{tabular}{lrrrrrr}
 \toprule
-model & full (in-dist.) & scarce & Reynolds shift & AoA shift & shape family & combined & full_n100 & full_n200 & full_n25 & full_n400 & full_n50 \\
+model & full (in-dist.) & scarce & Reynolds shift & AoA shift & shape family & combined \\
 \midrule
-M1 GNN & 0.256 & 0.154 & 0.214 & 0.195 & 0.128 & 0.264 & 0.146 & 0.117 & 0.292 & 0.0995 & 0.217 \\
-M2 SDF-FNO & 0.0271 & 0.0832 & 0.104 & 0.113 & 0.0667 & 0.153 & 0.134 & 0.072 & 0.325 & 0.0432 & 0.232 \\
-M3 Transolver & \textbf{0.0186} & \textbf{0.0666} & \textbf{0.0837} & \textbf{0.101} & \textbf{0.0526} & \textbf{0.139} & \textbf{0.1} & \textbf{0.0542} & \textbf{0.271} & \textbf{0.0292} & \textbf{0.181} \\
-Ridge & 1.42 & 1.4 & 1.62 & 1.18 & 1.6 & 1.86 & -- & -- & -- & -- & -- \\
-Constant & 1.42 & 1.4 & 1.62 & 1.18 & 1.6 & 1.86 & -- & -- & -- & -- & -- \\
+M1 GNN & 0.0753 $\pm$ 0.00271 & 0.154 & 0.214 $\pm$ 0.0117 & 0.195 $\pm$ 0.00551 & 0.128 $\pm$ 0.00359 & 0.27 \\
+M2 SDF-FNO & 0.0259 $\pm$ 0.00128 & 0.0832 & 0.104 $\pm$ 0.0147 & 0.113 $\pm$ 0.00577 & 0.0665 $\pm$ 0.0026 & 0.153 \\
+M3 Transolver & \textbf{0.0186 $\pm$ 0.000933} & \textbf{0.0666} & \textbf{0.0837 $\pm$ 0.0063} & \textbf{0.101 $\pm$ 0.00699} & \textbf{0.0526 $\pm$ 0.00253} & \textbf{0.139} \\
+Ridge & 1.42 & 1.4 & 1.62 & 1.18 & 1.6 & 1.86 \\
+Constant & 1.42 & 1.4 & 1.62 & 1.18 & 1.6 & 1.86 \\
 \bottomrule
 \end{tabular}
 \end{table}

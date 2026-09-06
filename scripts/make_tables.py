@@ -57,23 +57,33 @@ def _render(df: pd.DataFrame, cols, row_key: str, *, caption: str, label: str,
             latex: bool) -> str:
     """Render a model/row table with per-column best bolded.
 
-    Multiple rows per ``row_key`` (e.g. ensemble seeds on the same split) are
-    averaged to one row first, so seed-0 core runs and their seed-1..4 ensemble
-    members collapse to a single per-model number instead of colliding.
+    Multiple rows per ``row_key`` (e.g. the 3-5 seeds of a core run on the same
+    split) are reported as ``mean ± std`` over those seeds; a single row shows
+    the bare mean. The per-column "best" (bolded) is decided on the seed mean.
+    Callers are expected to have already dropped tagged runs (smoke / ablation)
+    and non-canonical splits so only comparable core runs reach here.
     """
     num_cols = [c for c, _, _, _ in cols if c in df.columns]
-    df = (df.groupby(row_key, as_index=False)[num_cols].mean()
-          if num_cols else df.drop_duplicates(subset=[row_key]))
+    means = (df.groupby(row_key, as_index=True)[num_cols].mean()
+             if num_cols else pd.DataFrame())
     rows = style.sort_models(df[row_key].unique()) if row_key == "model" else sorted(df[row_key].unique())
-    best = {c: _best_mask(df.set_index(row_key)[c], lo) for c, _, lo, _ in cols if c in df.columns}
+    best = {c: _best_mask(means[c], lo) for c, _, lo, _ in cols if c in means.columns}
+    pm = r"$\pm$" if latex else "±"
 
     def cell(rk: str, col: str, prec: int) -> str:
-        sub = df[df[row_key] == rk]
-        if sub.empty or col not in sub.columns:
+        if col not in df.columns:
             return DASH
-        val = pd.to_numeric(sub[col], errors="coerce").mean()
-        s = _fmt(val, prec)
-        if s != DASH and col in best and rk in best[col].index and bool(best[col].get(rk, False)):
+        vals = pd.to_numeric(df.loc[df[row_key] == rk, col], errors="coerce").dropna()
+        if vals.empty:
+            return DASH
+        s = _fmt(vals.mean(), prec)
+        if s == DASH:
+            return DASH
+        if len(vals) > 1:
+            sd = vals.std(ddof=1)
+            if np.isfinite(sd) and sd > 0:
+                s = f"{s} {pm} {_fmt(sd, prec)}"
+        if col in best and rk in best[col].index and bool(best[col].get(rk, False)):
             s = (r"\textbf{" + s + "}") if latex else f"**{s}**"
         return s
 
@@ -108,7 +118,8 @@ def _write(outdir: Path, slug: str, df: pd.DataFrame, cols, *, caption: str, lab
 
 
 def table1_indist(df: pd.DataFrame, outdir: Path) -> list[Path]:
-    sub = df[df["split"] == "full"] if "split" in df.columns else df
+    core = df[df["tag"].isna()] if "tag" in df.columns else df
+    sub = core[core["split"] == "full"] if "split" in core.columns else core
     if sub.empty:
         print("TODO table1: no full-split runs")
         return []
@@ -118,20 +129,35 @@ def table1_indist(df: pd.DataFrame, outdir: Path) -> list[Path]:
 
 
 def table2_ood(df: pd.DataFrame, outdir: Path) -> list[Path]:
-    """One row per model, columns = field rel-L2 per split."""
-    if df.empty:
+    """One row per model, columns = field rel-L2 per split (mean ± std over seeds).
+
+    Only untagged core runs on the canonical OOD splits are shown; smoke and
+    ablation runs (tagged) and the data-efficiency sub-splits (``full_n*``,
+    which belong to Figure 9, not the OOD table) are excluded.
+    """
+    core = df[df["tag"].isna()] if "tag" in df.columns else df
+    core = core[core["split"].isin(style.SPLIT_ORDER)]
+    if core.empty:
         print("TODO table2: no runs")
         return []
-    splits = style.sort_splits(df["split"].unique())
-    piv = (df.pivot_table(index="model", columns="split", values="field_p_rel_l2", aggfunc="mean")
-             .reindex(columns=splits))
+    splits = style.sort_splits(core["split"].unique())
+    piv = (core.pivot_table(index="model", columns="split", values="field_p_rel_l2", aggfunc="mean")
+              .reindex(columns=splits))
+    piv_sd = (core.pivot_table(index="model", columns="split", values="field_p_rel_l2", aggfunc="std")
+                 .reindex(columns=splits))
     models = style.sort_models(piv.index)
     best = {s: _best_mask(piv[s], True) for s in splits}
 
     def cell(m, s, latex):
         v = piv.loc[m, s] if (m in piv.index and s in piv.columns) else None
         txt = _fmt(v, 3)
-        if txt != DASH and bool(best[s].get(m, False)):
+        if txt == DASH:
+            return DASH
+        sd = piv_sd.loc[m, s] if (m in piv_sd.index and s in piv_sd.columns) else None
+        pm = r"$\pm$" if latex else "±"
+        if sd is not None and np.isfinite(sd) and sd > 0:
+            txt = f"{txt} {pm} {_fmt(sd, 3)}"
+        if bool(best[s].get(m, False)):
             txt = (r"\textbf{" + txt + "}") if latex else f"**{txt}**"
         return txt
 
