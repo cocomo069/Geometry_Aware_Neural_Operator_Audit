@@ -14,7 +14,7 @@ geometry-conditioning families (a $k$-nearest-neighbour graph network, a
 signed-distance-conditioned Fourier neural operator in the GINO style, and a
 Transolver-style geometry transformer), each reimplemented at matched parameter
 count ($\sim$1.3--1.4\,M) and training budget, under a single protocol built
-around force self-consistency, generalization across six distribution shifts,
+around force self-consistency, generalization across six evaluation splits,
 and calibrated uncertainty. The central instrument is force self-consistency
 (\FSC): the disagreement between the drag obtained by quadrature of a model's
 own predicted surface pressure and the drag from a regression head on the same
@@ -24,7 +24,7 @@ gated against the dataset's own coefficients (median relative error
 $3.3\times10^{-4}$), three findings recur across all three architectures. Field
 accuracy separates the models cleanly (transformer $>$ operator $>$ graph net,
 everywhere, by up to $4\times$), but $C_D$ rank correlation from the coefficient
-head does not: all three sit at $\rho_s\approx0.95$--$0.999$, and a 29-parameter
+head does not: all three sit at $\rho_s\approx0.94$--$0.999$, and a 29-parameter
 ridge baseline reaches $0.83$--$0.90$ on every split. Ranking drag by
 integrating the predicted fields is weaker still, no better than ridge for the
 best model and far worse for the graph net, so the two drags a single model
@@ -191,8 +191,8 @@ dataset's own reported coefficients on ground-truth fields, so we gate on it
 before any model result is reported: evaluated on all 1000 AirfRANS simulations,
 the median relative error is $3.3\times10^{-4}$ on $\Cd$
 (95th percentile $1.2\times10^{-3}$, maximum $1.6\times10^{-3}$) and
-$4.8\times10^{-6}$ (median) on $\Cl$: roughly two orders of
-magnitude inside the $1\%$ tolerance we set for this gate, and about two orders
+$4.8\times10^{-6}$ (median) on $\Cl$: a factor of 30 inside the $1\%$
+tolerance we set for this gate, and about two orders
 of magnitude below the field errors reported in \S\ref{sec:results}. Every
 downstream \FSC{} number therefore reflects the model, not the quadrature.
 
@@ -293,7 +293,7 @@ schedule, the same per-epoch checkpointing, and parameter counts held within
 $\pm20\%$ of a 1.5\,M target, so that architecture is the only thing that
 differs between runs. Realised counts are
 1{,}389{,}637 (\Mgnn), 1{,}373{,}605 (\Mfno) and
-1{,}281{,}701 (\Mtrans): a $\pm8\%$ spread, tighter than the budget requires.
+1{,}281{,}701 (\Mtrans): an $8\%$ max-to-min spread, well inside the budget.
 
 \paragraph{\Mgnn: graph baseline.} $k$-nearest-neighbour ($k=16$) message
 passing on the surface point cloud with node features $(\bx_i, \bn_i, \kappa_i,
@@ -353,8 +353,9 @@ $\lamF = \lamB = \lamS = \lamD = 0$ and are ablation flags
 % =====================================================================
 
 AirfRANS \citep{bonnet2022airfrans}: 1000 steady incompressible RANS solutions
-(Spalart--Allmaras) over NACA 4- and 5-digit sections, roughly 32{,}000 volume
-mesh points and $O(10^3)$ surface points per case, $\Rey \in [2,6]\times 10^6$,
+(Spalart--Allmaras) over NACA 4- and 5-digit sections, roughly 177{,}000 volume
+mesh points per case in the raw dataset (our cache subsamples the volume to at
+most 32{,}768 points) and $O(10^3)$ surface points, $\Rey \in [2,6]\times 10^6$,
 $\aoa \in [-5\degrees, +15\degrees]$, licensed \textbf{ODbL-1.0} (attribution and
 share-alike on derived databases; we release split manifests and code, never a
 processed copy of the fields). Every simulation encodes its own design point
@@ -438,7 +439,7 @@ training cost, is reported honestly rather than hidden: it reaches
 $\rho_s = 0.902$ in distribution, worse than every neural model but far from a
 naive floor, and (as \S\ref{sec:results_ood} shows) it holds up strikingly
 well under shift. All three architectures also show a large, roughly uniform
-symmetry residual ($4.5$, Table~\ref{tab:indist}), consistent with the
+symmetry residual ($\approx$4.5, Figure~\ref{fig:symmetry}), consistent with the
 expectation that none of these encodings is architecturally equivariant to
 reflection; none uses the symmetry loss or augmentation during the runs
 reported here (\S\ref{sec:models}), so this is the raw, unmitigated residual,
@@ -520,10 +521,11 @@ $\aoa\approx12$--$15\degrees$, close to typical NACA-section stall onset at
 these Reynolds numbers; a per-simulation separation indicator would make it
 precise and is left as follow-up.
 
-On head-route $\Cd$ rank correlation the between-model gap stays under
-$0.01$ on every split while the between-split gap for a single model reaches
-$0.05$ ($0.999\to0.945$); architecture matters an order of magnitude less
-than shift for the ranking metric. The ridge baseline is, again, the
+On head-route $\Cd$ rank correlation the between-model gap stays below
+$0.01$ on four of the six splits and peaks at $0.03$ on \splitname{reynolds}
+(where \Mtrans's seeds spread most), while the between-split swing for a
+single model reaches $0.05$ ($0.999\to0.94$); shift moves the ranking metric
+more than architecture does, everywhere. The ridge baseline is, again, the
 uncomfortable honest number: $\rho_s\in[0.83,0.90]$ across all six splits,
 meaning a 29-parameter linear model captures most of the head-route
 $\Cd$-ranking signal that these $\sim$1.3\,M-parameter models deliver.
@@ -545,8 +547,8 @@ exactly what \S\ref{sec:results_consistency} quantifies.
   \includegraphics[width=\linewidth]{figures/fig04_error_vs_shift.pdf}
   \caption{Error versus distribution shift, one panel per OOD axis (scarcity,
            Reynolds, angle of attack, shape family/combined), one line per
-           model, splits ordered along each axis; seed-0 runs. Field relative
-           $L_2$ on surface pressure.}
+           model, splits ordered along each axis; seed means over the
+           committed core runs. Field relative $L_2$ on surface pressure.}
   \label{fig:error_vs_shift}
 \end{widefigure}
 
@@ -573,16 +575,18 @@ underlying cause, distribution shift. That pooled correlation, however, is
 mostly a statement about shift, not about the models: holding the split fixed,
 \Mtrans{} is both the most accurate and the most self-consistent model on
 \splitname{full}, \splitname{scarce}, \splitname{shape5} and
-\splitname{combined}, but on the two hardest single-axis splits,
-\splitname{reynolds} and \splitname{aoa}, \Mfno{} is \emph{more}
-self-consistent than \Mtrans{} even though \Mtrans{} remains the more accurate
-model in field norm. That is a concrete instance of the hypothesis this metric
-is meant to test: the field-error leaderboard and the consistency leaderboard
-disagree, and they disagree specifically on the two splits where it would
-matter most to a designer relying on the field-best model's reported drag.
+\splitname{combined}. On \splitname{aoa}, however, \Mfno{} is the more
+self-consistent model (seed-mean FSC $0.0034$ vs.\ $0.0040$) even though
+\Mtrans{} remains the more accurate one in field norm; on \splitname{reynolds}
+the two are statistically tied at seed means ($0.0056$ vs.\ $0.0055$; seed~0
+alone puts \Mfno{} ahead there, but the seed means do not support it). That is
+a concrete instance of the hypothesis this metric is meant to test: the
+field-error leaderboard and the consistency leaderboard disagree, and they
+disagree on a flow-regime shift, exactly where a designer relying on the
+field-best model's reported drag would care most.
 \FSCrel{} also grows from \splitname{full} to \splitname{combined} at least as
-fast as the field error it accompanies ($4.8\times$ vs.\ $3.6\times$ for
-\Mgnn, $7.3\times$ vs.\ $5.9\times$ for \Mfno, $7.4\times$ vs.\ $7.5\times$
+fast as the field error it accompanies ($4.9\times$ vs.\ $3.6\times$ for
+\Mgnn, $6.9\times$ vs.\ $5.9\times$ for \Mfno, $8.0\times$ vs.\ $7.5\times$
 for \Mtrans), so self-consistency is an equally or more sensitive shift
 indicator than the field metric, while needing no ground truth: exactly what
 makes it usable as a label-free OOD flag and as an input to the acquisition
@@ -776,7 +780,8 @@ clean \Mtrans{} $>$ \Mfno{} $>$ \Mgnn{} hierarchy of
 single-budget ranking under-specifies method choice for data-scarce practice.
 
 The cost axis (Figure~\ref{fig:pareto}) makes the deployment reading direct:
-at the full budget \Mgnn{} is Pareto-dominated, costing $2.9$--$3.2$ GPU-h to
+at the full budget \Mgnn{} is Pareto-dominated, costing $2.4$--$3.2$ GPU-h
+across seeds (mean $2.9$) to
 train against \Mfno's $0.36$\,h and \Mtrans's $0.41$\,h (the $k$NN
 reconstruction on every forward pass dominates its cost) while also being the
 least accurate. The efficient frontier is \Mtrans{} and \Mfno; \Mgnn's appeal
@@ -936,11 +941,15 @@ picks, and one random $\aoa=12\degrees$ case. A conservative retry (longer
 first-order start, reduced under-relaxation, no early stopping) split that
 set three ways: the in-envelope $\aoa=12\degrees$ case recovered cleanly
 ($C_D=0.019$), confirming a settings failure rather than physics; \textbf{two
-$\aoa=18\degrees$ picks genuinely settled} (converged $C_D=0.167$ with
-drift $0.2\%$, and quasi-steady $C_D=0.113$); and the remaining 17 ran their
+$\aoa=18\degrees$ cases genuinely settled} (the variance-arm pick, converged
+$C_D=0.167$ with
+drift $0.2\%$, and a random-arm case, quasi-steady $C_D=0.113$); and of the
+remaining 17,
+sixteen ran their
 full 7000 iterations at bounded, physically plausible post-stall magnitudes
 (final $C_D\approx0.06$--$0.17$) while still drifting $7$--$21\%$ over the
-last 500 iterations, so they are classified non-settling: past the envelope
+last 500 iterations and one errored out at iteration 725, so all 17 are
+classified non-settling: past the envelope
 where this steady-RANS operator has a solution to converge to. A
 time-averaged URANS truth for those 17 is future work, and would compare the
 surrogate to a quantity it was never trained to predict.
@@ -966,7 +975,7 @@ solver that did not generate the training data, the C3 calibration
 degradation reproduces against external truth. Part of this gap is the
 solver-side floor above, which is negligible against what follows.
 
-\textbf{Post-stall (n=2, the settled $\aoa=18\degrees$ picks):} the
+\textbf{Post-stall (n=2, the settled $\aoa=18\degrees$ cases):} the
 surrogates predict attached-flow drag ($\Chead\approx0.03$--$0.06$) where
 the settled Fluent values are $0.113$ and $0.167$: errors of
 $0.05$--$0.13$ per case, roughly $640$--$900\times$ the in-distribution MAE,
@@ -976,11 +985,14 @@ every one far outside its conformal band.
 The falsifiable claim was: cases with high acquisition score have higher
 surrogate error against independent truth than randomly selected ones. The
 verdict splits cleanly by half. The half that says \emph{high-score picks are
-cases the surrogate fails on} is now supported with hard numbers: the two
-$\aoa=18\degrees$ picks the solver settled carry surrogate errors two to
-three orders above any moderate case, and the other 17 picks sit where the
+cases the surrogate fails on} is now supported with a hard number: the one
+high-score ($\aoa=18\degrees$ variance-arm) pick the solver settled carries a
+surrogate error two to three orders above any moderate case, and the other 15
+high-score picks sit where the
 steady solver itself does not settle, the strongest possible form of ``the
-surrogate should not be trusted here.'' The half that says \emph{random picks
+surrogate should not be trusted here.'' (The second settled
+$\aoa=18\degrees$ case belongs to the random arm and fails identically,
+which cuts against the other half below.) The half that says \emph{random picks
 are cases the surrogate gets right} is only partly true: on the tightly
 controlled offset replicas the surrogate sits inside its band in 15 of 18
 model-case pairs, but on the random arm coverage is 3/6 (\Mgnn) and 0/6
@@ -1070,7 +1082,8 @@ correlation across every split ($\rho_s\in[0.83,0.90]$), and the integrated
 drag ranking of the best neural model does not beat it at all
 (\S\ref{sec:results_ood}). The architecture that wins on field accuracy is not
 always the most internally self-consistent: \Mfno{} out-consistents \Mtrans{}
-on the two hardest single-axis shifts (\S\ref{sec:results_consistency}). The
+on the AoA shift and ties it on the Reynolds shift
+(\S\ref{sec:results_consistency}). The
 force-consistency training term buys self-consistency, not accuracy
 (\S\ref{sec:results_ablations}). Matched-versus-transfer conformal
 calibration does not order cleanly (\S\ref{sec:results_calibration}). The
@@ -1102,7 +1115,8 @@ declaring an architecture the winner.}
 The second finding is that self-consistency and calibration are not
 by-products of accuracy. The two drags a single model reports disagree by
 5--24\% in distribution and up to 115\% under shift; the field-accuracy
-leader is not the consistency leader on the shifts where it matters; and
+leader is not always the consistency leader (it loses that title on the AoA
+shift); and
 conformal coverage that looks healthy can be a wide band reporting nothing
 (\S\ref{sec:results_calibration}). Each has to be measured separately, and
 each disagrees with the accuracy ranking often enough to matter.

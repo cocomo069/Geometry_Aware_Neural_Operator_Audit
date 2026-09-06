@@ -512,6 +512,11 @@ def table5_fluent(results: str, outdir: Path) -> list[Path]:
     (outdir / "tab5_summary.tex").write_text("\n".join(sum_lines), encoding="utf-8")
 
     # (2) tab5_offset.tex -- the six solver-offset replicas + the mean line.
+    # Display the section from the per-case params (svf's ``naca`` column), not
+    # the historical case-id string: offset_2's folder name says "naca0109" but
+    # the actual replicated section is NACA 1009 (its params.json), and the two
+    # tables of the paper must agree.
+    naca_by_case = {r["case_id"]: r["naca"] for r in svf if r.get("naca")}
     off_lines = [
         r"\caption{Solver offset: six AirfRANS test simulations re-solved in Fluent "
         r"(SA, grid level L2). $\delta C_D = C_D^{\mathrm{Fluent}} - "
@@ -522,12 +527,15 @@ def table5_fluent(results: str, outdir: Path) -> list[Path]:
         r"\setlength{\tabcolsep}{4pt}",
         r"\begin{tabular}{lrrrrrr}",
         r"\toprule",
-        r"replica & $C_D^{\mathrm{AF}}$ & $C_L^{\mathrm{AF}}$ & $C_D^{\mathrm{SA}}$ & "
+        r"replica (NACA) & $C_D^{\mathrm{AF}}$ & $C_L^{\mathrm{AF}}$ & $C_D^{\mathrm{SA}}$ & "
         r"$C_D^{\mathrm{SST}}$ & $\delta C_D$ & rel.\ $\delta C_D$ \\",
         r"\midrule",
     ]
     for r in b_rows:
-        off_lines.append(" & ".join([_esc(r[0])] + [str(c) for c in r[1:7]]) + r" \\")
+        cid = str(r[0])
+        num = cid.split("_")[1] if "_" in cid else cid
+        label = f"{num} ({_esc(naca_by_case.get(cid, cid))})"
+        off_lines.append(" & ".join([label] + [str(c) for c in r[1:7]]) + r" \\")
     if osum and "sa" in osum:
         s = osum["sa"]
         off_lines += [r"\midrule",
