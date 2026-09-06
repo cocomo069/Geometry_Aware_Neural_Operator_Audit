@@ -5,10 +5,12 @@ $\hat\sigma_{C_D}$, force self-consistency \FSC, symmetry residual
 $\Losssym$, and the resulting acquisition score. Generated from
 \texttt{results/active/selection\_summary.json} and
 \texttt{results/active/acquisition\_ranking.csv}. Every pick sits at
-$\aoa=18\degrees$; the solver outcome per pick is in
-\S\ref{sec:fluent_outcome} (one settled on retry, the rest bounded but
-non-settling). Score components are computed on the synthetic pool contour
-and carry the representation caveat of \S\ref{sec:activelearning}.}
+$\aoa=18\degrees$; per \S\ref{sec:fluent_outcome}, none of the eight settled
+on retry (seven ran their full 7000 iterations bounded but non-settling, one
+errored at iteration 725); the two settled $\aoa=18\degrees$ cases belong to
+the variance and random arms. Score components are computed on the synthetic
+pool contour and carry the representation caveat of
+\S\ref{sec:activelearning}.}
 \label{tab:selected_cases}
 \footnotesize
 \setlength{\tabcolsep}{4pt}
