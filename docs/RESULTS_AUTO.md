@@ -239,6 +239,18 @@ transolver_shape5_s4
 
 All figures are in `paper/figures/` (PDF + PNG). Present now:
 
+### fig01: Protocol schematic (three families + shared harness)
+
+![Protocol schematic (three families + shared harness)](../paper/figures/fig01_schematic.png)
+
+### fig02: cp profiles, in-distribution + OOD
+
+![cp profiles, in-distribution + OOD](../paper/figures/fig02_cp_profiles.png)
+
+### fig03: Surface pressure fields (pred / truth / error)
+
+![Surface pressure fields (pred / truth / error)](../paper/figures/fig03_surface_fields.png)
+
 ### fig04: Field error vs distribution shift (centerpiece)
 
 ![Field error vs distribution shift (centerpiece)](../paper/figures/fig04_error_vs_shift.png)
@@ -267,9 +279,13 @@ All figures are in `paper/figures/` (PDF + PNG). Present now:
 
 ![Symmetry residual per model](../paper/figures/fig10_symmetry.png)
 
-### fig11: Active-learning pool / selections
+### fig11_active_pool: Active-learning pool scoring (selection)
 
-![Active-learning pool / selections](../paper/figures/fig11_active_pool.png)
+![Active-learning pool scoring (selection)](../paper/figures/fig11_active_pool.png)
+
+### fig11_active_verify: Surrogate-vs-Fluent by arm (accepted set)
+
+![Surrogate-vs-Fluent by arm (accepted set)](../paper/figures/fig11_active_verify.png)
 
 ### fig12: Cost vs accuracy (Pareto)
 
