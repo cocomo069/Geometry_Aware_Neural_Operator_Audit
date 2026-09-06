@@ -55,7 +55,13 @@ CONV_P2P_FRAC = 1e-2     # peak-to-peak(CD)/|mean(CD)| below this -> converged
 CONV_DRIFT = 0.02        # half-window mean shift / |mean| below this -> no drift
 QUASI_P2P_FRAC = 0.5     # peak-to-peak(CD)/|mean(CD)| below this -> quasi-steady
 QUASI_DRIFT = 0.05
-DIVERGE_ABS = 10.0       # |CD| above this at any point -> diverged
+DIVERGE_ABS = 10.0       # |CD| above this (after startup) -> diverged
+# The impulsive first-order start spikes |CD| large on the first few iterations of
+# EVERY case (peak ~10-14 at iteration 1) before the field develops; that transient
+# is not a divergence. Exclude the first STARTUP_GUARD iterations from the |CD|>10
+# blow-up test only. A genuinely diverged run blows up (|CD|->1e80 / non-finite)
+# well after this window, so it is still caught. (round-2 review fix)
+STARTUP_GUARD = 50
 
 VARIANTS = ("", "r1", "r2")   # "" == the original S0 batch
 MODELS = ("sa", "sst")
@@ -140,8 +146,11 @@ def classify(cd: np.ndarray) -> dict[str, Any]:
         out["status"] = "not_run"
         return out
 
-    # diverged: any non-finite value, or |CD| above the blow-up threshold
-    if not np.all(finite) or np.any(np.abs(cd[finite]) > DIVERGE_ABS):
+    # diverged: any non-finite value, or |CD| above the blow-up threshold AFTER the
+    # startup transient (the iteration-1 impulsive-start spike is not a divergence).
+    post = cd[STARTUP_GUARD:] if n > STARTUP_GUARD else cd
+    post_finite = post[np.isfinite(post)]
+    if not np.all(finite) or (post_finite.size and np.any(np.abs(post_finite) > DIVERGE_ABS)):
         out["status"] = "diverged"
         # still record the last finite value for the record
         if np.any(finite):

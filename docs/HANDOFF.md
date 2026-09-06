@@ -64,7 +64,9 @@ Read order for a fresh session: this file → [CONTEXT.md](CONTEXT.md) (frozen i
   reran `run_uq`, regenerated figures + Table 3, and committed+pushed (`f06a494`, `6ddee8e`).
 - **Result:** all 12 GNN ensemble runs present (4 splits × seeds s0/s1/s2 = **K=3**). Table 3 now
   has real M1 GNN calibration on all four splits. Headline: K=3 lifts GNN matched cov@.9 on the
-  Reynolds shift 0.70 → 0.97 and AoA 0.79 → 0.89 (see RESULTS.md §3).
+  Reynolds shift 0.70 → 0.97 and AoA 0.79 → 0.89 on the *normalized* band (a near-vacuous width, see
+  RESULTS.md §3.1); the tight absolute-score coverage stays ~0.70, so this is a band-width effect, not
+  a genuine calibration gain.
 - **Cleanup done:** project scratch temp dirs removed; `cocomo069` kaggle token active. Left as-is
   (safe, need coco to delete via web UI if wanted): tiny `taimooramin0699/geo-op-code` dataset +
   `geo-op-gpuprobe` kernels. `GeoOpCycle` scheduled task disabled (queue drained, nothing to launch).
@@ -99,6 +101,32 @@ A Fable agent did a final sign-off review and returned DO-NOT-APPROVE with real 
   template only — logged as an archiving to-do.
 - Per coco's instruction the review→fix loop repeats until a review returns no issues.
 
+### Round-2 final-review remediation (2026-09-06)
+
+Round-2 confirmed all 7 round-1 fixes HOLD, but caught that the same table fixes had not been applied
+to the figures, plus prose the files refuted. Fixed:
+- **Figures were still contaminated** (`make_figures.py` had no tag filter): `_neural()` now drops
+  tagged runs too, and fig04/fig05 route through it (+ canonical-split restriction), so fig04/05/09/
+  10/12 match the corrected tables. Regenerated all PNG/PDF.
+- **Fig 11b** plotted `cd_head` error against the `cd_int` half-width; `compare_fluent` now emits
+  `q90_halfwidth_cd_head` and fig11b uses it (log-y, regime-marked).
+- **Collector startup-guard bug (real):** `collect_fluent` applied the |C_D|>10 blow-up test to the
+  iteration-1 impulsive start (peak ~10–14 on every case), wrongly flagging settled α=18° cases as
+  diverged. Added `STARTUP_GUARD=50`. This promotes **two α=18° picks** to accepted
+  (`al_var_naca32012` converged C_D 0.167, `al_rand_naca4412` quasi-steady 0.113), so the surrogate
+  comparison is now **n=14** and Half 2 has real deep-stall data (surrogate off by ~0.05–0.13,
+  ~700–900× in-dist).
+- **RESULTS §6.4 rewritten as a regime split** (moderate n=12: 3–10× in-dist, cov 0.33–0.83;
+  post-stall n=2: ~0.1 error). **§6.3** r1 mechanism corrected (startup spike at iteration 1, not the
+  1st→2nd-order switch; 17/19 non-settling with 7–21% drift; 2 settled). **§6.5(c)** Half 1 corrected
+  (random-arm coverage 3/6 GNN, 0/6 others — not "all inside the interval"); Half 2 now supported.
+- **§4** "no curve crossing" corrected: Transolver best at every size, but GNN beats SDF-FNO at
+  n≤50 (they cross ~n≈70–100).
+- **Caveats**: §3.1 ECE clarified (Table 3 = normalized-score ECE; 6–10× is absolute-score) and the
+  unsupported `combined` calibration claim removed (no combined ensemble exists); §2 grids labeled
+  seed-0; Table 5c cov90 labeled Transolver; small-number drift fixed (SST +0.00069, δ_CD 5.3–13%).
+- The round-2 review's other claims (curvature sign bug) remained false positives. 449 tests pass.
+
 ---
 
 ## 1. What this project is
@@ -127,7 +155,7 @@ research-grade sweeps belong on Kaggle free tier (D-013), local P2000 is for smo
   `data/raw/Dataset/`, 1000 sims) and fully cached (`data/processed/airfrans/`,
   1000 .npz, cache_version=2, ~5 GB, plus `manifest.json` + `norm_stats.json` computed
   from the 700 `full`-train sims). Six split manifests committed in `data/splits/`.
-- Tests: **352 passed, 3 skipped** as of last full run (`.venv/Scripts/python.exe -m
+- Tests: **449 passed** as of the 2026-09-06 full run (`.venv/Scripts/python.exe -m
   pytest tests/ -q`, ~35 s, CPU-only). Run this first after any resume.
 
 ## 3. What is DONE (with the numbers that matter)
@@ -257,7 +285,7 @@ config.yaml — safe to delete), `data/cache_build*.log`, `results/g2_train*.log
 
 ```bash
 cd "D:/Personal Projects/geom_aware_neural_operator"
-.venv/Scripts/python.exe -m pytest tests/ -q            # expect ~352 passed
+.venv/Scripts/python.exe -m pytest tests/ -q            # expect 449 passed
 .venv/Scripts/python.exe -m pytest tests/test_force_integration.py -k gate -q  # G1 re-check
 # G2 (relaunch, detached via PowerShell Start-Process or just foreground overnight):
 .venv/Scripts/python.exe scripts/train.py --config configs/gnn.yaml split=full seed=0 tag=g2 train.epochs=60

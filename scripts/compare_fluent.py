@@ -266,7 +266,8 @@ CSV_FIELDS = [
     "cd_int_mean", "cd_int_std", "cd_head_mean", "cd_head_std",
     "cl_int_mean", "cl_int_std", "cl_head_mean", "cl_head_std",
     "err_cd_int", "err_cd_head", "err_cl_int", "err_cl_head",
-    "fsc", "q90_halfwidth_cd_int", "covered90_cd_int", "covered90_cd_head",
+    "fsc", "q90_halfwidth_cd_int", "q90_halfwidth_cd_head",
+    "covered90_cd_int", "covered90_cd_head",
     "pred_source",
 ]
 
@@ -324,6 +325,7 @@ def build_rows(model: str, summary: list[dict], offset: dict) -> list[dict]:
             err_cl_int=err_cl_int, err_cl_head=err_cl_head,
             fsc=abs(pred["cd_int_mean"] - pred["cd_head_mean"]),
             q90_halfwidth_cd_int=half["cd_int"],
+            q90_halfwidth_cd_head=half["cd_head"],
             covered90_cd_int=cov_cd_int, covered90_cd_head=cov_cd_head,
             pred_source=src,
         ))

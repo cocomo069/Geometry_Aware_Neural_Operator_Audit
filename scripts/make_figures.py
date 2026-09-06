@@ -55,7 +55,20 @@ def _save(fig: plt.Figure, outdir: Path, name: str) -> Path:
 
 
 def _neural(df: pd.DataFrame) -> pd.DataFrame:
-    return df[~df["is_baseline"]] if "is_baseline" in df.columns else df
+    """Core neural runs only: drop the constant/ridge baselines AND the smoke /
+    ablation tagged runs (smoke_dryrun, lamF, cond_*), which are not core results
+    and polluted Table 1 and the figures before the round-1/2 fixes. Data-efficiency
+    runs are KEPT: the real ones are untagged (split=full_n*) and the legacy/test
+    convention tags them n<size> (split=full) -- both are legitimate for fig9, so a
+    tag matching ^n\\d+$ is retained; every other tag is dropped."""
+    d = df
+    if "tag" in d.columns:
+        tag = d["tag"]
+        is_dataeff = tag.astype("string").str.fullmatch(r"n\d+").fillna(False)
+        d = d[tag.isna() | is_dataeff]
+    if "is_baseline" in d.columns:
+        d = d[~d["is_baseline"]]
+    return d
 
 
 # --------------------------------------------------------------------------- #
@@ -64,6 +77,7 @@ def fig4_error_vs_shift(df: pd.DataFrame, outdir: Path) -> Path | None:
     if df.empty or df["model"].nunique() == 0:
         print("TODO fig4: no runs")
         return None
+    df = _neural(df)  # core runs only: no baselines, no smoke/ablation tags
     metric = "field_p_rel_l2"
     panels = list(OOD_PANELS.items())
     fig, axes = plt.subplots(1, len(panels), figsize=(4 * len(panels), 3.4), sharey=True)
@@ -97,7 +111,10 @@ def fig5_fsc_scatter(df: pd.DataFrame, outdir: Path) -> Path | None:
     need = {"coef_cd_int_mae", "coef_cd_head_mae"}
     # We plot the actual predicted values via per-sim if available; else fall back
     # to the integrated-vs-head MAE as a proxy scatter across runs.
-    per = vdata.load_all_per_sim(runs=df) if not df.empty else pd.DataFrame()
+    core = _neural(df)  # drop baselines + tagged runs
+    if "split" in core.columns:
+        core = core[core["split"].isin(style.SPLIT_ORDER)]  # canonical splits only (no full_n*)
+    per = vdata.load_all_per_sim(runs=core) if not core.empty else pd.DataFrame()
     fig, ax = plt.subplots(figsize=(4.4, 4.2))
     plotted = False
     if not per.empty and {"cd_int", "cd_head"}.issubset(per.columns):
@@ -541,58 +558,65 @@ def fig11_active_verify(outdir: Path, results: str) -> Path | None:
         return None
 
     acc = t[t["status"].isin(["converged", "quasi_steady"])].copy()
-    unsolv = t[t["status"] == "diverged"].copy()
-    solvable_arms = ["random", "offset", "gridstudy"]
-    unsolv_arms = ["acquisition", "variance"]
-    xlabels = {"random": "random", "offset": "offset\nreplicas", "gridstudy": "grid\nstudy",
-               "acquisition": "acquisition", "variance": "variance"}
-    order = solvable_arms + unsolv_arms
+    div = t[t["status"] == "diverged"].copy()
+    xlabels = {"gridstudy": "grid\nstudy", "offset": "offset\nreplicas", "random": "random",
+               "variance": "variance", "acquisition": "acquisition"}
+    order = ["gridstudy", "offset", "random", "variance", "acquisition"]
     xpos = {a: i for i, a in enumerate(order)}
 
-    fig, ax = plt.subplots(figsize=(6.0, 4.0))
-    # 90% conformal half-width reference band (cd_head)
-    half = float(t["q90_halfwidth_cd_int"].dropna().iloc[0]) if "q90_halfwidth_cd_int" in t and t["q90_halfwidth_cd_int"].notna().any() else None
+    fig, ax = plt.subplots(figsize=(6.4, 4.2))
+    # 90% conformal half-width reference band, on the SAME quantity as the y-axis
+    # (cd_head). Round-2 fix: the figure previously drew the cd_int half-width under
+    # cd_head errors, which disagreed with the reported cd_head coverage.
+    half = None
+    if "q90_halfwidth_cd_head" in t and t["q90_halfwidth_cd_head"].notna().any():
+        half = float(t["q90_halfwidth_cd_head"].dropna().iloc[0])
 
     rng = np.random.default_rng(1)
-    for arm in solvable_arms:
+    plotted_any = False
+    for arm in order:
         sub = acc[acc["arm"] == arm]
-        if sub.empty:
-            continue
+        ndiv = int((div["arm"] == arm).shape[0]) if div.empty else int((div["arm"] == arm).sum())
         for _, r in sub.iterrows():
             err = abs(r["err_cd_head"]) if np.isfinite(r["err_cd_head"]) else np.nan
-            if not np.isfinite(err):
+            if not np.isfinite(err) or err <= 0:
                 continue
             filled = r["status"] == "converged"
-            jit = rng.uniform(-0.18, 0.18)
+            deep = float(r.get("aoa_deg", 0) or 0) >= 17.0   # post-stall pick
+            jit = rng.uniform(-0.16, 0.16)
+            col = style.OKABE_ITO["vermillion"] if deep else style.OKABE_ITO["blue"]
             ax.errorbar(xpos[arm] + jit, err, yerr=float(r.get("cd_head_std", 0) or 0),
-                        marker="o", ms=6, capsize=2,
-                        mfc=(style.OKABE_ITO["blue"] if filled else "white"),
-                        mec=style.OKABE_ITO["blue"], ecolor=style.OKABE_ITO["grey"], lw=0.8, zorder=5)
-        ax.annotate(f"n={len(sub)}", (xpos[arm], 0), xytext=(0, -28),
-                    textcoords="offset points", ha="center", fontsize=7, color="dimgray")
+                        marker=("s" if deep else "o"), ms=7, capsize=2,
+                        mfc=(col if filled else "white"), mec=col,
+                        ecolor=style.OKABE_ITO["grey"], lw=0.8, zorder=5)
+            plotted_any = True
+        note = f"acc={len(sub)}" + (f"\ndiv={ndiv}" if ndiv else "")
+        ax.annotate(note, (xpos[arm], 1.0), xycoords=("data", "axes fraction"),
+                    xytext=(0, 4), textcoords="offset points", ha="center", va="bottom",
+                    fontsize=7, color="dimgray")
 
-    # unsolvable arms: vertical band at the top + sigma_CD annotation
-    ymax = ax.get_ylim()[1]
-    top = ymax * 0.92 if ymax > 0 else 0.05
-    for arm in unsolv_arms:
-        sub = unsolv[unsolv["arm"] == arm]
-        ax.axvspan(xpos[arm] - 0.4, xpos[arm] + 0.4, color=style.OKABE_ITO["vermillion"], alpha=0.08)
-        sig = sub["cd_head_std"].astype(float).mean() if not sub.empty else float("nan")
-        ax.annotate(f"no steady soln\n(S0, r1)\nn={len(sub)}\n$\\sigma_{{CD}}\\approx${sig:.2g}",
-                    (xpos[arm], top), ha="center", va="top", fontsize=7,
-                    color=style.OKABE_ITO["vermillion"])
-
+    if plotted_any:
+        ax.set_yscale("log")
     if half is not None:
-        ax.axhspan(0, half, color=style.OKABE_ITO["green"], alpha=0.12, zorder=0)
+        ax.axhspan(ax.get_ylim()[0], half, color=style.OKABE_ITO["green"], alpha=0.12, zorder=0)
         ax.axhline(half, color=style.OKABE_ITO["green"], lw=1.0, ls="--",
                    label=f"90% conformal half-width ({half:.2g})")
+    # legend proxies for the regime marker
+    from matplotlib.lines import Line2D
+    proxies = [Line2D([0], [0], marker="o", color="w", mec=style.OKABE_ITO["blue"],
+                      mfc=style.OKABE_ITO["blue"], label="moderate-α accepted"),
+               Line2D([0], [0], marker="s", color="w", mec=style.OKABE_ITO["vermillion"],
+                      mfc=style.OKABE_ITO["vermillion"], label="α=18° (post-stall) accepted")]
+    if half is not None:
+        proxies.append(Line2D([0], [0], color=style.OKABE_ITO["green"], ls="--",
+                              label=f"90% conformal half-width ({half:.2g})"))
 
     ax.set_xticks(list(xpos.values()))
     ax.set_xticklabels([xlabels[a] for a in order])
-    ax.set_ylabel(r"$|C_D^{\mathrm{surrogate}} - C_D^{\mathrm{Fluent,corr}}|$ (cd\_head)")
-    ax.set_title("Surrogate vs Fluent by arm (accepted set); unsolvable arms shown as regime bands")
-    ax.legend(frameon=False, fontsize=7, loc="upper center")
-    ax.grid(True, axis="y", alpha=0.3)
+    ax.set_ylabel(r"$|C_D^{\mathrm{surrogate}} - C_D^{\mathrm{Fluent,corr}}|$ (cd\_head, log)")
+    ax.set_title("Surrogate vs Fluent by arm (accepted set); markers = post-stall regime")
+    ax.legend(handles=proxies, frameon=False, fontsize=7, loc="center right")
+    ax.grid(True, axis="y", which="both", alpha=0.3)
     return _save(fig, outdir, "fig11_active_verify")
 
 

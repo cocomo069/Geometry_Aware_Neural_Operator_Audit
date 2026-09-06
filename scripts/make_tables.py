@@ -386,7 +386,7 @@ def table5_fluent(results: str, outdir: Path) -> list[Path]:
                        ref["status"], _num(ref["cd_fluent"], 4), _num(ref["cd_fluent_corrected"], 4),
                        sc("transolver"), sc("sdf_fno"), sc("gnn"), str(cov)])
     c_head = ["case", "arm", "NACA", "Re", "alpha", "status", "CD_fl", "CD_fl-dbar",
-              "Transolver", "SDF-FNO", "GNN", "cov90"]
+              "Transolver", "SDF-FNO", "GNN", "cov90 (Transolver)"]
 
     def md_table(head, rows):
         L = ["| " + " | ".join(head) + " |", "| " + " | ".join("---" for _ in head) + " |"]
