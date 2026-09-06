@@ -100,9 +100,10 @@ def fig4_error_vs_shift(df: pd.DataFrame, outdir: Path) -> Path | None:
         ax.grid(True, alpha=0.3)
     axes[0].set_ylabel(r"field $p$ rel. $L_2$")
     handles = style.model_legend(models, with_marker=True)
+    # Legend alone above the panels; the caption carries the description, so no
+    # suptitle (it used to collide with this legend).
     fig.legend(handles=handles, loc="upper center", ncol=len(models), frameon=False,
-               bbox_to_anchor=(0.5, 1.08))
-    fig.suptitle("Error vs distribution shift", y=1.02)
+               bbox_to_anchor=(0.5, 1.06))
     return _save(fig, outdir, "fig04_error_vs_shift")
 
 
@@ -122,9 +123,23 @@ def fig5_fsc_scatter(df: pd.DataFrame, outdir: Path) -> Path | None:
             sub = per[per["split"] == split]
             ax.scatter(sub["cd_head"], sub["cd_int"], s=10, alpha=0.5,
                        color=style.split_color(split), label=style.split_label(split))
-        lo = float(np.nanmin([per["cd_head"].min(), per["cd_int"].min()]))
-        hi = float(np.nanmax([per["cd_head"].max(), per["cd_int"].max()]))
-        ax.plot([lo, hi], [lo, hi], "k--", lw=1, alpha=0.7)
+        # Zoom to the central mass of the data (0.5-99.5% quantiles, padded);
+        # without this the identity line's aspect stretch turned the cloud into
+        # an unreadable vertical blob dominated by a handful of cd_int outliers.
+        qx = per["cd_head"].quantile([0.005, 0.995]).to_numpy(dtype=float)
+        qy = per["cd_int"].quantile([0.005, 0.995]).to_numpy(dtype=float)
+        lo = float(min(qx[0], qy[0]))
+        hi = float(max(qx[1], qy[1]))
+        pad = 0.06 * (hi - lo)
+        ax.plot([lo - pad, hi + pad], [lo - pad, hi + pad], "k--", lw=1, alpha=0.7)
+        ax.set_xlim(lo - pad, hi + pad)
+        ax.set_ylim(lo - pad, hi + pad)
+        n_out = int(((per["cd_int"] < lo - pad) | (per["cd_int"] > hi + pad)
+                     | (per["cd_head"] < lo - pad) | (per["cd_head"] > hi + pad)).sum())
+        if n_out:
+            ax.annotate(f"{n_out} outlier(s) beyond view", (0.98, 0.02),
+                        xycoords="axes fraction", ha="right", va="bottom",
+                        fontsize=6.5, color="dimgray")
         ax.set_xlabel(r"$C_D^{\mathrm{head}}$")
         ax.set_ylabel(r"$C_D^{\mathrm{int}}$")
         plotted = True
@@ -132,8 +147,7 @@ def fig5_fsc_scatter(df: pd.DataFrame, outdir: Path) -> Path | None:
         print("TODO fig5: no per-sim cd_int/cd_head yet (needs neural runs with both heads)")
         plt.close(fig)
         return None
-    ax.legend(frameon=False, fontsize=7)
-    ax.set_title("Force self-consistency")
+    ax.legend(frameon=False, fontsize=7, loc="upper left")
     return _save(fig, outdir, "fig05_fsc_scatter")
 
 
@@ -144,32 +158,34 @@ def fig1_schematic(outdir: Path) -> Path | None:
     matplotlib patches diagram (no TikZ/graphviz dependency) so it builds on
     the same Agg-only, no-extra-deps stack as every other figure.
     """
-    fig, ax = plt.subplots(figsize=(7.2, 4.4))
-    ax.set_xlim(0, 10)
-    ax.set_ylim(0, 6.4)
+    fig, ax = plt.subplots(figsize=(7.2, 3.2))
+    ax.set_xlim(-0.1, 10.1)
+    ax.set_ylim(0, 4.3)
     ax.axis("off")
 
+    enc_y0 = 2.75  # bottom of the encoder boxes (compact layout, no dead band)
     encoders = [
-        ("M1  GNN\n$k$NN message passing", style.MODEL_COLORS["gnn"], 1.1),
-        ("M2  SDF-FNO\nGINO-style, SDF-conditioned", style.MODEL_COLORS["sdf_fno"], 4.15),
-        ("M3  Transolver\nphysics attention, slices", style.MODEL_COLORS["transolver"], 7.2),
+        ("M1  GNN\n$k$NN message passing", style.MODEL_COLORS["gnn"], 1.85),
+        ("M2  SDF-FNO\nGINO-style, SDF-conditioned", style.MODEL_COLORS["sdf_fno"], 5.0),
+        ("M3  Transolver\nphysics attention, slices", style.MODEL_COLORS["transolver"], 8.15),
     ]
-    box_w, box_h = 2.65, 1.05
+    box_w, box_h = 2.85, 1.0
     for label, color, cx in encoders:
-        b = FancyBboxPatch((cx - box_w / 2, 4.9), box_w, box_h,
+        b = FancyBboxPatch((cx - box_w / 2, enc_y0), box_w, box_h,
                             boxstyle="round,pad=0.06,rounding_size=0.08",
                             linewidth=1.3, edgecolor=color, facecolor=color, alpha=0.16)
         ax.add_patch(b)
-        ax.text(cx, 4.9 + box_h / 2, label, ha="center", va="center", fontsize=8.2,
+        ax.text(cx, enc_y0 + box_h / 2, label, ha="center", va="center", fontsize=8.2,
                  color="black", linespacing=1.5)
 
-    shared_y0, shared_h = 0.35, 1.35
+    shared_y0, shared_h = 0.55, 1.30
     shared = FancyBboxPatch((0.5, shared_y0), 9.0, shared_h,
                              boxstyle="round,pad=0.06,rounding_size=0.1",
                              linewidth=1.3, edgecolor=style.OKABE_ITO["black"],
                              facecolor="white")
     ax.add_patch(shared)
-    ax.text(5.0, shared_y0 + shared_h + 0.32, "one shared evaluation protocol",
+    # Below the box, clear of the three encoder->box arrows.
+    ax.text(5.0, shared_y0 - 0.32, "one shared evaluation protocol",
             ha="center", va="center", fontsize=9, style="italic")
 
     stages = [
@@ -190,12 +206,13 @@ def fig1_schematic(outdir: Path) -> Path | None:
                      color=style.OKABE_ITO["grey"], lw=0.8, alpha=0.6)
 
     for _, color, cx in encoders:
-        arrow = FancyArrowPatch((cx, 4.9), (cx, shared_y0 + shared_h + 0.02),
+        arrow = FancyArrowPatch((cx, enc_y0), (cx, shared_y0 + shared_h + 0.02),
                                  arrowstyle="-|>", mutation_scale=12, lw=1.2,
                                  color=color, alpha=0.85)
         ax.add_patch(arrow)
 
-    ax.text(5.0, 6.1, "same data pipeline, loss family, optimiser, schedule, budget",
+    ax.text(5.0, enc_y0 + box_h + 0.32,
+            "same data pipeline, loss family, optimiser, schedule, budget",
             ha="center", va="center", fontsize=7.8, color=style.OKABE_ITO["grey"])
     return _save(fig, outdir, "fig01_schematic")
 
@@ -233,11 +250,11 @@ def fig10_symmetry(df: pd.DataFrame, outdir: Path) -> Path | None:
         return None
     ax.set_xticks(range(len(splits_present)))
     ax.set_xticklabels([style.split_label(s) for s in splits_present], rotation=20, ha="right")
-    ax.set_yscale("log")
-    ax.set_ylabel("symmetry residual (log scale)")
-    ax.set_title("Symmetry (mirror-equivariance) violation, no augmentation")
-    ax.legend(frameon=False, fontsize=7)
-    ax.grid(True, which="both", axis="y", alpha=0.3)
+    # Linear scale: the residuals span only ~4.4-8.2, a log axis added nothing
+    # but a misleading "log scale" label.
+    ax.set_ylabel("symmetry residual")
+    ax.legend(frameon=False, fontsize=7, loc="upper left")
+    ax.grid(True, axis="y", alpha=0.3)
     return _save(fig, outdir, "fig10_symmetry")
 
 
@@ -272,9 +289,14 @@ def fig9_data_efficiency(df: pd.DataFrame, outdir: Path) -> Path | None:
                         color=style.model_color(m), alpha=0.15)
     ax.set_xscale("log")
     ax.set_yscale("log")
+    # Explicit ticks at the actual sweep sizes: matplotlib's default log ticks
+    # ("3x10^1 4x10^1 6x10^1") overlapped each other at this figure width.
+    sizes = sorted(int(s) for s in d["train_size"].dropna().unique())
+    ax.set_xticks(sizes)
+    ax.set_xticklabels([str(s) for s in sizes])
+    ax.xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
     ax.set_xlabel("training simulations")
     ax.set_ylabel(r"field $p$ rel. $L_2$")
-    ax.set_title("Data efficiency")
     ax.legend(frameon=False)
     ax.grid(True, which="both", alpha=0.3)
     return _save(fig, outdir, "fig09_data_efficiency")
@@ -295,7 +317,6 @@ def fig12_cost_accuracy(df: pd.DataFrame, outdir: Path) -> Path | None:
                    label=style.model_label(m))
     ax.set_xlabel("training GPU-hours")
     ax.set_ylabel(r"field $p$ rel. $L_2$")
-    ax.set_title("Cost vs accuracy")
     ax.legend(frameon=False)
     ax.grid(True, alpha=0.3)
     return _save(fig, outdir, "fig12_cost_accuracy")
@@ -366,17 +387,41 @@ def fig6_reliability(outdir: Path, results: str) -> Path | None:
     if not curves:
         print("TODO fig6: no results/uq reliability data")
         return None
-    fig, ax = plt.subplots(figsize=(4.4, 4.2))
-    ax.plot([0, 1], [0, 1], "k--", lw=1, alpha=0.7, label="ideal")
-    for model, split, nom, emp in curves:
-        ax.plot(nom, emp, marker="o", ms=3.5, lw=1.3,
-                color=style.model_color(model), alpha=0.9,
-                label=f"{style.model_label(model)} / {style.split_label(split)}")
-    ax.set_xlabel("nominal coverage")
-    ax.set_ylabel("empirical coverage")
-    ax.set_title(r"Reliability ($C_D^{\mathrm{int}}$, matched)")
-    ax.legend(frameon=False, fontsize=6, loc="upper left")
-    ax.set_aspect("equal", adjustable="box")
+    # One panel per model, lines coloured by split, axes zoomed to where the
+    # data actually lives. The old single-panel version buried 12 near-identical
+    # lines under a 12-entry legend in an almost entirely empty [0,1] square.
+    models = style.sort_models({m for m, _, _, _ in curves})
+    all_vals = [v for _, _, nom, emp in curves for v in list(nom) + list(emp)]
+    lo = max(0.0, min(all_vals) - 0.05)
+    hi = min(1.005, max(all_vals) + 0.02)
+    fig, axes = plt.subplots(1, len(models), figsize=(2.9 * len(models), 3.1),
+                             sharex=True, sharey=True)
+    if len(models) == 1:
+        axes = [axes]
+    splits_seen: list[str] = []
+    for ax, model in zip(axes, models):
+        ax.plot([lo, hi], [lo, hi], "k--", lw=1, alpha=0.7)
+        for m, split, nom, emp in curves:
+            if m != model:
+                continue
+            ax.plot(nom, emp, marker="o", ms=3.5, lw=1.3,
+                    color=style.split_color(split), alpha=0.9)
+            if split not in splits_seen:
+                splits_seen.append(split)
+        ax.set_xlim(lo, hi)
+        ax.set_ylim(lo, hi)
+        ax.set_title(style.model_label(model), fontsize=8.5)
+        ax.set_xlabel("nominal coverage")
+        ax.set_aspect("equal", adjustable="box")
+        ax.grid(True, alpha=0.3)
+    axes[0].set_ylabel("empirical coverage")
+    handles = [Line2D([], [], color="k", ls="--", label="ideal")] + [
+        Line2D([], [], color=style.split_color(s), marker="o", ms=3.5,
+               label=style.split_label(s))
+        for s in style.sort_splits(splits_seen)
+    ]
+    fig.legend(handles=handles, loc="upper center", ncol=len(handles), frameon=False,
+               fontsize=7, bbox_to_anchor=(0.5, 1.06))
     return _save(fig, outdir, "fig06_reliability")
 
 
@@ -432,12 +477,13 @@ def fig7_coverage_vs_shift(outdir: Path, results: str) -> Path | None:
     ax.set_xticks(range(len(splits_present)))
     ax.set_xticklabels([style.split_label(s) for s in splits_present], rotation=20, ha="right")
     ax.set_ylabel(f"empirical coverage @ {nominal:g}")
-    ax.set_title(r"Coverage vs shift ($C_D^{\mathrm{int}}$)")
     handles = (style.model_legend(models, with_marker=True)
                + [Line2D([], [], color="k", ls="--", label="matched cal"),
                   Line2D([], [], color="k", ls="-", label="transfer (cal=full)"),
                   Line2D([], [], color="k", ls=":", label=f"nominal {nominal:g}")])
-    ax.legend(handles=handles, frameon=False, fontsize=7, loc="lower left")
+    # Legend below the axes so it can never sit on top of the coverage lines.
+    ax.legend(handles=handles, frameon=False, fontsize=7, loc="upper center",
+              bbox_to_anchor=(0.5, -0.22), ncol=3)
     ax.grid(True, alpha=0.3)
     return _save(fig, outdir, "fig07_coverage_vs_shift")
 
@@ -496,7 +542,6 @@ def fig8_interval_width(outdir: Path, results: str) -> Path | None:
         return None
     axes[0].set_ylabel(f"mean interval width @ {nominal:g}")
     axes[-1].legend(frameon=False, fontsize=7)
-    fig.suptitle("Interval width, ID vs OOD (matched)", y=1.02)
     return _save(fig, outdir, "fig08_interval_width")
 
 
@@ -520,24 +565,28 @@ def fig11_active_pool(outdir: Path, results: str) -> Path | None:
     fig, ax = plt.subplots(figsize=(5.4, 3.9))
     rng = np.random.default_rng(0)
     jitter = rng.uniform(-0.35, 0.35, size=len(pool))
-    sc = ax.scatter(pool["aoa_deg"] + jitter, pool["acq_score"], c=pool["re"],
-                     cmap="viridis", s=9, alpha=0.35, linewidths=0)
+    # Re in millions so the colorbar needs no "1e6" offset text (which used to
+    # collide with the figure title).
+    sc = ax.scatter(pool["aoa_deg"] + jitter, pool["acq_score"], c=pool["re"] / 1e6,
+                     cmap="viridis", s=11, alpha=0.45, linewidths=0)
+    # Deterministic per-arm x offsets: the acquisition and variance arms pick
+    # overlapping alpha=18 cases, and without the offsets their markers stacked
+    # on top of each other.
     arms = (
-        ("selected_acquisition", "acquisition (k=8)", "*", 150, style.OKABE_ITO["vermillion"]),
-        ("selected_variance", "ensemble variance (k=8)", "^", 65, style.OKABE_ITO["blue"]),
-        ("selected_random", "random (k=8)", "s", 50, style.OKABE_ITO["grey"]),
+        ("selected_acquisition", "acquisition (k=8)", "*", 150, style.OKABE_ITO["vermillion"], -0.55),
+        ("selected_variance", "ensemble variance (k=8)", "^", 65, style.OKABE_ITO["blue"], 0.55),
+        ("selected_random", "random (k=8)", "s", 50, style.OKABE_ITO["grey"], 0.0),
     )
-    for col, label, marker, size, color in arms:
+    for col, label, marker, size, color, dx in arms:
         sub = pool[pool[col] == 1]
         if sub.empty:
             continue
-        ax.scatter(sub["aoa_deg"], sub["acq_score"], marker=marker, s=size,
+        ax.scatter(sub["aoa_deg"] + dx, sub["acq_score"], marker=marker, s=size,
                    facecolor=color, edgecolor="black", linewidths=0.6, label=label, zorder=5)
     cbar = fig.colorbar(sc, ax=ax)
-    cbar.set_label(r"$\mathrm{Re}$")
+    cbar.set_label(r"$\mathrm{Re}\ (\times 10^6)$")
     ax.set_xlabel(r"angle of attack $\alpha$ (deg)")
     ax.set_ylabel("acquisition score $a$")
-    ax.set_title("Active-learning pool (630 candidates) and the three selection arms")
     ax.legend(frameon=False, fontsize=7, loc="upper left")
     ax.grid(True, alpha=0.3)
     return _save(fig, outdir, "fig11_active_pool")
@@ -615,8 +664,7 @@ def fig11_active_verify(outdir: Path, results: str) -> Path | None:
 
     ax.set_xticks(list(xpos.values()))
     ax.set_xticklabels([xlabels[a] for a in order])
-    ax.set_ylabel(r"$|C_D^{\mathrm{surrogate}} - C_D^{\mathrm{Fluent,corr}}|$ (cd_head, log)")
-    ax.set_title("Surrogate vs Fluent by arm (accepted set); markers = post-stall regime")
+    ax.set_ylabel(r"$|C_D^{\mathrm{head}} - C_D^{\mathrm{Fluent,corr}}|$")
     ax.legend(handles=proxies, frameon=False, fontsize=7, loc="center right")
     ax.grid(True, axis="y", which="both", alpha=0.3)
     return _save(fig, outdir, "fig11_active_verify")
