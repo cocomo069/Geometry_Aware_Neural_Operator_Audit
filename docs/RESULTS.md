@@ -2,9 +2,9 @@
 
 **Every result the project has produced, with plain-language interpretation.** Read
 [OVERVIEW.md](OVERVIEW.md) first for the concepts; this file is the numbers and what they mean.
-Updated as runs land. Last updated: **2026-08-25**.
+Updated as runs land.
 
-Status legend: ✅ complete · 🔄 partial · ⏳ not started. Last updated: **2026-09-04** (Fluent C4 complete).
+Status legend: ✅ complete · 🔄 partial · ⏳ not started. Last updated: **2026-09-06** (GNN K=3 ensemble complete; tables/§6 corrected and re-derived from files after the round-1 final review).
 
 Quick map of results → paper figures/tables:
 - Core grid accuracy → **Table 1, Table 2, Fig 4, Fig 12**
@@ -66,6 +66,8 @@ GNN in-distribution. This matches the operator-learning literature.
 
 ### 2.2 Drag ranking — Spearman ρ (higher = better; ridge ≈ 0.83–0.90)
 
+**Coefficient head (`cd_head`, the directly-supervised drag output):**
+
 | model | full | scarce | reynolds | aoa | shape5 | combined |
 |---|---|---|---|---|---|---|
 | Transolver | 0.999 | 0.996 | 0.976 | 0.947 | 0.983 | 0.972 |
@@ -76,8 +78,27 @@ GNN in-distribution. This matches the operator-learning literature.
 by drag), **all three architectures are nearly identical** (ρ within ~0.01 of each other), and the
 spread *between splits* (0.999 → 0.945) is larger than the spread *between models*. So the field's
 usual "which architecture wins" comparison is measuring noise relative to the axis that matters
-for deployment (distribution shift). All three still beat ridge — but not by as much as their
-4× field-accuracy gap would suggest.
+for deployment (distribution shift). On the head, all three still beat ridge — but not by as much as
+their 4× field-accuracy gap would suggest.
+
+**Physics-integrated route (`cd_int`, drag from integrating the predicted field) — the honest
+counterpoint:** ranking drag by integrating the *predicted surface field* is a completely different,
+and much weaker, story:
+
+| model | full ρ (int) | combined ρ (int) |
+|---|---|---|
+| Transolver | 0.89 | 0.28 |
+| SDF-FNO | 0.83 | −0.02 |
+| GNN | 0.36 | −0.28 |
+
+So integrating the fields ranks drag **no better than the 29-parameter ridge baseline** for the best
+architecture in-distribution (0.89 vs ridge ~0.90) and **far worse for the GNN (0.36)**; under the
+`combined` shift the integrated ranking collapses to ≈ 0 or negative for all three. The head and the
+field **disagree on drag by tens of percent** (relative FSC below), which is the spec's Gap 1 landing
+hard: the models learn a good drag *regressor* but not a field whose integral *is* that drag. Any
+"beats ridge" statement in the paper must be qualified as **head-route only**; the field-consistent
+drag does not beat ridge. `cd_int` also carries a synthetic-pool representation artifact off the real
+mesh (D-026), but the numbers above are on the real AirfRANS test mesh and are trustworthy.
 
 ### 2.3 Force self-consistency (FSC) — |C_D from field − C_D from head|, lower = more consistent
 
@@ -95,12 +116,31 @@ monotonic across all six splits (e.g. `reynolds` FSC can exceed `aoa`), and the 
 mildly architecture-dependent — reported honestly in the paper. The better-field-accuracy models
 (Transolver, SDF-FNO) are also more self-consistent (lower FSC) than the GNN.
 
+**In relative terms this gap is large, not cosmetic.** The absolute FSC above is small only because
+C_D itself is ~0.01; as a *fraction* of the true drag (median `fsc_rel_cd`) the head and the
+integrated field disagree by **≈ 5 % (Transolver), 7 % (SDF-FNO) and 24 % (GNN) in-distribution**,
+rising to **≈ 37 %, 51 % and 115 % on `combined`**. That is why the integrated drag ranking in §2.2
+is so much weaker than the head ranking: the two "drags" a single model reports are tens of percent
+apart, and further apart the more it extrapolates.
+
 ### 2.4 Symmetry residual — equivariance violation (lower = more symmetric)
 
 Range ~4.4 (in-distribution) to ~8.2 (aoa) across all models. **Meaning:** none of the three
 architectures is built to be symmetric, so all violate the +α/−α mirror symmetry substantially,
 and the violation grows with shift. This is the expected "plain models rely on coordinate
 accidents, not equivariance" finding — it motivates the augmentation ablation.
+
+**Read this as a response-to-reflection indicator, not a pure equivariance number.** The harness
+reflects *every* test geometry about the chord line and keeps per-point index correspondence. For a
+*cambered* airfoil the reflection is an inverted-camber shape that lies outside the NACA training
+family, so the residual for those samples mixes true equivariance violation with ordinary
+out-of-family extrapolation, and the large absolute magnitudes (440–820 %) partly reflect the latter.
+The spec's clean form of the test is Rg = g — symmetric (zero-camber) sections at α = 0, where the
+reflected input is the *same* input; a zero-camber-at-α0 subset is the honest equivariance number and
+is logged as a quick follow-up. (We did verify one mechanical worry raised in review: the cached
+signed Menger curvature passed through `reflect_x_batch` is numerically identical to recomputing it on
+the mirrored contour — `orient` from the signed area flips with the cross product and cancels — so the
+reflected batch is fed the correct curvature; that part is not a bug.)
 
 ### 2.5 The OOD hierarchy (a cross-cutting finding)
 
@@ -117,36 +157,45 @@ across one.* `combined` (shape + Reynolds shifted together) is hardest, as desig
 **Deep ensembles complete for all three models on {full, reynolds, aoa, shape5}: K=5 for
 Transolver and SDF-FNO, K=3 for the GNN (the kNN GNN is ~0.7–3 h/run, so it runs a smaller
 ensemble by design, D-019).** Then split conformal prediction on each split's calibration set.
-Two modes: *matched* (calibrate and test on the same split) and *transfer* (calibrate on `full`,
-deploy on the shifted split).
+Two modes: *matched* (calibrate on the split's own held-out cal set, test on that split) and
+*transfer* (calibrate on `full`'s cal set, deploy on the shifted split). **Important wording caveat:**
+the cal set is carved from the *training* pool of each split (`splits.py`), which is drawn from the
+same distribution as that split's test set only in the sense that both are in-distribution to the
+split. So "matched" is *not* calibration on a handful of labelled shifted deployment cases; it is the
+optimistic case where a like-distributed cal set is available. The practically relevant experiment
+(recalibrate on a few labelled cases from the shifted deployment) is *not* run here and is flagged as
+follow-up.
 
 ### 3.1 Coverage at nominal 90% — does the interval contain the truth 90% of the time?
 
-Coefficient-C_D coverage, matched calibration, largest available K:
+Coefficient-C_D coverage, matched calibration, largest available K. **Table 3 reports the
+*normalized*-score band** (variance-scaled), so read coverage together with the band width:
 
 | model | full | reynolds | aoa | shape5 |
 |---|---|---|---|---|
 | SDF-FNO (K=5) | 0.95 | 0.90 | 0.94 | 0.76 |
-| Transolver (K=5) | 0.91 | 0.94 | ~0.95 | (varies) |
+| Transolver (K=5) | 0.91 | 0.94 | ~0.95 | 0.87 |
 | GNN (K=3) | 0.82 | 0.97 | 0.89 | 0.86 |
 
-(Field-level and 80%/95% nominal levels are in Table 3, which is now fully populated for all
-three models.)
+(Field-level and 80%/95% nominal levels are in Table 3, now fully populated for all three models.)
 
 **Meaning (contribution C3):**
-- **In-distribution, the conformal guarantee holds** — coverage ≈ the nominal 90% it promises.
-- **Proper ensembling markedly improves the GNN under flow-regime shift.** Going from a single
-  model (K=1) to K=3 lifts its matched coverage on the Reynolds shift 0.70 → 0.97 and on the AoA
-  shift 0.79 → 0.89, i.e. the ensemble spread now carries the extra uncertainty those shifts
-  demand. (In-distribution and shape-family coverage settle a little lower, 0.82 and 0.86, closer
-  to the nominal 0.90 than the over-confident-yet-lucky single-model values.)
-- **Under shift it still degrades**, and the calibration error (ECE) jumps 6–10× on the
-  flow-regime shifts (reynolds, aoa). The proper ensembles hold up better under mild shift than a
-  single model does, but shape-family and combined shifts still break the guarantee.
-- **The takeaway sentence:** *conformal prediction repairs in-distribution calibration but its
-  coverage guarantee is not robust to distribution shift — a conformal interval must not be read
-  as protection against design-space extrapolation.* This is exactly the honest, useful message
-  the paper is built to deliver.
+- **In-distribution, the conformal guarantee is close but not automatic** — SDF-FNO/Transolver sit at
+  0.91–0.95, while the **GNN under-covers in-distribution (0.82, Wilson CI [0.76, 0.87], excludes
+  0.90)**. So "the guarantee holds in-distribution" is true for the two stronger models, not the GNN.
+- **The GNN's high shifted coverage is a band-width artifact, not a real calibration win.** Its
+  Reynolds "0.97" is the *normalized* band with **mean width 0.228 for a C_D of ~0.01** (≈ 23× the
+  quantity) — a near-vacuous interval; the tight *absolute*-score band on the same split covers only
+  **0.702**, essentially unchanged from K=1. So going K=1→K=3 did not genuinely fix the GNN under
+  shift; it inflated the variance-scaled interval. We report both scores rather than quote the
+  flattering one.
+- **ECE still jumps 6–10×** on the flow-regime shifts (reynolds, aoa) for all models, and
+  shape-family and combined shifts break the guarantee outright.
+- **The takeaway sentence:** *conformal prediction repairs in-distribution calibration (for a
+  well-behaved model, with a like-distributed cal set) but its coverage guarantee is not robust to
+  distribution shift — a conformal interval must not be read as protection against design-space
+  extrapolation, and a high coverage number must be read next to its interval width.* This is exactly
+  the honest, useful message the paper is built to deliver.
 
 ### 3.2 Interval width (Fig 8)
 
@@ -237,14 +286,21 @@ surface < 8e-5 c). On SA (n=6): **Δ̄_CD = +0.00090 (s = 0.00034)**, i.e. Fluen
 (s = 0.0037)**. SST is similar (Δ̄_CD +0.00072). Crucially the per-case SA↔SST C_D spread
 (~0.0001–0.0003) is *smaller* than |Δ̄_CD| here, so at these low-to-moderate angles the solver
 offset — not the turbulence model — is the dominant systematic difference (FLUENT_PLAN 5.4). Every
-(b) comparison below subtracts Δ̄_CD(SA), with s_CD carried in quadrature with the grid band.
+(c) comparison below subtracts the mean offset Δ̄_CD(SA) = +0.00090 from the Fluent C_D
+(`compare_fluent.py`). Note the replica scatter s_CD = 0.00034 is itself as large as the surrogate's
+in-distribution C_D MAE (~0.00012–0.00014): it is reported as a solver-side systematic uncertainty,
+but it is *not* folded into the coverage test below (that test uses each surrogate's own conformal
+half-width). So a fraction of the surrogate-vs-Fluent gap in §6.4 is solver scatter, not surrogate
+error — see the caveat there.
 
 ### 6.3 Active-learning campaign outcome (Table 5a) ✅
 
-The 24 AL cases + the grid trio + the 6 replicas ran under SA. Outcome (`fluent_summary.csv`):
+The 24 AL cases + the grid trio + the 6 replicas ran under SA. Outcome (`fluent_summary.csv`,
+regenerated by `collect_fluent.py`; 86 rows = 66 first-attempt s0 + 20 r1):
 
 - **Grid study 3/3 converged; 4 low-α random cases converged** (α ∈ {−6, 0, 0, 6}); **all 6
-  offset replicas converged** — 13 accepted steady SA points, y+max < 1 on every one.
+  offset replicas converged (5) or quasi-steady (1)**; the α = 12° random case reached quasi-steady
+  on retry. y+max < 1 on every accepted point. Twelve of these enter the surrogate comparison (§6.4).
 - **20 cases diverged on the first attempt**: all 16 acquisition- and variance-arm picks (α = 18°),
   the 3 random α = 18° picks, and the one random α = 12° case. Every divergence set in within
   ~50–270 iterations of the first-order→second-order switch — a numerical signature superimposed on
@@ -252,45 +308,50 @@ The 24 AL cases + the grid trio + the 6 replicas ran under SA. Outcome (`fluent_
   divergence is a settings failure, not only physics — which is why the conservative `r1` retry
   (longer first-order start, reduced under-relaxation on all equations, no cd-steady stop) is run
   before calling any case "unsolvable."
-- **`r1` retry COMPLETE** (α = 12° control-gated; run as a detached batch after the scheduled-task
-  path proved flaky): all 20 diverged cases were re-solved. The lower under-relaxation + longer
-  first-order start **stopped the blow-up** — the cases that hit ~1e80 on the first attempt now give
-  **physical post-stall coefficients** (C_D ≈ 0.06–0.15, C_L ≈ 0.4–2.3, realistic for deep-stall
-  airfoils), classified quasi-steady (residuals plateau at ~1e-4, not the 1e-6 of an attached case).
-  So the acquisition/variance picks are *solvable but genuinely hard* — beyond the clean-steady
-  envelope, exactly where the surrogate flagged uncertainty.
+- **`r1` retry COMPLETE, and it splits the diverged set cleanly** (α = 12° control-gated; detached
+  batch). The one *in-envelope* case — the α = 12° random pick — recovered to a clean **quasi-steady**
+  point (C_D = 0.019), confirming its first-attempt divergence was a settings failure. The **19
+  out-of-envelope α = 18° picks did not settle**: they now run the full 7000 iterations at bounded,
+  physical post-stall *magnitude* (final C_D ≈ 0.09–0.12, C_L ≈ 0.3–2.3), but every one passes
+  through a transient excursion above the |C_D| > 10 divergence threshold (peak |C_D| ≈ 10–12) during
+  the first-order→second-order transition and keeps **drifting 3–7 % over the last 500 iterations**,
+  so `collect_fluent` classifies all 19 `diverged` (one α = 18° case, naca4415_re7e6, errored at
+  iteration 725). Net: r1 fixed the settings-limited α = 12° case but **confirmed the α = 18° picks
+  sit beyond the steady-RANS-solvable envelope** — bounded but non-settling, not clean steady points.
+  (This corrects an earlier draft that called the α = 18° r1 results "quasi-steady"; the histories and
+  the collector's drift/excursion rules say otherwise.)
 
 ### 6.4 Surrogate vs Fluent on the accepted set (Table 5c, Fig 11b) ✅
 
 For every accepted steady case the trained ensembles were run at that geometry+condition (the exact
 run_active inference path, fed the Fluent freestream) and compared to the offset-corrected Fluent
 coefficient, beside each model's 90% conformal interval from the calibration study
-(`results/uq/<model>_full_k5.json`). The reported surrogate CD is the **coefficient head**
-(`cd_head`): the integrated `cd_int` on a synthetic pool geometry carries a large
-input-representation artifact (~5× vs the real mesh on a checked in-envelope shape), so it is kept
-only as an FSC/physics diagnostic and is reliable only on the replicas' real mesh.
+(`results/uq/<model>_full_k5.json` for Transolver/SDF-FNO, `gnn_full_k3.json` for the GNN). The
+reported surrogate CD is the **coefficient head** (`cd_head`): the integrated `cd_int` on a synthetic
+pool geometry carries a large input-representation artifact (~5× vs the real mesh on a checked
+in-envelope shape, D-026), so it is kept only as an FSC/physics diagnostic and is reliable only on
+the replicas' real mesh.
 
-**Final numbers (n = 12 accepted cases per model, offset-corrected `cd_head`):**
+**Final numbers (n = 12 accepted cases per model, offset-corrected `cd_head`;
+`surrogate_vs_fluent_summary.json`):**
 
 | model | MAE C_D (Fluent) | in-dist MAE | ratio | conformal cov@90% |
 |---|---|---|---|---|
-| GNN | 0.00042 | 0.00012 | 3.5× | 0.83 |
+| GNN | 0.00037 | 0.00012 | 3.0× | 0.83 |
 | Transolver | 0.00120 | 0.00012 | 10× | 0.42 |
 | SDF-FNO | 0.00126 | 0.00014 | 9× | 0.33 |
 
 **Meaning (C4 verdict):** on the independently-simulated Fluent cases the surrogate C_D error is
-**3.5–10× its in-distribution error**, and the 90% conformal intervals **under-cover** (0.33–0.83 vs
-the promised 0.90). So the acquisition-selected cases really are harder for the surrogate, verified
-against a solver that did not generate the training data — and the calibration degradation seen in
-C3 reproduces against external truth. The honest split of the falsifiable claim: (a) "acquisition
-selects genuinely hard cases" — **confirmed** (they sit beyond the clean-steady-RANS envelope and
-carry the largest surrogate error); (b) a clean "acquisition error > random error" ranking is only
-partial, because most acquisition picks are post-stall quasi-steady, so their "truth" is a
-time-mean-like plateau rather than a fixed point — a regime distinction the paper states plainly
-rather than papering over. Per-case rows:
-`results/fluent/surrogate_vs_fluent{,_summary}.{csv,json}`, Table 5c, Fig 11b. **No comparison
-against AirfRANS truth is made for the AL picks (that would beg the question); the diverged cases
-carry the surrogate prediction and its σ but, having no fixed-point steady truth, no clean error.**
+**3–10× its in-distribution error**, and the 90% conformal intervals **under-cover** for two of the
+three models (Transolver 0.42, SDF-FNO 0.33; the GNN's 0.83 comes with its wider band, cf. §3.1). So
+the accepted cases are genuinely harder for the surrogate, verified against a solver that did not
+generate the training data, and the calibration degradation seen in C3 reproduces against external
+truth. **Caveat (solver scatter):** the replica offset scatter s_CD = 0.00034 (§6.2) is as large as
+the in-distribution MAE, and it is not folded into the coverage test, so part of the 3–10× gap is
+solver-side systematic rather than surrogate error; the ratio is an upper bound on the true surrogate
+degradation. Per-case rows: `results/fluent/surrogate_vs_fluent{,_summary}.{csv,json}`, Table 5c,
+Fig 11b. **No comparison against AirfRANS truth is made for the AL picks (that would beg the
+question).**
 
 ### 6.5 The C4 finding
 
@@ -301,38 +362,52 @@ Stated in three parts, each backed by a file:
   at 12.5°) and, as the independent solver confirms, outside the steady-RANS-solvable envelope. The
   detector located the hardest physics in the pool without labels. This is evidence the score
   detects **extrapolation**, which here coincides with hard physics but is not identical to it.
-- **(b) Quantitative on the solvable subset.** Surrogate-vs-Fluent CD/CL error on every accepted
-  steady case (§6.4), offset-corrected, with conformal coverage — a qualitative external check at
-  n ≈ 11 spanning Re 2e6–7e6 and α from −6° to 8.6°, exactly the "external check, not a statistical
-  test" the spec committed to.
+  **Disclosure (score construction).** The acquisition score is σ and FSC of the *integrated* C_D on
+  the synthetic pool contour, and that contour carries the ~5× `cd_int` representation artifact of
+  D-026 (pool σ_CD ≈ 0.15–0.24, FSC ≈ 0.08–0.31 for C_D ≈ 0.03, versus ~0.001 on the real mesh in
+  distribution). Independently, the pool grid overshoots the training envelope on *both* axes
+  (Re up to 7e6, α up to 18°), so the extreme α = 18° corner is nearly guaranteed to top the ranking.
+  The "16/16 at α = 18°" outcome is therefore confounded by how the score is built and how the pool
+  is gridded; it should be read as "the score flags the out-of-envelope corner," not as proof that a
+  well-calibrated field-level uncertainty did so. The root cause of the `cd_int` pool artifact was not
+  isolated (point count is not it, PROGRESS) and is logged as open (see Suggested-work note).
+- **(b) Quantitative on the solvable subset.** Surrogate-vs-Fluent CD/CL error on the **n = 12**
+  accepted cases (§6.4), offset-corrected, with conformal coverage — a qualitative external check
+  spanning Re 2e6–7e6 and α from −6° to 8.6°, exactly the "external check, not a statistical test"
+  the spec committed to.
 - **(c) The falsifiable claim, split.** Original: "high-acquisition cases have higher surrogate
   error than random ones." *Half 1* (random picks are cases the surrogate gets right): testable,
   holds — |ΔC_D| ≈ 1e-3, inside the conformal interval. *Half 2* (acquisition picks are cases the
-  surrogate gets wrong): the ensemble's own members disagree by σ_CD ≈ 0.2 and the steady solver has
-  no solution there, so "error" against a steady truth is undefined. We report that as the finding,
-  not a missing number: the acquisition arm selected cases where the steady operator the surrogate
-  learned does not exist. The arm comparison is therefore a comparison of *regimes* (solvable vs
-  unsolvable), and Fig 11b shows it that way. **We make no "harder cases have higher error" claim;
-  the data cannot carry it.**
+  surrogate gets wrong): no *clean* steady truth exists there (the α = 18° picks are bounded but
+  non-settling under r1, §6.3), so a rigorous error is undefined. But the retry does give an
+  *indicative* comparison the earlier draft discarded: the r1 histories settle to bounded final
+  C_D ≈ 0.09–0.12 on the α = 18° picks, while the surrogate `cd_head` there is 0.031–0.041 (Table 5a)
+  — a **~2.5–3.5× underprediction**, in the direction the claim predicts. We report it as indicative,
+  not a coverage number, because the r1 values are drifting non-converged estimates, not fixed points.
+  So Half 2 has *supporting evidence* (surrogate underpredicts where the steady operator breaks down),
+  short of a formal test. Fig 11b shows the regime split (solvable vs non-settling).
 
 > **Solver verification is a qualitative external check on the solvable subset.** The Fluent set ran
 > in full; the grid study is grid-converged at the production level and the six AirfRANS replicas
 > bound the solver offset. But 20 of the 24 active-learning cases, including all 16 acquisition- and
-> variance-arm picks, sit at α = 18°, beyond the AirfRANS envelope and, as it turned out, beyond
-> what steady 2D RANS can solve: they diverged under the batch settings and again under a
-> conservative retry (longer first-order start, reduced under-relaxation), and one random-arm case
-> at α = 12° did too. We report that outcome as the result it is: the label-free score concentrated
-> on the corner of the pool where the steady operator the surrogate learned has no solution, which
-> supports the score as an extrapolation detector but leaves the quantitative half of the claim
-> ("higher error on acquired cases") untestable with a steady solver. The surrogate-versus-Fluent
-> numbers therefore cover n = 10 to 11 low-to-moderate-angle cases (random arm, replicas, grid
-> case), all inside or near the training envelope; they say how far the surrogate is from an
-> independent solver where a steady answer exists, not how it fails where one does not. A
-> time-averaged URANS truth for the deep-stall picks, with its own time-step and window study, is
-> future work, and even then compares the surrogate to a quantity it was never trained to predict.
-> Seven cases at Re = 7 × 10^6 run at M ≈ 0.32, past the usual incompressible limit; both solver and
-> surrogate are incompressible, so the comparison is consistent, but the absolute coefficients there
-> carry that caveat.
+> variance-arm picks, sit at α = 18°, beyond the AirfRANS envelope and, as it turned out, beyond what
+> steady 2D RANS can settle: they diverged under the batch settings, and under a conservative retry
+> (longer first-order start, reduced under-relaxation) they stayed **bounded and physical in
+> magnitude (final C_D ≈ 0.09–0.12) but did not settle** — each passed through a |C_D| > 10 transient
+> excursion and kept drifting 3–7 % over the last 500 iterations, so the collector classifies them
+> diverged. The one in-envelope α = 12° random case, by contrast, recovered to a clean quasi-steady
+> point on retry, showing its first-attempt divergence was a settings failure. We report that outcome
+> as the result it is: the label-free score concentrated on the corner of the pool where the steady
+> operator the surrogate learned has no settled solution, which supports the score as an
+> extrapolation detector (with the score-construction caveat above) but leaves the quantitative half
+> of the claim testable only indirectly. The formal surrogate-versus-Fluent numbers therefore cover
+> the **n = 12** accepted low-to-moderate-angle cases (random arm, replicas, grid case), all inside
+> or near the training envelope; they say how far the surrogate is from an independent solver where a
+> settled answer exists. A time-averaged URANS truth for the deep-stall picks, with its own time-step
+> and window study, is future work, and even then compares the surrogate to a quantity it was never
+> trained to predict. Seven cases at Re = 7 × 10^6 run at M ≈ 0.32, past the usual incompressible
+> limit; both solver and surrogate are incompressible, so the comparison is consistent, but the
+> absolute coefficients there carry that caveat.
 
 ---
 

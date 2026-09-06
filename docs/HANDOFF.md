@@ -69,7 +69,35 @@ Read order for a fresh session: this file → [CONTEXT.md](CONTEXT.md) (frozen i
   (safe, need coco to delete via web UI if wanted): tiny `taimooramin0699/geo-op-code` dataset +
   `geo-op-gpuprobe` kernels. `GeoOpCycle` scheduled task disabled (queue drained, nothing to launch).
 - **Reusable C: caches NOT deleted** without coco's say-so (he flagged the C: drive): `uv` 5.9 G,
-  `.cache` 1.4 G (AirfRANS raw), session `Temp/claude` 1.6 G. Awaiting his choice on these.
+  `.cache` 1.4 G (codex-runtimes, not this project), session `Temp/claude` 1.6 G. Awaiting his choice.
+
+### Round-1 final-review remediation (2026-09-06)
+
+A Fable agent did a final sign-off review and returned DO-NOT-APPROVE with real findings. Fixed:
+- **Tables 1 & 2** were averaging tagged smoke/ablation runs and data-eff sub-splits into core cells
+  (GNN full printed 0.256 vs true 0.0753). `make_tables.py` now filters `tag.isna()` + canonical
+  splits and reports seed mean±std. Regenerated.
+- **Fluent leg** was stale/contradictory: `fluent_summary.csv` had no r1 rows and no `has_cas`;
+  the surrogate comparison on disk was Transolver-only n=6. Re-ran `collect_fluent --gci` (now 86
+  rows incl. 20 r1) and `compare_fluent` (GNN K=2→K=3); all three models now n=12, matching the
+  numbers RESULTS §6.4 already quoted (which previously had no committed provenance). Regenerated
+  Table 5 + Fig 11. Rewrote RESULTS §6.2–6.5: r1 does NOT rescue the α=18° picks (19/20 stay
+  diverged: bounded final C_D≈0.09–0.12 but transient |C_D|>10 excursion + 3–7% drift), it only
+  fixed the in-envelope α=12° case; added the indicative surrogate-underprediction (~2.5–3.5×).
+- **Disclosures added to RESULTS**: `cd_int` drag ranking is no better than ridge (GNN 0.36 on full)
+  and collapses under shift, so "beats ridge" is head-route only (§2.2/§2.3); the AL score rests on
+  the D-026 `cd_int` pool artifact and an envelope-overshooting pool grid (§6.5a); the GNN K=3
+  "0.97" reynolds coverage is a near-vacuous normalized band, absolute-score coverage stays 0.70,
+  and the GNN under-covers in-distribution (§3.1); "matched" calibration is in-distribution (§3).
+- **Symmetry**: disclosed that reflecting cambered airfoils makes out-of-family shapes (§2.4). The
+  review's "signed-curvature sign bug" was checked and is a FALSE POSITIVE (recompute-on-reflected
+  == cache, verified numerically); not changed.
+- **Doc hygiene**: test count 369→449, OVERVIEW Part 8 statuses, RESULTS dual date, DECISIONS D-027.
+- **`paper/main.tex` is a pre-final 2026-09-03 snapshot** and is deliberately NOT updated (coco
+  writes the paper). It still says GNN K=1 / Fluent not run / data-eff pending; the numbers of
+  record are RESULTS.md + `paper/tables|figures/`, not the .tex. Model cards (spec C5) remain a
+  template only — logged as an archiving to-do.
+- Per coco's instruction the review→fix loop repeats until a review returns no issues.
 
 ---
 

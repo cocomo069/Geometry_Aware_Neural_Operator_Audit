@@ -58,16 +58,16 @@ OUT_DIR = RESULTS / "fluent"
 CASES_DIR = _ROOT / "fluent" / "cases"
 PROCESSED = _ROOT / "data" / "processed" / "airfrans"
 
-# ensemble seeds per model (gnn only trained K=2)
+# ensemble seeds per model (gnn ensemble is K=3, others K=5; see D-019)
 MODEL_SEEDS = {
     "transolver": [0, 1, 2, 3, 4],
     "sdf_fno": [0, 1, 2, 3, 4],
-    "gnn": [0, 1],
+    "gnn": [0, 1, 2],
 }
 MODEL_K_JSON = {
     "transolver": "transolver_full_k5.json",
     "sdf_fno": "sdf_fno_full_k5.json",
-    "gnn": "gnn_full_k2.json",
+    "gnn": "gnn_full_k3.json",
 }
 ACCEPTED = ("converged", "quasi_steady")
 

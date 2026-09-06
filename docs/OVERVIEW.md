@@ -5,7 +5,8 @@ language, what the project is, every concept behind it (so you can discuss the p
 anyone), everything we have built and why, every problem we hit and how we solved it, the
 results so far and what they mean, and exactly where we are right now.
 
-It is maintained **alongside** the work — updated as things happen. Last updated: **2026-08-25**.
+It is maintained **alongside** the work — updated as things happen. Last updated: **2026-09-06**
+(all research legs complete; results corrected after the round-1 final review).
 
 > Companion docs (deeper detail lives here):
 > - [CONTEXT.md](CONTEXT.md) — the frozen engineering interfaces (data formats, function signatures)
@@ -180,7 +181,7 @@ configs/      — one YAML per model + sweep specs
 kaggle/       — the cloud-training system (see Part 5)
 fluent/       — Ansys Fluent CFD verification pipeline (ready, deferred)
 paper/        — LaTeX skeleton + generated figures/tables
-tests/        — 369 tests, all pass on CPU
+tests/        — 449 tests, all pass on CPU
 docs/         — this file + the companions listed at the top
 ```
 
@@ -227,8 +228,9 @@ also caught two real bugs we fixed (Problems 8 & 9).
 **The core grid.** All 18 runs (3 models × 6 splits) trained to completion on Kaggle. **These
 are the paper's Table 1, Table 2, and Figure 4.** Results in Part 6.
 
-**Now:** ensembles training (for the uncertainty story). Then conformal calibration,
-data-efficiency, ablations, and — when you green-light the CPU — the Fluent verification.
+**Status (2026-09-06): all complete.** Deep ensembles (K=5 Transolver/SDF-FNO, K=3 GNN), conformal
+calibration, data-efficiency, ablations, and the full Fluent C4 verification are all done. See Part 6
+/ RESULTS.md for the numbers.
 
 ---
 
@@ -359,29 +361,28 @@ there is **no data leakage** on any split (verified with numbers), and the uncer
 
 # PART 8 — WHERE WE ARE RIGHT NOW & WHAT'S LEFT
 
-**Done:**
-- ✅ Full pipeline built and tested (369 tests pass).
+**Done (all research legs complete, 2026-09-06):**
+- ✅ Full pipeline built and tested (449 tests pass).
 - ✅ Force integration validated (Gate G1: 0.03% error).
 - ✅ Baselines on all 6 splits.
 - ✅ **Core grid complete: 18 runs (3 models × 6 splits).** Table 1, Table 2, Figure 4 done.
 - ✅ Three-way QA audit passed; all findings fixed.
 - ✅ Cloud training system working and self-chaining.
+- ✅ **Deep ensembles** — K=5 Transolver/SDF-FNO, K=3 GNN (the kNN GNN is expensive, D-019).
+- ✅ **Conformal calibration** — Figures 6, 7, 8 + Table 3, all three models.
+- ✅ **Data-efficiency curves** — 25/50/100/200/400 training airfoils → Figure 9.
+- ✅ **Ablations** — SDF vs mask conditioning + physics-loss on/off (Table 4; 2 of 3 axes, see note).
+- ✅ **Active learning + Fluent verification** — grid study, offset replicas, AL campaign, r1 retry,
+  surrogate-vs-Fluent comparison → Table 5, Figure 11.
 
-**In progress (training on Kaggle now):**
-- 🔄 **Deep ensembles** — seeds 1–4 (K=5) for the uncertainty story.
+**Not done (out of scope / deprioritized, stated honestly):**
+- ⏳ **The paper write-up** — deliberately left to coco; `paper/main.tex` is a pre-final 2026-09-03
+  snapshot and does NOT reflect the final results (it still says GNN K=1, Fluent not run, etc.). The
+  numbers of record live in RESULTS.md and `paper/tables|figures/`, not the .tex.
+- ⏳ **DrivAerNet++ (3D cars)** — optional stretch, not attempted; needs a Globus login.
+- ⏳ **Model cards (spec C5)** — only the template exists; flagged as an archiving to-do.
 
-**Queued / remaining:**
-- ⏳ **Conformal calibration** — once ensembles land → Figures 6, 7, 8 + Table 3 (calibration
-  under shift). CPU-cheap, no GPU.
-- ⏳ **Data-efficiency curves** — retrain at 25/50/100/200/400/800 training airfoils → Figure 9.
-- ⏳ **Ablations** — SDF vs mask conditioning, physics-loss on/off, ensemble size, conformal score.
-- ⏳ **Active learning + Fluent verification** — needs your CPU (deferred by your request); the
-  Fluent pipeline is authored and ready to run when you green-light it.
-- ⏳ **DrivAerNet++ (3D cars)** — optional stretch; needs a Globus login from you to download.
-- ⏳ **Write the paper** — the LaTeX skeleton exists; sections fill in as results land.
-
-**What needs you (nothing blocks current progress):**
-- Green-light to use the CPU for the Fluent verification runs (currently held off for your Fluent job).
+**What needs you:**
 - (Optional) Globus login if you want the 3D car dataset leg.
 
 ---
@@ -395,7 +396,7 @@ there is **no data leakage** on any split (verified with numbers), and the uncer
 # Regenerate all figures from current results
 .venv/Scripts/python.exe -m scripts.make_figures --outdir paper/figures
 
-# Run the test suite (should say ~369 passed)
+# Run the test suite (should say 449 passed)
 .venv/Scripts/python.exe -m pytest tests/ -q
 
 # Check the cloud training status
