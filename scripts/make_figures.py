@@ -590,10 +590,10 @@ def fig11_active_verify(outdir: Path, results: str) -> Path | None:
                         mfc=(col if filled else "white"), mec=col,
                         ecolor=style.OKABE_ITO["grey"], lw=0.8, zorder=5)
             plotted_any = True
-        note = f"acc={len(sub)}" + (f"\ndiv={ndiv}" if ndiv else "")
-        ax.annotate(note, (xpos[arm], 1.0), xycoords=("data", "axes fraction"),
-                    xytext=(0, 4), textcoords="offset points", ha="center", va="bottom",
-                    fontsize=7, color="dimgray")
+        note = f"acc={len(sub)}" + (f" div={ndiv}" if ndiv else "")
+        ax.annotate(note, (xpos[arm], 0.98), xycoords=("data", "axes fraction"),
+                    xytext=(0, -2), textcoords="offset points", ha="center", va="top",
+                    fontsize=6.5, color="dimgray")
 
     if plotted_any:
         ax.set_yscale("log")
