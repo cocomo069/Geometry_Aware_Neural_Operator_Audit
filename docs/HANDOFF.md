@@ -132,7 +132,7 @@ to the figures, plus prose the files refuted. Fixed:
 ## 1. What this project is
 
 Implementation of the research design in
-[`05_geometry_aware_neural_operator_surrogate_uq.md`](../05_geometry_aware_neural_operator_surrogate_uq.md):
+[`05_geometry_aware_neural_operator_surrogate_uq.md`](05_geometry_aware_neural_operator_surrogate_uq.md):
 an evaluation/methodology paper auditing three geometry-conditioned neural surrogates
 (GNN, SDF-FNO "GINO-lite", Transolver-style transformer) on AirfRANS with a consistency
 protocol (force self-consistency, symmetry), multi-axis OOD splits, conformal
