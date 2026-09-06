@@ -115,7 +115,7 @@ to the figures, plus prose the files refuted. Fixed:
   diverged. Added `STARTUP_GUARD=50`. This promotes **two α=18° picks** to accepted
   (`al_var_naca32012` converged C_D 0.167, `al_rand_naca4412` quasi-steady 0.113), so the surrogate
   comparison is now **n=14** and Half 2 has real deep-stall data (surrogate off by ~0.05–0.13,
-  ~700–900× in-dist).
+  ~640–900× in-dist).
 - **RESULTS §6.4 rewritten as a regime split** (moderate n=12: 3–10× in-dist, cov 0.33–0.83;
   post-stall n=2: ~0.1 error). **§6.3** r1 mechanism corrected (startup spike at iteration 1, not the
   1st→2nd-order switch; 17/19 non-settling with 7–21% drift; 2 settled). **§6.5(c)** Half 1 corrected
