@@ -40,7 +40,7 @@
       "specs": [
         "configs/sweeps/kaggle_gnn_ens_k3.yaml"
       ],
-      "done": false,
+      "done": true,
       "note": "GNN K=3 ensembles on {full,reynolds,aoa,shape5}; spec pending creation (PLAN_PHASE3 2.2 item 3)"
     }
   ]

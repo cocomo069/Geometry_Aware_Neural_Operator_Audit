@@ -112,12 +112,13 @@ across one.* `combined` (shape + Reynolds shifted together) is hardest, as desig
 
 ---
 
-## 3. Calibration / uncertainty — deep ensembles + conformal 🔄
+## 3. Calibration / uncertainty — deep ensembles + conformal ✅
 
-**K=5 deep ensembles complete for Transolver and SDF-FNO on {full, reynolds, aoa, shape5}; GNN
-ensembles training (currently K=1–2, upgrading to K=5).** Then split conformal prediction on each
-split's calibration set. Two modes: *matched* (calibrate and test on the same split) and
-*transfer* (calibrate on `full`, deploy on the shifted split).
+**Deep ensembles complete for all three models on {full, reynolds, aoa, shape5}: K=5 for
+Transolver and SDF-FNO, K=3 for the GNN (the kNN GNN is ~0.7–3 h/run, so it runs a smaller
+ensemble by design, D-019).** Then split conformal prediction on each split's calibration set.
+Two modes: *matched* (calibrate and test on the same split) and *transfer* (calibrate on `full`,
+deploy on the shifted split).
 
 ### 3.1 Coverage at nominal 90% — does the interval contain the truth 90% of the time?
 
@@ -127,16 +128,21 @@ Coefficient-C_D coverage, matched calibration, largest available K:
 |---|---|---|---|---|
 | SDF-FNO (K=5) | 0.95 | 0.90 | 0.94 | 0.76 |
 | Transolver (K=5) | 0.91 | 0.94 | ~0.95 | (varies) |
-| GNN (K=1) | 0.93 | 0.70 | 0.79 | 0.95 |
+| GNN (K=3) | 0.82 | 0.97 | 0.89 | 0.86 |
 
-(Field-level and 80%/95% nominal levels are in Table 3; GNN row upgrades to K=5 when its
-ensembles finish.)
+(Field-level and 80%/95% nominal levels are in Table 3, which is now fully populated for all
+three models.)
 
 **Meaning (contribution C3):**
 - **In-distribution, the conformal guarantee holds** — coverage ≈ the nominal 90% it promises.
-- **Under shift it degrades**, and the calibration error (ECE) jumps 6–10× on the flow-regime
-  shifts (reynolds, aoa). The proper K=5 ensembles hold up better under mild shift than a single
-  model (K=1) does, but shape-family and combined shifts still break the guarantee.
+- **Proper ensembling markedly improves the GNN under flow-regime shift.** Going from a single
+  model (K=1) to K=3 lifts its matched coverage on the Reynolds shift 0.70 → 0.97 and on the AoA
+  shift 0.79 → 0.89, i.e. the ensemble spread now carries the extra uncertainty those shifts
+  demand. (In-distribution and shape-family coverage settle a little lower, 0.82 and 0.86, closer
+  to the nominal 0.90 than the over-confident-yet-lucky single-model values.)
+- **Under shift it still degrades**, and the calibration error (ECE) jumps 6–10× on the
+  flow-regime shifts (reynolds, aoa). The proper ensembles hold up better under mild shift than a
+  single model does, but shape-family and combined shifts still break the guarantee.
 - **The takeaway sentence:** *conformal prediction repairs in-distribution calibration but its
   coverage guarantee is not robust to distribution shift — a conformal interval must not be read
   as protection against design-space extrapolation.* This is exactly the honest, useful message

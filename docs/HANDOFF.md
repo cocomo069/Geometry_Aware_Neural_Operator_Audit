@@ -52,6 +52,25 @@ Read order for a fresh session: this file → [CONTEXT.md](CONTEXT.md) (frozen i
   re-run the three dataset ports + `kaggle/launch.py --kernel-slug taimooramin0699/geo-op-gnnens
   --runs-dataset taimooramin0699/geo-op-runs --sweep configs/sweeps/kaggle_gnn_ens_k3.yaml`.
 
+## Session-4 update (2026-09-06) — PROJECT COMPLETE ✅
+
+- **The GNN K=3 ensemble finished. Every deliverable is now done; the cycle queue is fully drained.**
+- What happened: the `taimooramin0699` GPU path stayed dead (never phone-verified), so the finish
+  came via the **autonomous cocomo069 path**. The weekly GPU quota reset on **2026-09-06** (my
+  Saturday-00:00-UTC estimate was wrong; Kaggle's reset landed ~a day later), and `GeoOpCycle`
+  auto-launched `geo-op-gnnens` on the first post-cooldown tick. The kernel needed **two versions**
+  (v1 ran ~8 h and completed 5 of 8 runs; v2 resumed via the runs-dataset skip logic and finished
+  the last 3: `gnn_aoa_s2`, `gnn_shape5_s1`, `gnn_shape5_s2`). `cycle.py` then pulled results,
+  reran `run_uq`, regenerated figures + Table 3, and committed+pushed (`f06a494`, `6ddee8e`).
+- **Result:** all 12 GNN ensemble runs present (4 splits × seeds s0/s1/s2 = **K=3**). Table 3 now
+  has real M1 GNN calibration on all four splits. Headline: K=3 lifts GNN matched cov@.9 on the
+  Reynolds shift 0.70 → 0.97 and AoA 0.79 → 0.89 (see RESULTS.md §3).
+- **Cleanup done:** project scratch temp dirs removed; `cocomo069` kaggle token active. Left as-is
+  (safe, need coco to delete via web UI if wanted): tiny `taimooramin0699/geo-op-code` dataset +
+  `geo-op-gpuprobe` kernels. `GeoOpCycle` scheduled task disabled (queue drained, nothing to launch).
+- **Reusable C: caches NOT deleted** without coco's say-so (he flagged the C: drive): `uv` 5.9 G,
+  `.cache` 1.4 G (AirfRANS raw), session `Temp/claude` 1.6 G. Awaiting his choice on these.
+
 ---
 
 ## 1. What this project is

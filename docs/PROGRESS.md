@@ -1400,3 +1400,24 @@ POINT data with friendly names, so CellDataToPointData was unnecessary. Legend
 persistence handled by hiding prior reps/scalar bars before each export; verified
 each figure by reading the PNG back. Details + captions in
 `fluent/paraview/RENDERED.md`. Did NOT run git.
+
+---
+
+## Session 4 (2026-09-06) — GNN K=3 ensemble finished, project complete
+
+The last open item (GNN K=3 deep ensemble for Table 3) landed via the autonomous
+`cocomo069` path. The second account `taimooramin0699` was abandoned for GPU work: a probe
+kernel proved `torch.cuda.is_available()==False` there because the account is not
+phone-verified (Kaggle gates GPU + internet behind phone verification), which only coco can
+clear. So the finish waited on the weekly quota reset instead.
+
+Quota reset on 2026-09-06 (my Sat-00:00-UTC estimate was ~a day early). `GeoOpCycle` then
+auto-launched `geo-op-gnnens`. It took **two kernel versions**: v1 ran ~8 h and completed 5/8
+runs; v2 resumed through the runs-dataset skip logic and finished the last 3 (`gnn_aoa_s2`,
+`gnn_shape5_s1`, `gnn_shape5_s2`). `cycle.py` pulled results, reran `run_uq`, regenerated
+figures + Table 3, and committed+pushed (`6ddee8e`, `f06a494`).
+
+Verified: 12 GNN ensemble runs (4 splits × seeds s0/s1/s2 = K=3). Table 3 fully populated for
+all three models. Headline (RESULTS.md §3): K=3 lifts GNN matched cov@.9 on Reynolds 0.70→0.97
+and AoA 0.79→0.89. Both scheduled tasks (GeoOpCycle, FluentCampaign) disabled; project scratch
+removed; `cocomo069` token active. Reusable C: caches left for coco to decide on.

@@ -251,3 +251,16 @@ pool geometry is an input-representation artifact (~5x vs the real mesh), so cd_
 coefficient head) is the surrogate CD used in the comparison; cd_int stays reliable on the
 replicas (real mesh). Scripts: `scripts/{collect_fluent,compare_fluent}.py`,
 `fluent/make_offset.py`, `run_batch.py --variant/--only-file`. No hand-tuning of any selection.
+
+---
+
+**D-027 (2026-09-06): GNN ensemble finished via the quota-reset path, not the second account.**
+When `cocomo069`'s weekly GPU quota was exhausted, a second Kaggle account (`taimooramin0699`)
+was tried to unblock the GNN K=3 ensemble. It does not work for GPU: a probe kernel with
+`enable_gpu:true` returned `torch.cuda.is_available()==False`, device_count 0, and no internet.
+Root cause is that a fresh Kaggle account has GPU + internet disabled until the phone number is
+verified — an account action only coco can perform, and not something to spend automation on.
+Decision: abandon the second-account port, keep the token restored to `cocomo069`, and let the
+existing self-healing `GeoOpCycle`/`cycle.py` cooldown loop finish the job on the weekly reset.
+It did (2026-09-06). Lesson for any future quota bypass: a new Kaggle account is useless for
+compute until phone-verified, so verify that first before porting datasets to it.
