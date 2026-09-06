@@ -63,10 +63,10 @@
       "cl_p2p": 0.21126902738921804,
       "n_iter": 7000,
       "cd": 0.1488409326073507,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.1814534133327988,
+      "cd_window_std": 0.02179421746517967,
+      "cd_p2p": 0.07498145428917338,
+      "cd_rel_change_150": 0.05079640595733744,
       "status": "diverged"
     },
     {
@@ -160,10 +160,10 @@
       "cl_p2p": 0.1313235326848134,
       "n_iter": 7000,
       "cd": 0.1130172437652254,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.1335903513933347,
+      "cd_window_std": 0.015069686909586603,
+      "cd_p2p": 0.051807999821752604,
+      "cd_rel_change_150": 0.034429387837770505,
       "status": "diverged"
     },
     {
@@ -257,10 +257,10 @@
       "cl_p2p": 0.265566575929437,
       "n_iter": 7000,
       "cd": 0.08752735400581539,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.09668157934712053,
+      "cd_window_std": 0.004615324958669705,
+      "cd_p2p": 0.015512547893017203,
+      "cd_rel_change_150": 0.03721732689445301,
       "status": "diverged"
     },
     {
@@ -354,10 +354,10 @@
       "cl_p2p": 0.1098760753620518,
       "n_iter": 7000,
       "cd": 0.07568199533645922,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.08652722736674617,
+      "cd_window_std": 0.00657212330740258,
+      "cd_p2p": 0.022777377197548923,
+      "cd_rel_change_150": 0.04001765378263285,
       "status": "diverged"
     },
     {
@@ -451,10 +451,10 @@
       "cl_p2p": 0.24204065884802095,
       "n_iter": 7000,
       "cd": 0.1080040583680333,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.09774115048039418,
+      "cd_window_std": 0.00579886893257433,
+      "cd_p2p": 0.019696949891599397,
+      "cd_rel_change_150": 0.02906316199603894,
       "status": "diverged"
     },
     {
@@ -548,10 +548,10 @@
       "cl_p2p": 0.061884892633999655,
       "n_iter": 7000,
       "cd": 0.115919599819206,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.123959393738502,
+      "cd_window_std": 0.004919098475472769,
+      "cd_p2p": 0.017064142620190695,
+      "cd_rel_change_150": 0.01903654727997848,
       "status": "diverged"
     },
     {
@@ -645,10 +645,10 @@
       "cl_p2p": 0.22264195354912308,
       "n_iter": 7000,
       "cd": 0.1084021804498419,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.09606861683168591,
+      "cd_window_std": 0.006882721659024238,
+      "cd_p2p": 0.02348168593607862,
+      "cd_rel_change_150": 0.035443113260178974,
       "status": "diverged"
     },
     {
@@ -742,10 +742,10 @@
       "cl_p2p": 24.512615170320608,
       "n_iter": 725,
       "cd": 0.144563211462992,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.22507693272014895,
+      "cd_window_std": 0.6928747308390101,
+      "cd_p2p": 13.847970879234907,
+      "cd_rel_change_150": 0.04702130417826426,
       "status": "diverged"
     },
     {
@@ -999,10 +999,10 @@
       "cl_p2p": 0.03445729840991635,
       "n_iter": 7000,
       "cd": 0.1010133031281925,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.11120731353391072,
+      "cd_window_std": 0.008421117004785653,
+      "cd_p2p": 0.028865861729699502,
+      "cd_rel_change_150": 0.013158250397552258,
       "status": "diverged"
     },
     {
@@ -1159,10 +1159,10 @@
       "cl_p2p": 0.028111936818788097,
       "n_iter": 7000,
       "cd": 0.0784171403287796,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.08820055216197727,
+      "cd_window_std": 0.005980363268802217,
+      "cd_p2p": 0.020664921030158045,
+      "cd_rel_change_150": 0.03415374926965056,
       "status": "diverged"
     },
     {
@@ -1319,11 +1319,11 @@
       "cl_p2p": 0.27656884512492996,
       "n_iter": 7000,
       "cd": 0.1143191526821818,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
-      "status": "diverged"
+      "cd_window_mean": 0.11259148328953926,
+      "cd_window_std": 0.0021128626382797434,
+      "cd_p2p": 0.0069881771190518915,
+      "cd_rel_change_150": 0.002707098942606399,
+      "status": "quasi_steady"
     },
     {
       "case_id": "al_rand_naca4412_re7e6_a18",
@@ -1479,10 +1479,10 @@
       "cl_p2p": 0.21126902738921804,
       "n_iter": 7000,
       "cd": 0.1488409326073507,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.1814534133327988,
+      "cd_window_std": 0.02179421746517967,
+      "cd_p2p": 0.07498145428917338,
+      "cd_rel_change_150": 0.05079640595733744,
       "status": "diverged"
     },
     {
@@ -1576,10 +1576,10 @@
       "cl_p2p": 0.14556229329725556,
       "n_iter": 7000,
       "cd": 0.1183303623344772,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.14094026498256665,
+      "cd_window_std": 0.016236718139872274,
+      "cd_p2p": 0.0559335892902028,
+      "cd_rel_change_150": 0.03802864314931348,
       "status": "diverged"
     },
     {
@@ -1673,10 +1673,10 @@
       "cl_p2p": 0.265566575929437,
       "n_iter": 7000,
       "cd": 0.08752735400581539,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.09668157934712053,
+      "cd_window_std": 0.004615324958669705,
+      "cd_p2p": 0.015512547893017203,
+      "cd_rel_change_150": 0.03721732689445301,
       "status": "diverged"
     },
     {
@@ -1770,10 +1770,10 @@
       "cl_p2p": 0.07962933331349697,
       "n_iter": 7000,
       "cd": 0.07756373462608564,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.0885192724373478,
+      "cd_window_std": 0.006712428177215422,
+      "cd_p2p": 0.023280796923325464,
+      "cd_rel_change_150": 0.03880814429983179,
       "status": "diverged"
     },
     {
@@ -1867,10 +1867,10 @@
       "cl_p2p": 0.06408181299486304,
       "n_iter": 7000,
       "cd": 0.0792112775538662,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.08896869956513723,
+      "cd_window_std": 0.005931483819930371,
+      "cd_p2p": 0.020531604477206908,
+      "cd_rel_change_150": 0.03411379916773177,
       "status": "diverged"
     },
     {
@@ -1964,10 +1964,10 @@
       "cl_p2p": 0.07883397781215074,
       "n_iter": 7000,
       "cd": 0.05607491778369699,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.06646431921969682,
+      "cd_window_std": 0.00634200561986215,
+      "cd_p2p": 0.021919429799054667,
+      "cd_rel_change_150": 0.050812893660751104,
       "status": "diverged"
     },
     {
@@ -2061,11 +2061,11 @@
       "cl_p2p": 0.07368208769396722,
       "n_iter": 7000,
       "cd": 0.1662419920093399,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
-      "status": "diverged"
+      "cd_window_mean": 0.1666160957849215,
+      "cd_window_std": 0.00019685186478063325,
+      "cd_p2p": 0.0007632236047820096,
+      "cd_rel_change_150": 0.0008656673815753934,
+      "status": "converged"
     },
     {
       "case_id": "al_var_naca32012_re6e6_a18",
@@ -2158,10 +2158,10 @@
       "cl_p2p": 0.0790509111938218,
       "n_iter": 7000,
       "cd": 0.06295660965717895,
-      "cd_window_mean": null,
-      "cd_window_std": null,
-      "cd_p2p": null,
-      "cd_rel_change_150": null,
+      "cd_window_mean": 0.07426597858937618,
+      "cd_window_std": 0.006930834807300105,
+      "cd_p2p": 0.023854560600014604,
+      "cd_rel_change_150": 0.04877641947720632,
       "status": "diverged"
     },
     {

@@ -12,16 +12,17 @@
 | offset | sa | s0 | converged | 5 |
 | offset | sa | s0 | quasi_steady | 1 |
 | offset | sst | s0 | converged | 6 |
-| random | sa | r1 | diverged | 3 |
-| random | sa | r1 | quasi_steady | 1 |
+| random | sa | r1 | diverged | 2 |
+| random | sa | r1 | quasi_steady | 2 |
 | random | sa | s0 | converged | 4 |
 | random | sa | s0 | diverged | 4 |
 | random | sst | s0 | not_run | 8 |
-| variance | sa | r1 | diverged | 8 |
+| variance | sa | r1 | converged | 1 |
+| variance | sa | r1 | diverged | 7 |
 | variance | sa | s0 | diverged | 8 |
 | variance | sst | s0 | not_run | 8 |
 
-## Accepted steady SA points (n=14)
+## Accepted steady SA points (n=16)
 
 | case | arm | variant | Re | aoa | status | CD | CL | y+max | orth |
 |---|---|---|---|---|---|---|---|---|---|
@@ -38,7 +39,9 @@
 | al_rand_naca22012_re3e6_a12 | random | r1 | 3e+06 | 12 | quasi_steady | 0.01943 | 1.3575 | 0.85 | 0.201 |
 | al_rand_naca2415_re6e6_a0 | random | s0 | 6e+06 | 0 | converged | 0.00946 | 0.2245 | 0.38 | 0.287 |
 | al_rand_naca33012_re6e6_am6 | random | s0 | 6e+06 | -6 | converged | 0.01020 | -0.4718 | 0.77 | 0.186 |
+| al_rand_naca4412_re7e6_a18 | random | r1 | 7e+06 | 18 | quasi_steady | 0.11432 | 1.7169 | 1.00 | 0.191 |
 | al_rand_naca4415_re2e6_a0 | random | s0 | 2e+06 | 0 | converged | 0.01167 | 0.4296 | 0.41 | 0.281 |
+| al_var_naca32012_re6e6_a18 | variance | r1 | 6e+06 | 18 | converged | 0.16624 | 1.9933 | 1.11 | 0.137 |
 
 ## Grid-study GCI (Celik 2008)
 

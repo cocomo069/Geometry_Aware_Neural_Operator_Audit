@@ -1,6 +1,6 @@
 # Table 5 -- Fluent verification (a selection+outcome, b offset, c verified)
 
-Caption: grid-converged at L2 (GCI_fine CD(SA)=0.00%); n = 12, qualitative external check. Surrogate CD is the input-robust cd_head.
+Caption: grid-converged at L2 (GCI_fine CD(SA)=0.00%); n = 14, qualitative external check. Surrogate CD is the input-robust cd_head.
 
 ## 5a Acquisition selection + steady outcome
 | case | NACA | Re | alpha | S0 | r1 | surrogate CD_head |
@@ -27,13 +27,15 @@ Caption: grid-converged at L2 (GCI_fine CD(SA)=0.00%); n = 12, qualitative exter
 - SST: dbar_CD=+0.0006898 (s=0.00043), dbar_CL=+0.00657 (s=0.0061), n=6
 
 ## 5c Verified surrogate-vs-Fluent comparison (accepted set)
-| case | arm | NACA | Re | alpha | status | CD_fl | CD_fl-dbar | Transolver | SDF-FNO | GNN | cov90 |
+| case | arm | NACA | Re | alpha | status | CD_fl | CD_fl-dbar | Transolver | SDF-FNO | GNN | cov90 (Transolver) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | al_rand_naca0010_re7e6_a6 | random | 0010 | 7e+06 | 6 | converged | 0.009794 | 0.008894 | 0.0105$\pm$0.0004 | 0.009864$\pm$0.0003 | 0.009064$\pm$0.0001 | False |
 | al_rand_naca22012_re3e6_a12 | random | 22012 | 3e+06 | 12 | quasi_steady | 0.01943 | 0.01853 | 0.02463$\pm$0.003 | 0.021$\pm$0.001 | 0.01723$\pm$0.0004 | False |
 | al_rand_naca2415_re6e6_a0 | random | 2415 | 6e+06 | 0 | converged | 0.009461 | 0.00856 | 0.00923$\pm$0.0002 | 0.01053$\pm$0.0003 | 0.008787$\pm$3e-05 | False |
 | al_rand_naca33012_re6e6_am6 | random | 33012 | 6e+06 | -6 | converged | 0.0102 | 0.009301 | 0.009883$\pm$0.0005 | 0.01223$\pm$0.004 | 0.01003$\pm$0.001 | False |
+| al_rand_naca4412_re7e6_a18 | random | 4412 | 7e+06 | 18 | quasi_steady | 0.1143 | 0.1134 | 0.03491$\pm$0.002 | 0.05933$\pm$0.009 | 0.04095$\pm$0.009 | False |
 | al_rand_naca4415_re2e6_a0 | random | 4415 | 2e+06 | 0 | converged | 0.01167 | 0.01076 | 0.01272$\pm$0.0006 | 0.01338$\pm$0.0008 | 0.01098$\pm$0.0002 | False |
+| al_var_naca32012_re6e6_a18 | variance | 32012 | 6e+06 | 18 | converged | 0.1662 | 0.1653 | 0.03367$\pm$0.002 | 0.04459$\pm$0.006 | 0.03775$\pm$0.006 | False |
 | gridstudy_naca0012_re3e6_a5_L2 | gridstudy | 0012 | 3e+06 | 5 | converged | 0.01076 | 0.009855 | 0.01199$\pm$0.0005 | 0.01248$\pm$0.0004 | 0.01012$\pm$0.0001 | False |
 | offset_1_naca0016_a2p4 | offset | 0016 | 3.9e+06 | 2.4 | converged | 0.01048 | 0.009581 | 0.0097$\pm$4e-06 | 0.009697$\pm$1e-05 | 0.009704$\pm$1e-05 | True |
 | offset_2_naca0109_a8p6 | offset | 1009 | 4e+06 | 8.58 | converged | 0.01301 | 0.01211 | 0.01154$\pm$5e-05 | 0.01151$\pm$0.0001 | 0.01155$\pm$9e-06 | False |
