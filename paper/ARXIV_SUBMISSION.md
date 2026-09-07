@@ -55,10 +55,11 @@ cd paper && latexmk -pdf main.tex && cd ..
 3. arXiv account must be endorsed for the chosen primary category; a first
    submission in `physics.flu-dyn` may require endorsement.
 
-## Open questions for coco
+## Decisions (locked in by coco, 2026-09-07)
 
-1. Public repo now, or submit with the link going live later?
-2. Author name as "T. Amin" or "Taimoor Amin"? Any affiliation line to add
-   (the draft deliberately carries none)?
-3. Primary category preference: `physics.flu-dyn` (my suggestion) or `cs.LG`?
-4. arXiv license: default non-exclusive, or CC BY 4.0?
+1. Repo: made public as-is (note: the pre-scrub history still contains the
+   client `gh` account name in old doc versions; ask for a history rewrite if
+   that matters).
+2. Author line: "T. Amin", no affiliation. No rebuild needed.
+3. Primary category `physics.flu-dyn`, cross-list `cs.LG`.
+4. License: arXiv default non-exclusive.

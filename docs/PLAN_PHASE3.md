@@ -261,7 +261,7 @@ after any merge:
     python -m pytest tests/test_viz.py -q
     update docs/RESULTS.md numbers touched by the merge (executor: Sonnet, mechanical)
     git add results/ paper/figures paper/tables docs/RESULTS.md kaggle/*.jsonl; git commit -m "[results] <slug> session <id>: <n> runs"
-    gh auth switch -u cocomo069; git push origin main; gh auth switch -u wkabz07
+    gh auth switch -u cocomo069; git push origin main; gh auth switch back to the default account
 ```
 
 `--dry-run` of the queue item's specs is the single source of truth for "done"; it is
