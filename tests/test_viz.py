@@ -124,8 +124,11 @@ def test_tables_write_latex_and_markdown(tmp_path):
     assert any(p.suffix == ".md" for p in t2)
     tex = (tmp_path / "tab1_indist.tex").read_text()
     assert r"\begin{tabular}" in tex and r"\bottomrule" in tex
-    # no raw unescaped underscores in a tabular body cell (labels use \_ or macros)
-    assert "\\begin{table}" in tex
+    # Float BODY only: the paper wraps each \input in its own table/table*
+    # environment (single- vs two-column layout), so the generated file must
+    # carry caption+label+tabular but NOT a \begin{table} of its own.
+    assert r"\caption{" in tex and r"\label{" in tex
+    assert "\\begin{table}" not in tex
 
 
 def test_table_best_is_bolded():

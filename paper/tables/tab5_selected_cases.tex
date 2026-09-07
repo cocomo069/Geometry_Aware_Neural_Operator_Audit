@@ -1,19 +1,30 @@
-\begin{table}[t]
-\centering
-\caption{\textbf{Table 5.} Active-learning acquisition-arm selection ($k=8$ of 630 pool candidates, scorer \texttt{transolver\_full\_k5}, $\beta=\gamma=1$): NACA section, Reynolds number, angle of attack, ensemble spread $\hat\sigma_{C_D}$, force self-consistency \FSC, symmetry residual $\Losssym$, and the resulting acquisition score. Generated from \texttt{results/active/selection\_summary.json} and \texttt{results/active/acquisition\_ranking.csv} (\S\ref{sec:activelearning}). \textbf{Selected, solver verification pending} (\S\ref{sec:activelearning}): the Fluent/surrogate comparison columns of the original design (Table~\ref{tab:datacard}-style CFD metadata) are added once \texttt{fluent/cases/} is executed.}
-\label{tab:fluent}
+\caption{Active-learning acquisition-arm selection ($k=8$ of 630 pool
+candidates, scorer \texttt{transolver\_full\_k5}, $\beta=\gamma=1$): NACA
+section, Reynolds number, angle of attack, ensemble spread
+$\hat\sigma_{C_D}$, force self-consistency \FSC, symmetry residual
+$\Losssym$, and the resulting acquisition score. Generated from
+\texttt{results/active/selection\_summary.json} and
+\texttt{results/active/acquisition\_ranking.csv}. Every pick sits at
+$\aoa=18\degrees$; per \S\ref{sec:fluent_outcome}, none of the eight settled
+on retry (seven ran their full 7000 iterations bounded but non-settling, one
+errored at iteration 725); the two settled $\aoa=18\degrees$ cases belong to
+the variance and random arms. Score components are computed on the synthetic
+pool contour and carry the representation caveat of
+\S\ref{sec:activelearning}.}
+\label{tab:selected_cases}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{lrrrrrr}
 \toprule
-NACA section & $\mathrm{Re}$ & $\aoa$ (\si{\degree}) & $\hat\sigma_{C_D}$ & \FSC & $\Losssym$ & score $a$ \\
+NACA & $\mathrm{Re}$ & $\aoa$ (\si{\degree}) & $\hat\sigma_{C_D}$ & \FSC & $\Losssym$ & score $a$ \\
 \midrule
-0010 (4-digit) & $7\times10^6$ & 18 & 0.171 & 0.312 & 0.745 & 7.533 \\
-2410 (4-digit) & $5\times10^6$ & 18 & 0.178 & 0.153 & 0.794 & 3.858 \\
-4410 (4-digit) & $7\times10^6$ & 18 & 0.159 & 0.168 & 0.759 & 3.840 \\
-0010 (4-digit) & $3\times10^6$ & 18 & 0.195 & 0.124 & 0.933 & 3.714 \\
-33012 (5-digit) & $7\times10^6$ & 18 & 0.171 & 0.154 & 0.747 & 3.692 \\
-4415 (4-digit) & $7\times10^6$ & 18 & 0.185 & 0.122 & 0.719 & 3.072 \\
-0015 (4-digit) & $6\times10^6$ & 18 & 0.240 & 0.077 & 0.751 & 2.901 \\
-24015 (5-digit) & $7\times10^6$ & 18 & 0.187 & 0.100 & 0.733 & 2.597 \\
+0010 & $7\times10^6$ & 18 & 0.171 & 0.312 & 0.745 & 7.533 \\
+2410 & $5\times10^6$ & 18 & 0.178 & 0.153 & 0.794 & 3.858 \\
+4410 & $7\times10^6$ & 18 & 0.159 & 0.168 & 0.759 & 3.840 \\
+0010 & $3\times10^6$ & 18 & 0.195 & 0.124 & 0.933 & 3.714 \\
+33012 & $7\times10^6$ & 18 & 0.171 & 0.154 & 0.747 & 3.692 \\
+4415 & $7\times10^6$ & 18 & 0.185 & 0.122 & 0.719 & 3.072 \\
+0015 & $6\times10^6$ & 18 & 0.240 & 0.077 & 0.751 & 2.901 \\
+24015 & $7\times10^6$ & 18 & 0.187 & 0.100 & 0.733 & 2.597 \\
 \bottomrule
 \end{tabular}
-\end{table}

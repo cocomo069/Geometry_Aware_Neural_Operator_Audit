@@ -1,2 +1,23 @@
-% Table 4 -- ablations (see tab4_ablation.md for the readable form)
-% M2 conditioning and M1 force-loss; values are field p rel-L2 / FSC.
+\caption{Ablations (seed 0). (a) \Mfno{} geometry conditioning: field $p$ rel-$L_2$ in distribution and under the shape-family shift. (b) \Mgnn{} force-consistency loss ($\lamF$): the physics term cuts the residual it penalises (FSC) at a cost in in-distribution field accuracy.}
+\label{tab:ablations}
+\small
+\begin{tabular}{lrr}
+\multicolumn{3}{l}{(a) \Mfno{} geometry conditioning ($p$ rel-$L_2$)} \\
+\toprule
+conditioning & \splitname{full} & \splitname{shape5} (OOD) \\
+\midrule
+SDF (baseline) & 0.0257 & 0.06414 \\
+binary mask & 0.02935 & 0.07279 \\
+SDF + normals & 0.03092 & 0.06127 \\
+\bottomrule
+\end{tabular}
+\par\vspace{1.2em}
+\begin{tabular}{lrrrr}
+\multicolumn{5}{l}{(b) \Mgnn{} force-consistency loss} \\
+\toprule
+variant & \splitname{full} $p$ rel-$L_2$ & \splitname{full} FSC & \splitname{combined} $p$ rel-$L_2$ & \splitname{combined} FSC \\
+\midrule
+baseline ($\lamF=0$) & 0.07374 & 0.0053 & 0.2697 & 0.01761 \\
++ force loss ($\lamF>0$) & 0.1043 & 0.001333 & 0.259 & 0.005926 \\
+\bottomrule
+\end{tabular}

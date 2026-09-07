@@ -22,7 +22,7 @@ Read order for a fresh session: this file → [CONTEXT.md](CONTEXT.md) (frozen i
   `src/viz/`): Fig 4 (error-vs-shift) and Fig 5 (FSC scatter) render live from baselines;
   rest data-gated. Tables 1–2 as LaTeX+MD. 9 viz tests; full suite **369 passing**.
 - **Three QA agents** auditing physics/models, data/eval/UQ, infra/kaggle (session 2, in flight).
-- Push mechanics reminder: `gh` default account is **wkabz07** (client — never touch);
+- Push mechanics reminder: the `gh` default account is a **client account — never touch**;
   `gh auth switch -u cocomo069` before any push, switch back after. Kaggle token at
   `C:\Users\LAPTOP\.kaggle\access_token`.
 
@@ -132,7 +132,7 @@ to the figures, plus prose the files refuted. Fixed:
 ## 1. What this project is
 
 Implementation of the research design in
-[`05_geometry_aware_neural_operator_surrogate_uq.md`](../05_geometry_aware_neural_operator_surrogate_uq.md):
+[`05_geometry_aware_neural_operator_surrogate_uq.md`](05_geometry_aware_neural_operator_surrogate_uq.md):
 an evaluation/methodology paper auditing three geometry-conditioned neural surrogates
 (GNN, SDF-FNO "GINO-lite", Transolver-style transformer) on AirfRANS with a consistency
 protocol (force self-consistency, symmetry), multi-axis OOD splits, conformal
@@ -240,7 +240,7 @@ config.yaml — safe to delete), `data/cache_build*.log`, `results/g2_train*.log
    be phone-verified. Unblocks: `kaggle/push_cache.py` (upload the 5 GB processed cache
    as a dataset) → `kaggle/launch.py --sweep configs/sweeps/core.yaml` (P100 sessions).
 2. **GitHub repo approval** — `gh` is authenticated as **cocomo069** (NEVER use the
-   wkabz07 account — client's). Asked to create private repo `geo-operator-audit`; user
+   default account — a client's). Asked to create private repo `geo-operator-audit`; user
    has not yet said yes. Before ANY push, read `D:\Personal Projects\GITHUB_UPLOAD_RULES.md`
    (mandatory per user's global CLAUDE.md; note its naming/structure rules conflict with
    this repo's layout — resolve with user or via the rules file before pushing).

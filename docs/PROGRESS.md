@@ -1421,3 +1421,33 @@ Verified: 12 GNN ensemble runs (4 splits × seeds s0/s1/s2 = K=3). Table 3 fully
 all three models. Headline (RESULTS.md §3): K=3 lifts GNN matched cov@.9 on Reynolds 0.70→0.97
 and AoA 0.79→0.89. Both scheduled tasks (GeoOpCycle, FluentCampaign) disabled; project scratch
 removed; `cocomo069` token active. Reusable C: caches left for coco to decide on.
+
+---
+
+## Session 5 (2026-09-07) — paper written end to end, figures brought to research grade, repo tidied
+
+Worked in the `research-paper-org-publish` worktree. Three things happened.
+
+**QA baseline re-verified.** Full suite 449 passed before any change (and again after).
+Tables regenerate bit-identical from `results/`; `gnn_fake_s0` was a dead config-only dir
+(deleted), `geo-op-session.log` was empty (deleted), and the design doc moved to
+`docs/05_geometry_aware_neural_operator_surrogate_uq.md` with all references updated.
+
+**Figures fixed at the source** (`make_figures.py` / `render_examples.py`), then regenerated:
+fig01 box was clipped off-canvas; fig02's `invert_yaxis()` toggled per panel on shared axes,
+so with 4 panels the published figure was NOT suction-up despite its label (now inverted once);
+fig03 had duplicate colorbars and dead whitespace; fig04/11a had title/legend/colorbar
+collisions; fig09's log ticks overlapped; fig06 was a 12-line legend on an empty unit square
+(now faceted per model); fig05 was an identity-line blob (now quantile-zoomed); fig10 dropped
+a pointless log axis. All regenerated PDFs+PNGs inspected page by page.
+
+**Paper rewritten from RESULTS.md** into a shared `paper/body.tex` with two wrappers:
+`main.tex` (single-column, 26 pp) and `main_twocol.tex` (two-column, 19 pp). All stale
+2026-09-03 claims replaced (GNN K=3 with band-width disclosure, cd_int counterpoint,
+data-efficiency crossing, ablations, complete Fluent §7 with grid study/offset/regime split,
+honest C4). Table emitters now write float bodies (caption+tabular, no table env) so the same
+generated file serves both layouts; Table 5 became summary+offset+per-case; everything
+LaTeX-escaped. Both builds compile with ZERO overfull boxes and no undefined refs. Compute
+appendix re-summed from metrics: 61.0 GPU-h over 110 runs (GNN 42.8/32, SDF-FNO 9.8/41,
+Transolver 8.4/37). Pooled FSCrel-vs-field-error correlation recomputed over 58 cells:
+Pearson 0.89, Spearman 0.87 (replaces the draft's pending r=0.94).

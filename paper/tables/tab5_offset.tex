@@ -1,0 +1,18 @@
+\caption{Solver offset: six AirfRANS test simulations re-solved in Fluent (SA, grid level L2). $\delta C_D = C_D^{\mathrm{Fluent}} - C_D^{\mathrm{AirfRANS}}$; every replica reads high, so the mean offset $\bar{\delta}_{C_D}$ is subtracted before any surrogate comparison.}
+\label{tab:fluent_offset}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrr}
+\toprule
+replica (NACA) & $C_D^{\mathrm{AF}}$ & $C_L^{\mathrm{AF}}$ & $C_D^{\mathrm{SA}}$ & $C_D^{\mathrm{SST}}$ & $\delta C_D$ & rel.\ $\delta C_D$ \\
+\midrule
+4 (2710) & 0.009226 & 0.0513 & 0.009719 & 0.009553 & 0.000493 & 0.0534 \\
+1 (0016) & 0.009702 & 0.251 & 0.01048 & 0.01019 & 0.00078 & 0.0804 \\
+2 (1009) & 0.01151 & 0.926 & 0.01301 & 0.01304 & 0.0015 & 0.13 \\
+6 (5\_17) & 0.009805 & 0.219 & 0.01082 & 0.01032 & 0.00101 & 0.103 \\
+3 (2211) & 0.009052 & 0.607 & 0.009919 & 0.009786 & 0.000867 & 0.0958 \\
+5 (0010) & 0.008058 & 0.419 & 0.00881 & 0.008599 & 0.000752 & 0.0933 \\
+\midrule
+mean $\pm$ s (SA, n=6) & & & & & +0.0009 $\pm$ 0.00034 & \\
+\bottomrule
+\end{tabular}

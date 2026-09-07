@@ -1,16 +1,17 @@
-\begin{table}[t]
-\centering
-\caption{In-distribution accuracy, consistency and cost (AirfRANS \texttt{full}).}
+\caption{In-distribution accuracy, consistency and cost (AirfRANS \texttt{full}). $C_D$ MAE and FSC $C_D$ in units of $10^{-3}$. Neural rows are seed mean $\pm$ std over the 3--5 committed seeds; baselines are deterministic single fits. Bold marks the best neural model per column. The symmetry residual is Figure~\ref{fig:symmetry}.}
 \label{tab:indist}
-\begin{tabular}{lrrrrrrr}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lrrrrrr}
 \toprule
-model & $p$ rel-$L_2$ & $\tau_w$ rel-$L_2$ & $C_D$ MAE & $C_D$ $\rho$ & FSC $C_D$ & sym & GPU-h \\
+model & $p$ rel-$L_2$ & $\tau_w$ rel-$L_2$ & $C_D$ MAE & $C_D$ $\rho$ & FSC $C_D$ & GPU-h \\
 \midrule
-M1 GNN & 0.0753 $\pm$ 0.00271 & 0.0686 $\pm$ 0.00212 & \textbf{0.000132 $\pm$ 1.5e-05} & 0.996 $\pm$ 0.00337 & 0.00539 $\pm$ 8.8e-05 & 4.47 $\pm$ 0.0268 & 2.88 $\pm$ 0.438 \\
-M2 SDF-FNO & 0.0259 $\pm$ 0.00128 & 0.0307 $\pm$ 0.000882 & 0.000142 $\pm$ 1.26e-05 & 0.998 $\pm$ 0.000497 & 0.00162 $\pm$ 0.000195 & 4.51 $\pm$ 0.127 & 0.36 $\pm$ 0.00215 \\
-M3 Transolver & \textbf{0.0186 $\pm$ 0.000933} & \textbf{0.0192 $\pm$ 0.000811} & 0.000135 $\pm$ 1.35e-05 & \textbf{0.999 $\pm$ 0.000359} & \textbf{0.00129 $\pm$ 0.000311} & 4.47 $\pm$ 0.0731 & 0.408 $\pm$ 0.000758 \\
-Ridge & 1.42 & 1.16 & 0.0016 & 0.902 & 0.00604 & \textbf{0} & \textbf{0} \\
-Constant & 1.42 & 1.16 & 0.00342 & -- & 0.0063 & \textbf{0} & \textbf{0} \\
+M1 GNN & 0.0753\,$\pm$\,0.0027 & 0.0686\,$\pm$\,0.0021 & \textbf{0.132\,$\pm$\,0.015} & 0.996\,$\pm$\,0.0034 & 5.39\,$\pm$\,0.088 & 2.88\,$\pm$\,0.44 \\
+M2 SDF-FNO & 0.0259\,$\pm$\,0.0013 & 0.0307\,$\pm$\,0.00088 & 0.142\,$\pm$\,0.013 & 0.998\,$\pm$\,0.0005 & 1.62\,$\pm$\,0.2 & \textbf{0.36\,$\pm$\,0.0022} \\
+M3 Transolver & \textbf{0.0186\,$\pm$\,0.00093} & \textbf{0.0192\,$\pm$\,0.00081} & 0.135\,$\pm$\,0.014 & \textbf{0.999\,$\pm$\,0.00036} & \textbf{1.29\,$\pm$\,0.31} & 0.408\,$\pm$\,0.00076 \\
+Ridge & 1.42 & 1.16 & 1.6 & 0.902 & 6.04 & 0 \\
+Constant & 1.42 & 1.16 & 3.42 & -- & 6.3 & 0 \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{adjustbox}

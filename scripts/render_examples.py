@@ -146,7 +146,10 @@ def _profile_panel(ax, sim: dict[str, Any], color: str, *, band: bool) -> None:
             lo = (cp_m[mask] - cp_s[mask])[order]
             hi = (cp_m[mask] + cp_s[mask])[order]
             ax.fill_between(xs, lo, hi, color=color, alpha=0.22, linewidth=0)
-    ax.invert_yaxis()
+    # NOTE: do NOT call ax.invert_yaxis() here. With sharey=True the inversion
+    # toggles once per panel, so an even panel count silently cancelled it and
+    # the published figure ended up NOT inverted despite its axis label. The
+    # caller inverts the shared axis exactly once.
     ax.set_xlabel("$x/c$")
     ax.grid(True, alpha=0.3)
 
@@ -180,13 +183,19 @@ def fig2_cp_profiles(
         _profile_panel(ax, sim, style.split_color(split), band=sim["n_members"] > 1)
         k = sim["n_members"]
         ax.set_title(f"{style.split_label(split)}\n(K={k})", fontsize=8)
-    axes[0].set_ylabel(r"$c_p$ (inverted)")
+    # Invert the shared c_p axis exactly once (aerodynamics convention,
+    # suction up); see the note in _profile_panel.
+    if not axes[0].yaxis_inverted():
+        axes[0].invert_yaxis()
+    axes[0].set_ylabel(r"$c_p$ (suction up)")
     handles = [
         plt.Line2D([], [], color="black", lw=1.3, label="truth"),
-        plt.Line2D([], [], color=style.model_color(model), lw=1.3, label="prediction (+/- 1 std)"),
+        plt.Line2D([], [], color=style.model_color(model), lw=1.3, label="prediction ($\\pm 1$ std)"),
+        plt.Line2D([], [], color="black", lw=1.3, ls="-", label="upper surface"),
+        plt.Line2D([], [], color="black", lw=1.3, ls="--", label="lower surface"),
     ]
-    fig.legend(handles=handles, loc="upper center", ncol=2, frameon=False, bbox_to_anchor=(0.5, 1.1))
-    fig.suptitle(f"{style.model_label(model)}: surface $c_p$, one representative test sim per split", y=1.2)
+    fig.legend(handles=handles, loc="upper center", ncol=4, frameon=False,
+               bbox_to_anchor=(0.5, 1.08))
     return _save(fig, outdir, "fig02_cp_profiles")
 
 
@@ -215,27 +224,39 @@ def fig3_surface_fields(
         print("TODO fig3: no checkpoint/cache available for any requested split")
         return None
 
-    fig, axes = plt.subplots(len(rows), 3, figsize=(9.6, 3.1 * len(rows)), squeeze=False)
+    # Compact layout: truth and prediction share one colorbar per row (they are
+    # on the same scale by construction), the error panel keeps its own. The
+    # old version drew three tall colorbars per row -- two of them identical --
+    # and left most of the canvas as whitespace.
+    fig, axes = plt.subplots(len(rows), 3, figsize=(9.0, 1.7 * len(rows)),
+                             squeeze=False, constrained_layout=True)
     for ri, (split, sim) in enumerate(rows):
         x, y = sim["x"], sim["y"]
         cp_t, cp_m = sim["cp_true"], sim["cp_pred_mean"]
         err = np.abs(cp_m - cp_t)
         vmin, vmax = float(min(cp_t.min(), cp_m.min())), float(max(cp_t.max(), cp_m.max()))
-        panels = ((cp_t, "truth", "coolwarm", vmin, vmax),
-                  (cp_m, "prediction", "coolwarm", vmin, vmax),
+        panels = ((cp_t, "truth ($c_p$)", "coolwarm", vmin, vmax),
+                  (cp_m, "prediction ($c_p$)", "coolwarm", vmin, vmax),
                   (err, r"$|$error$|$", "inferno", 0.0, float(err.max()) or 1.0))
+        scs = []
         for ci, (vals, title, cmap, lo, hi) in enumerate(panels):
             ax = axes[ri][ci]
             sc = ax.scatter(x, y, c=vals, cmap=cmap, vmin=lo, vmax=hi, s=7, linewidths=0)
+            scs.append(sc)
             ax.set_aspect("equal")
             ax.set_xticks([])
             ax.set_yticks([])
+            ax.grid(False)
+            for spine in ax.spines.values():
+                spine.set_visible(False)
             if ri == 0:
                 ax.set_title(title, fontsize=9)
             if ci == 0:
-                ax.set_ylabel(style.split_label(split), fontsize=8.5)
-            fig.colorbar(sc, ax=ax, fraction=0.046, pad=0.02).ax.tick_params(labelsize=6)
-    fig.suptitle(f"{style.model_label(model)}: surface $c_p$ on the airfoil contour", y=1.02)
+                ax.set_ylabel(style.split_label(split), fontsize=9)
+        fig.colorbar(scs[0], ax=[axes[ri][0], axes[ri][1]], fraction=0.05,
+                     pad=0.02, shrink=0.85).ax.tick_params(labelsize=6)
+        fig.colorbar(scs[2], ax=axes[ri][2], fraction=0.05,
+                     pad=0.02, shrink=0.85).ax.tick_params(labelsize=6)
     return _save(fig, outdir, "fig03_surface_fields")
 
 

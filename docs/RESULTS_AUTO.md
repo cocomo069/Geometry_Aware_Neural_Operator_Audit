@@ -1,6 +1,6 @@
 # RESULTS_AUTO — machine-generated results digest
 
-Auto-generated 2026-09-06 by `scripts/make_results_digest.py` (regenerated automatically as new runs land). For interpretation see [RESULTS.md](RESULTS.md); for concepts see [OVERVIEW.md](OVERVIEW.md).
+Auto-generated 2026-09-07 by `scripts/make_results_digest.py` (regenerated automatically as new runs land). For interpretation see [RESULTS.md](RESULTS.md); for concepts see [OVERVIEW.md](OVERVIEW.md).
 
 ## Run inventory (122 runs with metrics)
 
@@ -183,21 +183,21 @@ transolver_shape5_s4
 
 ### Table 1 — in-distribution accuracy/consistency/cost
 
-| model | $p$ rel-$L_2$ | $\tau_w$ rel-$L_2$ | $C_D$ MAE | $C_D$ $\rho$ | FSC $C_D$ | sym | GPU-h |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| M1 GNN | 0.0753 ± 0.00271 | 0.0686 ± 0.00212 | **0.000132 ± 1.5e-05** | 0.996 ± 0.00337 | 0.00539 ± 8.8e-05 | 4.47 ± 0.0268 | 2.88 ± 0.438 |
-| M2 SDF-FNO | 0.0259 ± 0.00128 | 0.0307 ± 0.000882 | 0.000142 ± 1.26e-05 | 0.998 ± 0.000497 | 0.00162 ± 0.000195 | 4.51 ± 0.127 | 0.36 ± 0.00215 |
-| M3 Transolver | **0.0186 ± 0.000933** | **0.0192 ± 0.000811** | 0.000135 ± 1.35e-05 | **0.999 ± 0.000359** | **0.00129 ± 0.000311** | 4.47 ± 0.0731 | 0.408 ± 0.000758 |
-| Ridge | 1.42 | 1.16 | 0.0016 | 0.902 | 0.00604 | **0** | **0** |
-| Constant | 1.42 | 1.16 | 0.00342 | -- | 0.0063 | **0** | **0** |
+| model | $p$ rel-$L_2$ | $\tau_w$ rel-$L_2$ | $C_D$ MAE | $C_D$ $\rho$ | FSC $C_D$ | GPU-h |
+| --- | --- | --- | --- | --- | --- | --- |
+| M1 GNN | 0.0753 ± 0.0027 | 0.0686 ± 0.0021 | **0.132 ± 0.015** | 0.996 ± 0.0034 | 5.39 ± 0.088 | 2.88 ± 0.44 |
+| M2 SDF-FNO | 0.0259 ± 0.0013 | 0.0307 ± 0.00088 | 0.142 ± 0.013 | 0.998 ± 0.0005 | 1.62 ± 0.2 | **0.36 ± 0.0022** |
+| M3 Transolver | **0.0186 ± 0.00093** | **0.0192 ± 0.00081** | 0.135 ± 0.014 | **0.999 ± 0.00036** | **1.29 ± 0.31** | 0.408 ± 0.00076 |
+| Ridge | 1.42 | 1.16 | 1.6 | 0.902 | 6.04 | 0 |
+| Constant | 1.42 | 1.16 | 3.42 | -- | 6.3 | 0 |
 
 ### Table 2 — OOD field error by split
 
 | model | full (in-dist.) | scarce | Reynolds shift | AoA shift | shape family | combined |
 | --- | --- | --- | --- | --- | --- | --- |
-| M1 GNN | 0.0753 ± 0.00271 | 0.154 | 0.214 ± 0.0117 | 0.195 ± 0.00551 | 0.128 ± 0.00359 | 0.27 |
-| M2 SDF-FNO | 0.0259 ± 0.00128 | 0.0832 | 0.104 ± 0.0147 | 0.113 ± 0.00577 | 0.0665 ± 0.0026 | 0.153 |
-| M3 Transolver | **0.0186 ± 0.000933** | **0.0666** | **0.0837 ± 0.0063** | **0.101 ± 0.00699** | **0.0526 ± 0.00253** | **0.139** |
+| M1 GNN | 0.0753 ± 0.0027 | 0.154 | 0.214 ± 0.012 | 0.195 ± 0.0055 | 0.128 ± 0.0036 | 0.27 |
+| M2 SDF-FNO | 0.0259 ± 0.0013 | 0.0832 | 0.104 ± 0.015 | 0.113 ± 0.0058 | 0.0665 ± 0.0026 | 0.153 |
+| M3 Transolver | **0.0186 ± 0.00093** | **0.0666** | **0.0837 ± 0.0063** | **0.101 ± 0.007** | **0.0526 ± 0.0025** | **0.139** |
 | Ridge | 1.42 | 1.4 | 1.62 | 1.18 | 1.6 | 1.86 |
 | Constant | 1.42 | 1.4 | 1.62 | 1.18 | 1.6 | 1.86 |
 
