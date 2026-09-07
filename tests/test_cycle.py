@@ -172,6 +172,10 @@ def test_step_advances_on_complete_when_sweep_done(tmp_path, monkeypatch):
     monkeypatch.setattr(cycle, "pull_item", lambda item, owner, rd: pulled.append(item["slug"]))
     monkeypatch.setattr(cycle, "sweep_is_done", lambda specs: True)
     monkeypatch.setattr(cycle, "launch_item", lambda *a, **k: launched.append(a))
+    # MUST be stubbed: the real one regenerates figures and runs `git commit`
+    # in the developer's checkout. Unstubbed, every full pytest run silently
+    # created a real "[results] cycle" commit (observed 2026-09-07).
+    monkeypatch.setattr(cycle, "regenerate_and_commit", lambda item: None)
     rc = cycle.step(queue_path=path)
     assert rc == 0
     assert pulled == ["geo-op-dataeff"]          # pulled before deciding
@@ -188,6 +192,8 @@ def test_step_relaunches_on_complete_when_truncated(tmp_path, monkeypatch):
     monkeypatch.setattr(cycle, "pull_item", lambda item, owner, rd: pulled.append(item["slug"]))
     monkeypatch.setattr(cycle, "sweep_is_done", lambda specs: False)
     monkeypatch.setattr(cycle, "launch_item", lambda item, owner, rd: launched.append(item["slug"]))
+    # See test_step_advances_on_complete_when_sweep_done: stub the regen+commit.
+    monkeypatch.setattr(cycle, "regenerate_and_commit", lambda item: None)
     rc = cycle.step(queue_path=path)
     assert rc == 0
     assert pulled == ["geo-op-dataeff"]

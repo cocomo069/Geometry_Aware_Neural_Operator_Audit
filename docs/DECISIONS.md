@@ -193,7 +193,7 @@ User directive (reaffirmed). All PLANNING — phase design, experiment design, s
 scope/scientific decisions — is delegated to a Fable 5 agent. All EXECUTION —
 implementation, launching/monitoring sweeps, pulling results, figures, debugging,
 mechanical edits — is done by Opus (the session default) and Sonnet (lighter mechanical
-work). Applies to every remaining phase. Planning outputs land as docs/PLAN_*.md; Opus
+work). Applies to every remaining phase. Planning outputs land as docs/plans/PLAN_*.md; Opus
 executes against them. This mirrors Phase 1 (Fable froze interfaces/gates in CONTEXT.md;
 Opus/Sonnet agents implemented).
 

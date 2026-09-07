@@ -11,7 +11,7 @@ It is maintained **alongside** the work — updated as things happen. Last updat
 > Companion docs (deeper detail lives here):
 > - [CONTEXT.md](CONTEXT.md) — the frozen engineering interfaces (data formats, function signatures)
 > - [DECISIONS.md](DECISIONS.md) — every engineering decision with rationale (D-001 … D-022)
-> - [PLAN.md](PLAN.md) — the execution plan and phases
+> - [PLAN.md](plans/PLAN.md) — the execution plan and phases
 > - [PROGRESS.md](PROGRESS.md) — dated log of what each agent/session did
 > - [DATA_NOTES.md](DATA_NOTES.md) — how the AirfRANS dataset actually works
 > - [HANDOFF.md](HANDOFF.md) — quick "resume from cold" state

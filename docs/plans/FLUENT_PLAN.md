@@ -1,6 +1,6 @@
 # FLUENT_PLAN.md — 2D RANS verification: design, grid study, offset study
 
-Companion to [`../fluent/README.md`](../fluent/README.md) (the operating manual).
+Companion to [`fluent/README.md`](../../fluent/README.md) (the operating manual).
 This file holds the *engineering design*: why the meshing route was chosen, the
 y+ and boundary-layer spacing mathematics, the grid-independence study and its
 GCI arithmetic, the AirfRANS-replication offset study, and the acceptance
@@ -334,7 +334,7 @@ random, because with n = 6 a random draw is likely to miss an axis entirely:
 | 6 | a **5-digit** section, mid conditions | the `shape5` split tests on 5-digit, so an offset measured only on 4-digit sections would not transfer to the split that matters most |
 
 **Frozen and committed** (do not re-draw after seeing results). The six replicas
-are pinned in `docs/PLAN_FLUENT_POST.md` §3 and defined in `fluent/make_offset.py`
+are pinned in `docs/plans/PLAN_FLUENT_POST.md` §3 and defined in `fluent/make_offset.py`
 (`OFFSET_SIMS`): offset_1 `..._60.541_2.401_0.081_0.0_16.295` (Re 3.9e6, α 2.4),
 offset_2 `..._62.607_8.578_0.875_0.0_8.812` (α 8.6), offset_3
 `..._71.226_3.333_2.424_2.411_10.928`, offset_4 `..._31.863_-1.58_1.567_6.956_10.028`

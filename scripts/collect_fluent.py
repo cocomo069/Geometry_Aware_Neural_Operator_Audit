@@ -2,7 +2,7 @@
 
 Reads every ``fluent/cases/<case>/`` directory, parses the per-(case, model,
 variant) coefficient histories, classifies each run converged / quasi-steady /
-diverged / not-run per the rules of docs/PLAN_FLUENT_POST.md section 2, runs the
+diverged / not-run per the rules of docs/plans/PLAN_FLUENT_POST.md section 2, runs the
 grid-study GCI (Celik et al. 2008, FLUENT_PLAN section 4.2) and a batch-integrity
 check (saved mesh cell count vs mesh.json), and writes:
 

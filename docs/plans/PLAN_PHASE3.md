@@ -375,7 +375,7 @@ committed JSON. Nothing here needs the user. "NOW" = all data exists today.
 | Reproducibility statement | 935 | | NOW | MIT code, split manifests in `data/splits/`, reimplementation note (D-002), AirfRANS ODbL obligation, no processed copy redistributed, DOI at release (Zenodo happens at public release per D-018) |
 | Acknowledgements | 943 | user | user writes (names rule) | leave one line for the user |
 | App. A hyperparameters | 951 | `configs/*.yaml` | NOW | one table per model from the YAMLs (widths, depths, k, grid, modes, slices, lr, schedule, batch 16, 400 epochs, clip 1.0, seeds) |
-| App. B CFD setup | 960 | `docs/FLUENT_PLAN.md` | NOW (design), results pending | import y+ sizing, C-grid topology, GCI arithmetic, the six replicated cases plan; mark measured values pending |
+| App. B CFD setup | 960 | `docs/plans/FLUENT_PLAN.md` | NOW (design), results pending | import y+ sizing, C-grid topology, GCI arithmetic, the six replicated cases plan; mark measured values pending |
 | App. C additional figures | 971 | figs 2/10 extras | after 4.1 | per-split cp profiles, acquisition sensitivity over beta/gamma (a 3 x 3 grid of selection overlap from `run_active.py --beta/--gamma`, minutes) |
 | App. D compute accounting | 979 | `metrics.json::train_time_s`, `session.log`s | NOW | sum train_time_s per phase (core 15.4 h, M2/M3 ensembles ~10 h, ...), add the sessions lost to restarts (the re-trained GNN ensemble sessions count, honestly), local P2000 inference hours |
 

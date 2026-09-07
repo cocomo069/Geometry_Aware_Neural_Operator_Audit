@@ -24,11 +24,23 @@ sources are in [`paper/`](paper/) and every figure and table regenerates from th
 master document** that explains the whole project in plain language: what it is, every concept
 behind the paper, everything built, every problem faced, and where we are. For the numbers and
 what they mean, read **[docs/RESULTS.md](docs/RESULTS.md)** (living results doc).
+The full documentation index is [docs/README.md](docs/README.md).
 
-Deeper detail: [docs/PLAN.md](docs/PLAN.md) (execution plan),
-[docs/PROGRESS.md](docs/PROGRESS.md) (dated log), [docs/DECISIONS.md](docs/DECISIONS.md)
-(decision log), [docs/CONTEXT.md](docs/CONTEXT.md) (frozen engineering interfaces),
-[docs/HANDOFF.md](docs/HANDOFF.md) (cold-resume state).
+## Repository map
+
+| Path | What lives there |
+|---|---|
+| [`paper/`](paper/) | The manuscript: single- and two-column builds, generated figures/tables, arXiv packages ([paper/README.md](paper/README.md)) |
+| [`docs/`](docs/) | Living documentation + frozen plans ([docs/README.md](docs/README.md)) |
+| [`src/`](src/) | The library: data, geometry, physics, models, eval, UQ, active learning, viz ([src/README.md](src/README.md)) |
+| [`scripts/`](scripts/) | Entry points: data prep, training, evaluation, UQ, Fluent collection, paper artifacts ([scripts/README.md](scripts/README.md)) |
+| [`configs/`](configs/) | Per-model YAML + sweep specs ([configs/README.md](configs/README.md)) |
+| [`results/`](results/) | Committed run metrics, UQ reports, active-learning outputs, Fluent campaign data ([results/README.md](results/README.md)) |
+| [`data/splits/`](data/splits/) | The exact train/cal/test manifests behind every result (raw/processed data gitignored) |
+| [`fluent/`](fluent/) | The Fluent verification leg: mesh generator, journals, rendered cases, runbook ([fluent/README.md](fluent/README.md)) |
+| [`model_cards/`](model_cards/) | One card per architecture, generated from committed metrics |
+| [`kaggle/`](kaggle/) | Free-tier cloud training drivers ([kaggle/README.md](kaggle/README.md)) |
+| [`tests/`](tests/) | 449 CPU-only pytest tests |
 
 ## Setup
 

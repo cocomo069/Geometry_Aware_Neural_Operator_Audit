@@ -252,5 +252,5 @@ Offset replica 6 (5-digit (non-reflex), mid conditions). AirfRANS test sim airFo
 
 ## Step 3 -- acceptance checks per case
 
-Per `docs/FLUENT_PLAN.md` section 6. In short: max y+ < 1, residuals at or below the stated criteria AND CD flat to the stop criterion over the last 150 iterations, and the GCI on the 3-level family below the stated band. A converged residual with a drifting CD is not a converged case.
+Per `docs/plans/FLUENT_PLAN.md` section 6. In short: max y+ < 1, residuals at or below the stated criteria AND CD flat to the stop criterion over the last 150 iterations, and the GCI on the 3-level family below the stated band. A converged residual with a drifting CD is not a converged case.
 

@@ -11,7 +11,7 @@ are being retried with the conservative `r1` variant. The solver-offset study
 (6 AirfRANS replicas) is running. Post-processing lives in
 `scripts/collect_fluent.py` (classify + GCI) and `scripts/compare_fluent.py`
 (surrogate vs Fluent). The design rationale, grid study, y+ mathematics and
-acceptance criteria live in [`../docs/FLUENT_PLAN.md`](../docs/FLUENT_PLAN.md);
+acceptance criteria live in [`../docs/plans/FLUENT_PLAN.md`](../docs/plans/FLUENT_PLAN.md);
 this file is the operating manual.
 
 ## Why this component exists

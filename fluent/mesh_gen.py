@@ -4,7 +4,7 @@ Writes a **native Fluent 2D ASCII `.msh`** directly (no gmsh, no meshio, no ICEM
 
 Why this route rather than gmsh or an ICEM `.rpl` replay
 --------------------------------------------------------
-See `docs/FLUENT_PLAN.md` section 2 for the full argument. Short version:
+See `docs/plans/FLUENT_PLAN.md` section 2 for the full argument. Short version:
 
 * A C-grid around an airfoil is a *fully algebraic* topology -- there is nothing
   for an unstructured mesher to discover.  Writing it directly gives exact
@@ -82,7 +82,7 @@ import numpy as np
 RHO_DEFAULT = 1.184        # kg/m^3
 MU_DEFAULT = 1.85e-5       # Pa.s   -> nu = 1.5625e-5 m^2/s
 
-# Grid levels for the 3-level grid-independence study (docs/FLUENT_PLAN.md §4).
+# Grid levels for the 3-level grid-independence study (docs/plans/FLUENT_PLAN.md §4).
 # Refinement ratio r ~ 1.5 in *each* direction, so the cell count roughly
 # doubles-and-a-bit per level and the GCI representative size h ~ N^{-1/2}
 # shrinks by ~1.5.  `na` must be even so the leading edge lands on a node.
@@ -93,7 +93,7 @@ GRID_LEVELS = {
 }
 LEVEL_YPLUS_SCALE = {1: 1.5, 2: 1.0, 3: 1.0 / 1.5}
 
-# Fluent zone-type codes (see docs/FLUENT_PLAN.md §2 for the table).
+# Fluent zone-type codes (see docs/plans/FLUENT_PLAN.md §2 for the table).
 ZT_INTERIOR = 2
 ZT_WALL = 3
 ZT_PRESSURE_OUTLET = 5
@@ -346,7 +346,7 @@ def first_cell_height(u_inf: float, chord: float, rho: float, mu: float,
     definition of y+, so the first *cell height* is 2 * y_1.  We return both and
     the mesh uses the cell height.
 
-    Caveats, documented in docs/FLUENT_PLAN.md §3:
+    Caveats, documented in docs/plans/FLUENT_PLAN.md §3:
       * this is a flat-plate estimate; the real y+ on an airfoil peaks near the
         leading edge and near the suction peak, typically 1.5-2.5x this value,
         which is why the default target is 0.6 rather than 1.0;

@@ -613,7 +613,7 @@ seconds) and one LaTeX compile.
   journal instantiation with schema validation. Verified: 5 cases -> 10 journals,
   zero unfilled slots.
 - `fluent/README.md` (operating manual, orchestrator call sequence, solver-choice
-  rationale) and `docs/FLUENT_PLAN.md` (431 ln: mesh-route argument, y+ maths
+  rationale) and `docs/plans/FLUENT_PLAN.md` (431 ln: mesh-route argument, y+ maths
   with worked numbers, 3-level grid study with the Celik GCI arithmetic, the
   6-simulation AirfRANS-replication offset study, acceptance criteria).
 
@@ -635,7 +635,7 @@ Refinement ratio ~1.5 per direction per level (GCI wants >= 1.3); y+ target
 scales 0.90 / 0.60 / 0.40 so refinement is systematic at the wall too and all
 three levels stay wall-resolved.
 
-### scripts/subset_drivaernet.py + docs/DRIVAERNET_ACCESS.md
+### scripts/subset_drivaernet.py + docs/plans/DRIVAERNET_ACCESS.md
 
 - Script (573 ln) consumes already-downloaded coefficient CSVs and decimated
   meshes; stdlib `csv` (no pandas), numpy/pyvista/trimesh guarded with actionable
@@ -704,8 +704,8 @@ for real: `mpm --install=natbib` (about 100 kB), then `latexmk -pdf main.tex`.
 - fluent/: gmsh-based mesh_gen.py (C-grid, y+ targeted), parameterized SA + SST TUI
   journal templates, make_cases.py + rendered cases (2 placeholders + 3-level
   NACA0012 grid study), RUNBOOK.md, MANIFEST.json. Runs deferred per D-007.
-- docs/FLUENT_PLAN.md (grid study/GCI design, y+ math, AirfRANS replication offset
-  study), docs/DRIVAERNET_ACCESS.md + scripts/subset_drivaernet.py (user-gated).
+- docs/plans/FLUENT_PLAN.md (grid study/GCI design, y+ math, AirfRANS replication offset
+  study), docs/plans/DRIVAERNET_ACCESS.md + scripts/subset_drivaernet.py (user-gated).
 - paper/: main.tex compiles clean — 12 pages, all 12 figures + 6 tables placeholdered,
   refs.bib from spec reading list, macros.tex. model_cards/TEMPLATE.md.
 
@@ -1079,7 +1079,7 @@ plus its small-sample caveat; the Fluent bullet updated to the real 27-case coun
 "negative and mixed results" paragraph gained the matched-vs-transfer non-ordering as a
 concrete mixed result. Appendix A (hyperparameters) filled from `configs/*.yaml` (two
 tables: per-architecture, and the shared training recipe). Appendix B (CFD setup) written as
-a structured stub with real design content from `docs/FLUENT_PLAN.md` (meshing route,
+a structured stub with real design content from `docs/plans/FLUENT_PLAN.md` (meshing route,
 solver setup, GCI plan, offset-study plan, acceptance criteria) and `\todo{}`-tagged only the
 actual measured numbers, which do not exist yet. Appendix D (compute accounting) computed
 directly from `train_time_s` summed over all 50 committed `metrics.json` files that carry it
@@ -1299,7 +1299,7 @@ result (acquisition picked the hard corner of the envelope), not a setup bug.
 
 ## 2026-09-03 (Opus) — Fluent post-processing + C4 salvage (PLAN_FLUENT_POST)
 
-Executing Fable's `docs/PLAN_FLUENT_POST.md` after the main SA batch (grid study
+Executing Fable's `docs/plans/PLAN_FLUENT_POST.md` after the main SA batch (grid study
 clean; 4 low-AoA random converged; 20 diverged).
 
 ### collect_fluent.py (step 1, done)

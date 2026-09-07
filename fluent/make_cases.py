@@ -347,7 +347,7 @@ def write_runbook(out_root, rows, total_cells, n_jou):
             L.append("- `%s`" % j)
         L.append("")
     L.append("## Step 3 -- acceptance checks per case\n")
-    L.append("Per `docs/FLUENT_PLAN.md` section 6. In short: max y+ < 1, "
+    L.append("Per `docs/plans/FLUENT_PLAN.md` section 6. In short: max y+ < 1, "
              "residuals at or below the stated criteria AND CD flat to the stop "
              "criterion over the last 150 iterations, and the GCI on the 3-level "
              "family below the stated band. A converged residual with a drifting "

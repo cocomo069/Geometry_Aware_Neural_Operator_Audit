@@ -2,7 +2,7 @@
 
 Complete state of the project for whoever (human or Claude) picks this up next.
 Read order for a fresh session: this file → [CONTEXT.md](CONTEXT.md) (frozen interfaces)
-→ [DECISIONS.md](DECISIONS.md) (20 logged decisions + rationale) → [PLAN.md](PLAN.md)
+→ [DECISIONS.md](DECISIONS.md) (20 logged decisions + rationale) → [PLAN.md](plans/PLAN.md)
 → [DATA_NOTES.md](DATA_NOTES.md) (dataset conventions) → [PROGRESS.md](PROGRESS.md) (per-agent logs).
 
 ## Session-2 update (what changed since session 1)
@@ -227,10 +227,10 @@ config.yaml — safe to delete), `data/cache_build*.log`, `results/g2_train*.log
    `fluent/cases_to_run.json` → `fluent/make_cases.py` renders journals.
 8. **Fluent verification runs** — DEFERRED by user instruction (CPU-heavy). Everything
    is rendered and runnable via the Ansys MCP tools when green-lit; grid-study cases
-   for NACA0012 Re3e6 α5 already in `fluent/cases/`. See docs/FLUENT_PLAN.md.
+   for NACA0012 Re3e6 α5 already in `fluent/cases/`. See docs/plans/FLUENT_PLAN.md.
 9. **Figures/tables** (finish A7) → populate `paper/main.tex` → model cards from
    metrics → README results table.
-10. **DrivAerNet++ 3D leg** — BLOCKED on user's Globus login (docs/DRIVAERNET_ACCESS.md
+10. **DrivAerNet++ 3D leg** — BLOCKED on user's Globus login (docs/plans/DRIVAERNET_ACCESS.md
     has the step-by-step); `scripts/subset_drivaernet.py` is ready. Optional stretch;
     the 2D paper stands alone (D-005).
 

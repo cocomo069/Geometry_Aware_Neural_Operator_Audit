@@ -8,7 +8,7 @@ design IDs -- because that manifest is what lets someone else reproduce the
 study without the 39 TB.
 
 **This script downloads nothing.** It requires that the user has already
-completed the Globus / Harvard Dataverse steps in `docs/DRIVAERNET_ACCESS.md`
+completed the Globus / Harvard Dataverse steps in `docs/plans/DRIVAERNET_ACCESS.md`
 and can point `--coeff-csv` and `--design-dir` at local files. That separation
 is deliberate: the download needs an interactive Globus login and a CC BY-NC-4.0
 acceptance, neither of which an agent can or should do.
