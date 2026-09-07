@@ -1451,3 +1451,20 @@ LaTeX-escaped. Both builds compile with ZERO overfull boxes and no undefined ref
 appendix re-summed from metrics: 61.0 GPU-h over 110 runs (GNN 42.8/32, SDF-FNO 9.8/41,
 Transolver 8.4/37). Pooled FSCrel-vs-field-error correlation recomputed over 58 cells:
 Pearson 0.89, Spearman 0.87 (replaces the draft's pending r=0.94).
+
+### Session 5 continuation (2026-09-07, morning) — deep-clean reorg + the "cycle gremlin" root cause
+
+Deep-clean reorganization landed (PR #2): docs/plans/ hierarchy with all cross-references
+rewritten, per-folder README indexes, model cards generated from committed metrics
+(scripts/make_model_cards.py), root README repository map. Local folder cleanup: dead
+checkpoint dirs (gnn_fake_s0, gnn_full_s0_g2, smoke_dryrun) and kaggle/pulls (181 MB)
+removed, stray data/ logs consolidated into logs/, redundant Dataset.zip deleted per coco
+(9.34 GB freed; re-download via scripts/download_data.py if ever needed).
+
+Root cause of the mystery "[results] cycle" commits found and fixed: the two completion-path
+tests in tests/test_cycle.py monkeypatched everything cycle.step() calls EXCEPT
+regenerate_and_commit, so every full pytest run executed the real regen + git commit
+(cycle's author/message) inside whatever checkout pytest ran from, then attempted a push of
+local main (silently rejected, non-fast-forward). Four such commits observed on 2026-09-07,
+two of which swallowed staged unrelated work and were squashed/re-authored before pushing.
+Both tests now stub it; the scheduled tasks were never the culprit and remain disabled.
