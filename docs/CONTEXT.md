@@ -6,7 +6,7 @@
 > migration of all dependents in the same commit.
 
 Project spec: [`05_geometry_aware_neural_operator_surrogate_uq.md`](05_geometry_aware_neural_operator_surrogate_uq.md) (the research design doc).
-Plan: [`docs/PLAN.md`](PLAN.md). Decision log: [`docs/DECISIONS.md`](DECISIONS.md). Status: [`docs/PROGRESS.md`](PROGRESS.md).
+Plan: [`docs/plans/PLAN.md`](plans/PLAN.md). Decision log: [`docs/DECISIONS.md`](DECISIONS.md). Status: [`docs/PROGRESS.md`](PROGRESS.md).
 
 ---
 

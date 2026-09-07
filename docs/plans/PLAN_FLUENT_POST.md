@@ -5,7 +5,7 @@ code, batch driving and docs; the ParaView MCP (`mcp__paraview__*`) for field
 figures; `fluent/run_batch.py` (direct `fluent.exe`) for every solve. Nothing in
 this file has been executed.
 
-Read first: `docs/FLUENT_PLAN.md` (design + acceptance criteria), `fluent/README.md`
+Read first: `docs/plans/FLUENT_PLAN.md` (design + acceptance criteria), `fluent/README.md`
 (operating manual), D-025 in `docs/DECISIONS.md`, `docs/RESULTS.md` section 6.
 
 ---
@@ -511,7 +511,7 @@ qualitative external check".
 - `docs/DECISIONS.md` D-026: "Fluent campaign outcome and C4 reframing" recording
   the three decisions of this plan (no URANS in v1, r1 retry, six frozen replicas).
 - `docs/PROGRESS.md` entry per executor session.
-- `docs/FLUENT_PLAN.md` section 5.2: replace "Exact sim ids are pinned once..."
+- `docs/plans/FLUENT_PLAN.md` section 5.2: replace "Exact sim ids are pinned once..."
   with the frozen table of section 3; section 7 cost table replaced by measured
   wall times from `fluent_summary.csv`.
 - `fluent/README.md`: drop "Nothing in here has been executed"; add the `r1`

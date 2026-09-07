@@ -1,6 +1,6 @@
 """fluent/make_offset.py -- define the 6 AirfRANS-replica offset cases (D-3).
 
-The solver-offset study (docs/PLAN_FLUENT_POST.md section 3) reruns six frozen
+The solver-offset study (docs/plans/PLAN_FLUENT_POST.md section 3) reruns six frozen
 AirfRANS *test*-split simulations in Fluent so the solver offset
 ``Delta = CD_fluent - CD_airfrans`` can be measured on cases that carry an
 independent OpenFOAM truth. The six sims are FROZEN in ``OFFSET_SIMS`` below;

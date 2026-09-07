@@ -3,7 +3,7 @@
 Safety first: before a single byte of payload is fetched we issue an HTTP HEAD
 (falling back to a 1-byte ranged GET for servers that do not answer HEAD) to
 learn ``Content-Length``, print it, and abort if it exceeds ``--max-gb``
-(default 20 GB).  ``docs/PLAN.md`` risk register: "size-check via HEAD; if
+(default 20 GB).  ``docs/plans/PLAN.md`` risk register: "size-check via HEAD; if
 >15 GB stop and reassess".
 
 The URL is *introspected out of the installed ``airfrans`` package* rather than
