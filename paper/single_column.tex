@@ -1,0 +1,14 @@
+% single_column.tex -- single-column variant. Build:
+%   latexmk -pdf -interaction=nonstopmode -halt-on-error single_column.tex
+% Uses reprint + onecolumn (NOT preprint): the aps/preprint frontmatter
+% strands the title alone on page 1 and pushes the abstract to page 2
+% (verified on the dg_trixi_shock paper); reprint+onecolumn lays out title,
+% abstract, and the introduction together on page 1 at journal quality.
+\documentclass[aps,superscriptaddress,amsmath,amssymb,floatfix,longbibliography,nofootinbib,reprint,onecolumn]{revtex4-2}
+\input{preamble_shared}
+% Per-variant hook: reprint-based variants do NOT auto-print a References
+% heading, so this wrapper supplies it. Defined here, never in body.tex.
+\newcommand{\prebib}{\section*{References}}
+\begin{document}
+\input{body}
+\end{document}

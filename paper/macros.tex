@@ -66,7 +66,9 @@
 \newcommand{\Fop}{\ensuremath{\mathcal{F}}}               % Fourier transform
 \newcommand{\uhat}{\ensuremath{\hat{u}}}
 \newcommand{\ubar}{\ensuremath{\bar{u}}}
-\newcommand{\cp}{\ensuremath{c_p}}                        % surface pressure coefficient
+% REVTeX 4.2 already defines a \cp, so this one must override, not \newcommand.
+\ifdefined\cp\renewcommand{\cp}{\ensuremath{c_p}}\else
+  \newcommand{\cp}{\ensuremath{c_p}}\fi                   % surface pressure coefficient
 
 % ---------------------------------------------------------------------
 % Force integration and self-consistency (spec 5.4) -- the paper's core

@@ -1,22 +1,25 @@
 \caption{Split-conformal calibration of the integrated drag band ($C_D^{\mathrm{int}}$, normalized score, largest available ensemble: $K{=}3$ for the GNN, $K{=}5$ otherwise): empirical coverage, mean interval width and ECE. Matched calibrates on the split's own cal set; transfer (tr) calibrates on \texttt{full}'s cal. Coverage must be read next to width: the GNN's high shifted coverage rides on a near-vacuous band (\S\ref{sec:results_calibration}).}
 \label{tab:calibration}
-\footnotesize
-\setlength{\tabcolsep}{3.5pt}
+\providecommand{\tblfont}{\footnotesize}%
+\tblfont
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{llrrrrrr}
 \toprule
 model & split & cov@.8 & cov@.9 & cov@.95 & cov@.9 (tr) & width@.9 & ECE \\
 \midrule
 M1 GNN & full (in-dist.) & 0.735 & 0.82 & 0.92 & 0.82 & 0.0332 & 0.0583 \\
-M1 GNN & shape family & 0.718 & 0.863 & 0.959 & 0.818 & 0.0467 & 0.0426 \\
-M1 GNN & Reynolds shift & 0.933 & 0.966 & 0.972 & 0.917 & 0.228 & 0.0737 \\
-M1 GNN & AoA shift & 0.816 & 0.893 & 0.929 & 0.893 & 0.0575 & 0.015 \\
+ & shape family & 0.718 & 0.863 & 0.959 & 0.818 & 0.0467 & 0.0426 \\
+ & Reynolds shift & 0.933 & 0.966 & 0.972 & 0.917 & 0.228 & 0.0737 \\
+ & AoA shift & 0.816 & 0.893 & 0.929 & 0.893 & 0.0575 & 0.015 \\
+\addlinespace
 M2 SDF-FNO & full (in-dist.) & 0.885 & 0.955 & 0.98 & 0.955 & 0.00854 & 0.0567 \\
-M2 SDF-FNO & shape family & 0.648 & 0.763 & 0.879 & 0.847 & 0.00731 & 0.12 \\
-M2 SDF-FNO & Reynolds shift & 0.75 & 0.895 & 0.938 & 0.94 & 0.0218 & 0.0224 \\
-M2 SDF-FNO & AoA shift & 0.913 & 0.944 & 0.974 & 0.929 & 0.0159 & 0.0605 \\
+ & shape family & 0.648 & 0.763 & 0.879 & 0.847 & 0.00731 & 0.12 \\
+ & Reynolds shift & 0.75 & 0.895 & 0.938 & 0.94 & 0.0218 & 0.0224 \\
+ & AoA shift & 0.913 & 0.944 & 0.974 & 0.929 & 0.0159 & 0.0605 \\
+\addlinespace
 M3 Transolver & full (in-dist.) & 0.805 & 0.91 & 0.955 & 0.91 & 0.00562 & 0.00667 \\
-M3 Transolver & shape family & 0.793 & 0.867 & 0.908 & 0.814 & 0.00746 & 0.0275 \\
-M3 Transolver & Reynolds shift & 0.76 & 0.938 & 0.978 & 0.915 & 0.021 & 0.0351 \\
-M3 Transolver & AoA shift & 0.821 & 0.949 & 0.959 & 0.949 & 0.0198 & 0.0265 \\
+ & shape family & 0.793 & 0.867 & 0.908 & 0.814 & 0.00746 & 0.0275 \\
+ & Reynolds shift & 0.76 & 0.938 & 0.978 & 0.915 & 0.021 & 0.0351 \\
+ & AoA shift & 0.821 & 0.949 & 0.959 & 0.949 & 0.0198 & 0.0265 \\
 \bottomrule
 \end{tabular}

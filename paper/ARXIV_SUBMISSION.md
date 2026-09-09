@@ -7,20 +7,21 @@ last mile is yours. Rebuild + repackage at any time with:
 .venv/Scripts/python.exe -m scripts.make_tables
 .venv/Scripts/python.exe -m scripts.make_figures
 .venv/Scripts/python.exe -m scripts.render_examples
-cd paper && latexmk -pdf main.tex && cd ..
-.venv/Scripts/python.exe -m scripts.make_arxiv --variant main
+cd paper && latexmk -pdf single_column.tex && latexmk -pdf two_column.tex && cd ..
+.venv/Scripts/python.exe -m scripts.make_arxiv --variant single_column
 ```
 
 ## What to upload
 
-- **`paper/arxiv_main.zip`** is the submission package (single-column build,
-  the canonical arXiv version): wrapper + `body.tex` + `macros.tex` + the
-  generated tables + the 13 PDF figures + `refs.bib` + a prebuilt `main.bbl`
-  so arXiv's pdflatex pass needs no bibtex. Verified to compile standalone
-  from a clean directory with two pdflatex passes.
-- `paper/main_twocol.pdf` is the two-column rendering of the same body; keep
-  it for the repo/README or reviewer copies. arXiv itself takes one source
-  package, and single-column is the one to submit.
+- **`paper/arxiv_single_column.zip`** is the submission package (REVTeX 4.2
+  `reprint,onecolumn` build, the canonical arXiv version): wrapper +
+  `body.tex` + `preamble_shared.tex` + `macros.tex` + the generated tables +
+  the 13 PDF figures + `refs.bib` + a prebuilt `single_column.bbl` so arXiv's
+  pdflatex pass needs no bibtex. Verified to compile standalone from a clean
+  directory with two pdflatex passes (arXiv ships REVTeX 4.2).
+- `paper/pdf/paper_two_column.pdf` is the two-column rendering of the same
+  body; keep it for the repo/README or reviewer copies. arXiv itself takes one
+  source package, and single-column is the one to submit.
 
 ## Suggested metadata (edit as you see fit)
 
@@ -50,8 +51,9 @@ cd paper && latexmk -pdf main.tex && cd ..
    copy goes out instead (HANDOFF.md notes the public copy was planned as a
    one-time restructure).
 2. **Author block**: the paper carries `T. Amin` with your email, as it
-   already did in the repo. Change to your full name in `paper/main.tex` /
-   `main_twocol.tex` if you prefer it spelled out, then rebuild + repackage.
+   already did in the repo. Change to your full name in the author block at
+   the top of `paper/body.tex` if you prefer it spelled out, then rebuild +
+   repackage.
 3. arXiv account must be endorsed for the chosen primary category; a first
    submission in `physics.flu-dyn` may require endorsement.
 

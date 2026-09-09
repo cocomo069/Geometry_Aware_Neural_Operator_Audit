@@ -80,9 +80,12 @@ def fig4_error_vs_shift(df: pd.DataFrame, outdir: Path) -> Path | None:
     df = _neural(df)  # core runs only: no baselines, no smoke/ablation tags
     metric = "field_p_rel_l2"
     panels = list(OOD_PANELS.items())
-    fig, axes = plt.subplots(1, len(panels), figsize=(4 * len(panels), 3.4), sharey=True)
-    if len(panels) == 1:
-        axes = [axes]
+    # 2x2 grid at the final printed full width (7.05 in, REVTeX text block).
+    # The old 1x4 was drawn 16 in wide and shrank to ~43% on insertion,
+    # leaving ~4 pt effective text (research-figures: draw at final width,
+    # at most two panels per row).
+    fig, axgrid = plt.subplots(2, 2, figsize=(7.05, 5.2), sharey=True)
+    axes = axgrid.ravel()
     models = style.sort_models(df["model"].unique())
     for ax, (axis_name, splits) in zip(axes, panels):
         present = [s for s in splits if s in set(df["split"])]
@@ -98,12 +101,14 @@ def fig4_error_vs_shift(df: pd.DataFrame, outdir: Path) -> Path | None:
             ax.set_xticklabels([style.split_label(s) for s in g.index], rotation=20, ha="right")
         ax.set_title(axis_name)
         ax.grid(True, alpha=0.3)
-    axes[0].set_ylabel(r"field $p$ rel. $L_2$")
+    for ax in (axes[0], axes[2]):
+        ax.set_ylabel(r"field $p$ rel. $L_2$")
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
     handles = style.model_legend(models, with_marker=True)
     # Legend alone above the panels; the caption carries the description, so no
     # suptitle (it used to collide with this legend).
     fig.legend(handles=handles, loc="upper center", ncol=len(models), frameon=False,
-               bbox_to_anchor=(0.5, 1.06))
+               bbox_to_anchor=(0.5, 1.0))
     return _save(fig, outdir, "fig04_error_vs_shift")
 
 
@@ -116,12 +121,13 @@ def fig5_fsc_scatter(df: pd.DataFrame, outdir: Path) -> Path | None:
     if "split" in core.columns:
         core = core[core["split"].isin(style.SPLIT_ORDER)]  # canonical splits only (no full_n*)
     per = vdata.load_all_per_sim(runs=core) if not core.empty else pd.DataFrame()
-    fig, ax = plt.subplots(figsize=(4.4, 4.2))
+    # Final printed size: one REVTeX column (3.4 in).
+    fig, ax = plt.subplots(figsize=(3.4, 3.6))
     plotted = False
     if not per.empty and {"cd_int", "cd_head"}.issubset(per.columns):
         for split in style.sort_splits(per["split"].dropna().unique()):
             sub = per[per["split"] == split]
-            ax.scatter(sub["cd_head"], sub["cd_int"], s=10, alpha=0.5,
+            ax.scatter(sub["cd_head"], sub["cd_int"], s=6, alpha=0.5,
                        color=style.split_color(split), label=style.split_label(split))
         # Zoom to the central mass of the data (0.5-99.5% quantiles, padded);
         # without this the identity line's aspect stretch turned the cloud into
@@ -147,7 +153,12 @@ def fig5_fsc_scatter(df: pd.DataFrame, outdir: Path) -> Path | None:
         print("TODO fig5: no per-sim cd_int/cd_head yet (needs neural runs with both heads)")
         plt.close(fig)
         return None
-    ax.legend(frameon=False, fontsize=7, loc="upper left")
+    # Legend OUTSIDE the axes, one block above: inside upper-left it sat on
+    # top of the point cloud (research-figures: an in-axes legend position
+    # must be verified empty, and none is here).
+    ax.legend(frameon=False, fontsize=6.5, loc="lower left", ncol=3,
+              bbox_to_anchor=(-0.05, 1.02), columnspacing=0.9,
+              handletextpad=0.4)
     return _save(fig, outdir, "fig05_fsc_scatter")
 
 
@@ -158,18 +169,21 @@ def fig1_schematic(outdir: Path) -> Path | None:
     matplotlib patches diagram (no TikZ/graphviz dependency) so it builds on
     the same Agg-only, no-extra-deps stack as every other figure.
     """
-    fig, ax = plt.subplots(figsize=(7.2, 3.2))
+    fig, ax = plt.subplots(figsize=(7.05, 3.1))
     ax.set_xlim(-0.1, 10.1)
     ax.set_ylim(0, 4.3)
     ax.axis("off")
 
     enc_y0 = 2.75  # bottom of the encoder boxes (compact layout, no dead band)
+    # Subtitles kept SHORT: "GINO-style, SDF-conditioned" filled the box wall
+    # to wall and read as overflowing at print size (research-figures fix
+    # hierarchy rule 1: shorten the text before resizing anything).
     encoders = [
         ("M1  GNN\n$k$NN message passing", style.MODEL_COLORS["gnn"], 1.85),
-        ("M2  SDF-FNO\nGINO-style, SDF-conditioned", style.MODEL_COLORS["sdf_fno"], 5.0),
-        ("M3  Transolver\nphysics attention, slices", style.MODEL_COLORS["transolver"], 8.15),
+        ("M2  SDF-FNO\nGINO-style", style.MODEL_COLORS["sdf_fno"], 5.0),
+        ("M3  Transolver\nphysics attention", style.MODEL_COLORS["transolver"], 8.15),
     ]
-    box_w, box_h = 2.85, 1.0
+    box_w, box_h = 2.95, 1.0
     for label, color, cx in encoders:
         b = FancyBboxPatch((cx - box_w / 2, enc_y0), box_w, box_h,
                             boxstyle="round,pad=0.06,rounding_size=0.08",
@@ -230,7 +244,7 @@ def fig10_symmetry(df: pd.DataFrame, outdir: Path) -> Path | None:
         print("TODO fig10: no (model, split) cells with symmetry residual")
         return None
 
-    fig, ax = plt.subplots(figsize=(6.2, 3.6))
+    fig, ax = plt.subplots(figsize=(7.05, 2.9))
     width = 0.8 / max(1, len(models))
     any_bar = False
     for mi, m in enumerate(models):
@@ -277,7 +291,9 @@ def fig9_data_efficiency(df: pd.DataFrame, outdir: Path) -> Path | None:
     if d.empty or d["train_size"].nunique() < 3:
         print("TODO fig9: need >=3 distinct train_size values (data-efficiency sweep)")
         return None
-    fig, ax = plt.subplots(figsize=(4.6, 3.6))
+    # Half of a full-width composite float (paired with fig12); "(a)" is
+    # stamped in-figure because REVTeX has no subcaption support.
+    fig, ax = plt.subplots(figsize=(3.42, 3.0))
     for m in style.sort_models(d["model"].unique()):
         sub = d[d["model"] == m]
         g = sub.groupby("train_size")["field_p_rel_l2"].agg(["mean", "std"]).dropna()
@@ -297,8 +313,9 @@ def fig9_data_efficiency(df: pd.DataFrame, outdir: Path) -> Path | None:
     ax.xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
     ax.set_xlabel("training simulations")
     ax.set_ylabel(r"field $p$ rel. $L_2$")
-    ax.legend(frameon=False)
+    ax.legend(frameon=False, fontsize=7)
     ax.grid(True, which="both", alpha=0.3)
+    style.panel_letter(fig, "a")
     return _save(fig, outdir, "fig09_data_efficiency")
 
 
@@ -309,7 +326,8 @@ def fig12_cost_accuracy(df: pd.DataFrame, outdir: Path) -> Path | None:
     if d.empty or d["gpu_hours"].isna().all():
         print("TODO fig12: no neural runs with gpu_hours on the full split yet")
         return None
-    fig, ax = plt.subplots(figsize=(4.4, 3.6))
+    # Half of a full-width composite float (paired with fig09).
+    fig, ax = plt.subplots(figsize=(3.42, 3.0))
     for m in style.sort_models(d["model"].unique()):
         sub = d[d["model"] == m]
         ax.scatter(sub["gpu_hours"], sub["field_p_rel_l2"], s=40,
@@ -317,8 +335,9 @@ def fig12_cost_accuracy(df: pd.DataFrame, outdir: Path) -> Path | None:
                    label=style.model_label(m))
     ax.set_xlabel("training GPU-hours")
     ax.set_ylabel(r"field $p$ rel. $L_2$")
-    ax.legend(frameon=False)
+    ax.legend(frameon=False, fontsize=7)
     ax.grid(True, alpha=0.3)
+    style.panel_letter(fig, "b")
     return _save(fig, outdir, "fig12_cost_accuracy")
 
 
@@ -394,7 +413,7 @@ def fig6_reliability(outdir: Path, results: str) -> Path | None:
     all_vals = [v for _, _, nom, emp in curves for v in list(nom) + list(emp)]
     lo = max(0.0, min(all_vals) - 0.05)
     hi = min(1.005, max(all_vals) + 0.02)
-    fig, axes = plt.subplots(1, len(models), figsize=(2.9 * len(models), 3.1),
+    fig, axes = plt.subplots(1, len(models), figsize=(min(7.05, 2.35 * len(models)), 2.7),
                              sharex=True, sharey=True)
     if len(models) == 1:
         axes = [axes]
@@ -446,7 +465,8 @@ def fig7_coverage_vs_shift(outdir: Path, results: str) -> Path | None:
     )
     xpos = {s: i for i, s in enumerate(splits_present)}
 
-    fig, ax = plt.subplots(figsize=(5.0, 3.6))
+    # Final printed size: one REVTeX column (3.4 in).
+    fig, ax = plt.subplots(figsize=(3.4, 3.4))
     ax.axhline(nominal, color="k", lw=1, ls=":", alpha=0.7, label=f"nominal {nominal:g}")
     plotted = False
     for mode, ls in (("matched", "--"), ("transfer", "-")):
@@ -482,8 +502,9 @@ def fig7_coverage_vs_shift(outdir: Path, results: str) -> Path | None:
                   Line2D([], [], color="k", ls="-", label="transfer (cal=full)"),
                   Line2D([], [], color="k", ls=":", label=f"nominal {nominal:g}")])
     # Legend below the axes so it can never sit on top of the coverage lines.
-    ax.legend(handles=handles, frameon=False, fontsize=7, loc="upper center",
-              bbox_to_anchor=(0.5, -0.22), ncol=3)
+    ax.legend(handles=handles, frameon=False, fontsize=6, loc="upper center",
+              bbox_to_anchor=(0.5, -0.28), ncol=2, columnspacing=0.9,
+              handletextpad=0.4)
     ax.grid(True, alpha=0.3)
     return _save(fig, outdir, "fig07_coverage_vs_shift")
 
@@ -507,7 +528,7 @@ def fig8_interval_width(outdir: Path, results: str) -> Path | None:
         (r"$C_D^{\mathrm{int}}$ interval width", "cd_int", "coefficient"),
         (r"$p$ field-band width", "p", "field_quantile"),
     )
-    fig, axes = plt.subplots(1, len(panels), figsize=(4.4 * len(panels), 3.6))
+    fig, axes = plt.subplots(1, len(panels), figsize=(min(7.05, 3.5 * len(panels)), 3.0))
     if len(panels) == 1:
         axes = [axes]
     any_bar = False
@@ -562,20 +583,21 @@ def fig11_active_pool(outdir: Path, results: str) -> Path | None:
         print("TODO fig11: acquisition_ranking.csv missing expected columns")
         return None
 
-    fig, ax = plt.subplots(figsize=(5.4, 3.9))
+    # Half of a full-width composite float (paired with fig11b).
+    fig, ax = plt.subplots(figsize=(3.42, 3.2))
     rng = np.random.default_rng(0)
     jitter = rng.uniform(-0.35, 0.35, size=len(pool))
     # Re in millions so the colorbar needs no "1e6" offset text (which used to
     # collide with the figure title).
     sc = ax.scatter(pool["aoa_deg"] + jitter, pool["acq_score"], c=pool["re"] / 1e6,
-                     cmap="viridis", s=11, alpha=0.45, linewidths=0)
+                     cmap="viridis", s=6, alpha=0.45, linewidths=0)
     # Deterministic per-arm x offsets: the acquisition and variance arms pick
     # overlapping alpha=18 cases, and without the offsets their markers stacked
     # on top of each other.
     arms = (
-        ("selected_acquisition", "acquisition (k=8)", "*", 150, style.OKABE_ITO["vermillion"], -0.55),
-        ("selected_variance", "ensemble variance (k=8)", "^", 65, style.OKABE_ITO["blue"], 0.55),
-        ("selected_random", "random (k=8)", "s", 50, style.OKABE_ITO["grey"], 0.0),
+        ("selected_acquisition", "acquisition (k=8)", "*", 75, style.OKABE_ITO["vermillion"], -0.55),
+        ("selected_variance", "ensemble variance (k=8)", "^", 34, style.OKABE_ITO["blue"], 0.55),
+        ("selected_random", "random (k=8)", "s", 26, style.OKABE_ITO["grey"], 0.0),
     )
     for col, label, marker, size, color, dx in arms:
         sub = pool[pool[col] == 1]
@@ -584,11 +606,14 @@ def fig11_active_pool(outdir: Path, results: str) -> Path | None:
         ax.scatter(sub["aoa_deg"] + dx, sub["acq_score"], marker=marker, s=size,
                    facecolor=color, edgecolor="black", linewidths=0.6, label=label, zorder=5)
     cbar = fig.colorbar(sc, ax=ax)
-    cbar.set_label(r"$\mathrm{Re}\ (\times 10^6)$")
+    cbar.set_label(r"$\mathrm{Re}\ (\times 10^6)$", fontsize=7)
+    cbar.ax.tick_params(labelsize=6.5)
     ax.set_xlabel(r"angle of attack $\alpha$ (deg)")
     ax.set_ylabel("acquisition score $a$")
-    ax.legend(frameon=False, fontsize=7, loc="upper left")
+    ax.legend(frameon=False, fontsize=6, loc="upper left", handletextpad=0.3,
+              borderaxespad=0.2)
     ax.grid(True, alpha=0.3)
+    style.panel_letter(fig, "a")
     return _save(fig, outdir, "fig11_active_pool")
 
 
@@ -608,12 +633,13 @@ def fig11_active_verify(outdir: Path, results: str) -> Path | None:
 
     acc = t[t["status"].isin(["converged", "quasi_steady"])].copy()
     div = t[t["status"] == "diverged"].copy()
-    xlabels = {"gridstudy": "grid\nstudy", "offset": "offset\nreplicas", "random": "random",
-               "variance": "variance", "acquisition": "acquisition"}
+    xlabels = {"gridstudy": "grid", "offset": "offset", "random": "random",
+               "variance": "variance", "acquisition": "acq."}
     order = ["gridstudy", "offset", "random", "variance", "acquisition"]
     xpos = {a: i for i, a in enumerate(order)}
 
-    fig, ax = plt.subplots(figsize=(6.4, 4.2))
+    # Half of a full-width composite float (paired with fig11a).
+    fig, ax = plt.subplots(figsize=(3.42, 3.5))
     # 90% conformal half-width reference band, on the SAME quantity as the y-axis
     # (cd_head). Round-2 fix: the figure previously drew the cd_int half-width under
     # cd_head errors, which disagreed with the reported cd_head coverage.
@@ -623,9 +649,11 @@ def fig11_active_verify(outdir: Path, results: str) -> Path | None:
 
     rng = np.random.default_rng(1)
     plotted_any = False
+    counts = {}
     for arm in order:
         sub = acc[acc["arm"] == arm]
         ndiv = int((div["arm"] == arm).shape[0]) if div.empty else int((div["arm"] == arm).sum())
+        counts[arm] = (len(sub), ndiv)
         for _, r in sub.iterrows():
             err = abs(r["err_cd_head"]) if np.isfinite(r["err_cd_head"]) else np.nan
             if not np.isfinite(err) or err <= 0:
@@ -635,38 +663,43 @@ def fig11_active_verify(outdir: Path, results: str) -> Path | None:
             jit = rng.uniform(-0.16, 0.16)
             col = style.OKABE_ITO["vermillion"] if deep else style.OKABE_ITO["blue"]
             ax.errorbar(xpos[arm] + jit, err, yerr=float(r.get("cd_head_std", 0) or 0),
-                        marker=("s" if deep else "o"), ms=7, capsize=2,
+                        marker=("s" if deep else "o"), ms=5, capsize=1.5,
                         mfc=(col if filled else "white"), mec=col,
                         ecolor=style.OKABE_ITO["grey"], lw=0.8, zorder=5)
             plotted_any = True
-        note = f"acc={len(sub)}" + (f" div={ndiv}" if ndiv else "")
-        ax.annotate(note, (xpos[arm], 0.98), xycoords=("data", "axes fraction"),
-                    xytext=(0, -2), textcoords="offset points", ha="center", va="top",
-                    fontsize=6.5, color="dimgray")
 
     if plotted_any:
         ax.set_yscale("log")
         lo, hi = ax.get_ylim()
-        ax.set_ylim(lo, hi * 3.0)  # headroom so the acc/div annotations clear the top markers
+        ax.set_ylim(lo, hi * 1.4)
     if half is not None:
         ax.axhspan(ax.get_ylim()[0], half, color=style.OKABE_ITO["green"], alpha=0.12, zorder=0)
-        ax.axhline(half, color=style.OKABE_ITO["green"], lw=1.0, ls="--",
-                   label=f"90% conformal half-width ({half:.2g})")
-    # legend proxies for the regime marker
+        ax.axhline(half, color=style.OKABE_ITO["green"], lw=1.0, ls="--")
+    # Legend proxies for the regime marker. Labels stay SHORT and the legend
+    # sits in the verified-empty lower-right region (no accepted point below
+    # the half-width band for the variance/acquisition columns): at column
+    # width the old center-right legend sat on the random-column data.
     from matplotlib.lines import Line2D
     proxies = [Line2D([0], [0], marker="o", color="w", mec=style.OKABE_ITO["blue"],
                       mfc=style.OKABE_ITO["blue"], label="moderate-α accepted"),
                Line2D([0], [0], marker="s", color="w", mec=style.OKABE_ITO["vermillion"],
-                      mfc=style.OKABE_ITO["vermillion"], label="α=18° (post-stall) accepted")]
+                      mfc=style.OKABE_ITO["vermillion"], label="post-stall accepted")]
     if half is not None:
         proxies.append(Line2D([0], [0], color=style.OKABE_ITO["green"], ls="--",
-                              label=f"90% conformal half-width ({half:.2g})"))
+                              label="90% half-width"))
 
+    # Per-arm accepted/non-settling counts go into the tick labels: as tiny
+    # in-axes annotations they crammed against the panel edge and each other
+    # at column width (caught by the reader, not the QA pass).
     ax.set_xticks(list(xpos.values()))
-    ax.set_xticklabels([xlabels[a] for a in order])
+    ax.set_xticklabels(
+        [f"{xlabels[a]}\n{counts.get(a, (0, 0))[0]}/{counts.get(a, (0, 0))[1]}"
+         for a in order], fontsize=6.5)
     ax.set_ylabel(r"$|C_D^{\mathrm{head}} - C_D^{\mathrm{Fluent,corr}}|$")
-    ax.legend(handles=proxies, frameon=False, fontsize=7, loc="center right")
+    ax.legend(handles=proxies, frameon=False, fontsize=6, loc="lower right",
+              handletextpad=0.3, borderaxespad=0.3)
     ax.grid(True, axis="y", which="both", alpha=0.3)
+    style.panel_letter(fig, "b")
     return _save(fig, outdir, "fig11_active_verify")
 
 

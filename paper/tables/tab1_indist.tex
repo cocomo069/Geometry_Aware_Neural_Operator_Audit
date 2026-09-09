@@ -1,8 +1,8 @@
 \caption{In-distribution accuracy, consistency and cost (AirfRANS \texttt{full}). $C_D$ MAE and FSC $C_D$ in units of $10^{-3}$. Neural rows are seed mean $\pm$ std over the 3--5 committed seeds; baselines are deterministic single fits. Bold marks the best neural model per column. The symmetry residual is Figure~\ref{fig:symmetry}.}
 \label{tab:indist}
-\footnotesize
-\setlength{\tabcolsep}{3pt}
-\begin{adjustbox}{max width=\linewidth}
+\providecommand{\tblfont}{\footnotesize}%
+\tblfont
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{lrrrrrr}
 \toprule
 model & $p$ rel-$L_2$ & $\tau_w$ rel-$L_2$ & $C_D$ MAE & $C_D$ $\rho$ & FSC $C_D$ & GPU-h \\
@@ -14,4 +14,3 @@ Ridge & 1.42 & 1.16 & 1.6 & 0.902 & 6.04 & 0 \\
 Constant & 1.42 & 1.16 & 3.42 & -- & 6.3 & 0 \\
 \bottomrule
 \end{tabular}
-\end{adjustbox}
