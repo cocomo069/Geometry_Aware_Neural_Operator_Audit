@@ -901,8 +901,8 @@ below test what that is worth.
            and pure-variance selection agree with each other (all 16 picks at
            $\aoa=18\degrees$) and disagree with random. (b) \Mtrans{}
            $|C_D|$ error against the offset-corrected Fluent value on the
-           accepted set, by arm and regime; the annotations count accepted
-           (acc) and non-settling (div) cases per arm, and the shaded band is
+           accepted set, by arm and regime; each tick label carries that
+           arm's accepted/non-settling counts, and the shaded band is
            the 90\% conformal half-width from the \splitname{full}
            calibration study.}
   \label{fig:active_learning}
@@ -1332,6 +1332,13 @@ the geometry gate and per-case viscosity matching are described in
   \input{tables/tab5_selected_cases}
 \end{widetable}
 
+% Flush THIS appendix's four table* floats here, not at the bibliography:
+% a barrier right before \prebib stranded the References heading at a fresh
+% page top, where ltxgrid typesets it full-width and doubles the separator
+% rule. With the flush here, Appendix C and the References heading flow
+% in-column, exactly like the dg_trixi_shock reference paper.
+\FloatBarrier
+
 % =====================================================================
 \section{Compute accounting}
 \label{app:compute}
@@ -1341,10 +1348,24 @@ of the 110 committed per-run \texttt{metrics.json} files that carry
 it (core grid, deep ensembles, data-efficiency sweep and ablations; the two
 non-learned baselines fit in sub-second CPU time and are excluded), so it is
 a lower bound on total compute, not an estimate (Table~\ref{tab:compute}).
+\Mgnn{} dominates the bill despite the fewest runs: $k$NN graph
+reconstruction on every forward pass makes it $7$--$8\times$ costlier per run
+($\sim$2.9\,h against $0.36$/$0.41$\,h for \Mfno/\Mtrans{} on
+\splitname{full}), which is also why it carries $K=3$ ensembles rather than
+$K=5$. Hardware: local gating and development on a Quadro P2000 (4\,GB,
+Pascal); every training run summed above executed on Kaggle's free-tier Tesla
+T4 (16\,GB), chained across interruptible sessions via per-epoch
+checkpointing (\S\ref{sec:models}). The local machine's CPU ran the Fluent
+leg (6 cores). Energy accounting is not available from the Kaggle API.
 
-% Also a widetable: a single-column float cannot share a float page with the
-% table* floats, so as a plain table it stranded alone on a near-blank page.
-\begin{widetable}
+% A plain column float with [!htb], placed after Appendix C's single merged
+% paragraph: after the Appendix B flush there are no pending floats, so it
+% sits in-column and the References heading flows on after it. Kept as a
+% float, never an inline tabular (ltxgrid slices inline booktabs rules at a
+% column bottom), and the paragraph is one block so the underfull column's
+% slack falls to the bottom instead of stretching the section skip.
+\begin{table}[!htb]
+  \centering
   \caption{Training compute, summed over every committed run, by model.}
   \label{tab:compute}
   \tblfont
@@ -1359,23 +1380,7 @@ a lower bound on total compute, not an estimate (Table~\ref{tab:compute}).
     Total        & 61.0 & 110 \\
     \bottomrule
   \end{tabular}
-\end{widetable}
-
-\Mgnn{} dominates the bill despite the fewest runs: $k$NN graph
-reconstruction on every forward pass makes it $7$--$8\times$ costlier per run
-($\sim$2.9\,h against $0.36$/$0.41$\,h for \Mfno/\Mtrans{} on
-\splitname{full}), which is also why it carries $K=3$ ensembles rather than
-$K=5$. Hardware: local gating and development on a Quadro P2000 (4\,GB,
-Pascal); every training run summed above executed on Kaggle's free-tier Tesla
-T4 (16\,GB), chained across interruptible sessions via per-epoch
-checkpointing (\S\ref{sec:models}). The local machine's CPU ran the Fluent
-leg (6 cores). Energy accounting is not available from the Kaggle API.
-
-% Flush every deferred appendix float BEFORE the references start, so no
-% appendix table lands on (or past) the bibliography pages. \FloatBarrier
-% rather than \clearpage: it lets the references flow on after the floats
-% instead of stranding a mostly-blank page in the onecolumn build.
-\FloatBarrier
+\end{table}
 
 \prebib
 \bibliography{refs}

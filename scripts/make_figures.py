@@ -175,12 +175,15 @@ def fig1_schematic(outdir: Path) -> Path | None:
     ax.axis("off")
 
     enc_y0 = 2.75  # bottom of the encoder boxes (compact layout, no dead band)
+    # Subtitles kept SHORT: "GINO-style, SDF-conditioned" filled the box wall
+    # to wall and read as overflowing at print size (research-figures fix
+    # hierarchy rule 1: shorten the text before resizing anything).
     encoders = [
         ("M1  GNN\n$k$NN message passing", style.MODEL_COLORS["gnn"], 1.85),
-        ("M2  SDF-FNO\nGINO-style, SDF-conditioned", style.MODEL_COLORS["sdf_fno"], 5.0),
-        ("M3  Transolver\nphysics attention, slices", style.MODEL_COLORS["transolver"], 8.15),
+        ("M2  SDF-FNO\nGINO-style", style.MODEL_COLORS["sdf_fno"], 5.0),
+        ("M3  Transolver\nphysics attention", style.MODEL_COLORS["transolver"], 8.15),
     ]
-    box_w, box_h = 2.85, 1.0
+    box_w, box_h = 2.95, 1.0
     for label, color, cx in encoders:
         b = FancyBboxPatch((cx - box_w / 2, enc_y0), box_w, box_h,
                             boxstyle="round,pad=0.06,rounding_size=0.08",
@@ -630,8 +633,8 @@ def fig11_active_verify(outdir: Path, results: str) -> Path | None:
 
     acc = t[t["status"].isin(["converged", "quasi_steady"])].copy()
     div = t[t["status"] == "diverged"].copy()
-    xlabels = {"gridstudy": "grid\nstudy", "offset": "offset\nreplicas", "random": "random",
-               "variance": "variance", "acquisition": "acquisition"}
+    xlabels = {"gridstudy": "grid", "offset": "offset", "random": "random",
+               "variance": "variance", "acquisition": "acq."}
     order = ["gridstudy", "offset", "random", "variance", "acquisition"]
     xpos = {a: i for i, a in enumerate(order)}
 
@@ -646,9 +649,11 @@ def fig11_active_verify(outdir: Path, results: str) -> Path | None:
 
     rng = np.random.default_rng(1)
     plotted_any = False
+    counts = {}
     for arm in order:
         sub = acc[acc["arm"] == arm]
         ndiv = int((div["arm"] == arm).shape[0]) if div.empty else int((div["arm"] == arm).sum())
+        counts[arm] = (len(sub), ndiv)
         for _, r in sub.iterrows():
             err = abs(r["err_cd_head"]) if np.isfinite(r["err_cd_head"]) else np.nan
             if not np.isfinite(err) or err <= 0:
@@ -662,15 +667,11 @@ def fig11_active_verify(outdir: Path, results: str) -> Path | None:
                         mfc=(col if filled else "white"), mec=col,
                         ecolor=style.OKABE_ITO["grey"], lw=0.8, zorder=5)
             plotted_any = True
-        note = f"acc={len(sub)}" + (f" div={ndiv}" if ndiv else "")
-        ax.annotate(note, (xpos[arm], 0.98), xycoords=("data", "axes fraction"),
-                    xytext=(0, -2), textcoords="offset points", ha="center", va="top",
-                    fontsize=5.5, color="dimgray")
 
     if plotted_any:
         ax.set_yscale("log")
         lo, hi = ax.get_ylim()
-        ax.set_ylim(lo, hi * 3.0)  # headroom so the acc/div annotations clear the top markers
+        ax.set_ylim(lo, hi * 1.4)
     if half is not None:
         ax.axhspan(ax.get_ylim()[0], half, color=style.OKABE_ITO["green"], alpha=0.12, zorder=0)
         ax.axhline(half, color=style.OKABE_ITO["green"], lw=1.0, ls="--")
@@ -687,8 +688,13 @@ def fig11_active_verify(outdir: Path, results: str) -> Path | None:
         proxies.append(Line2D([0], [0], color=style.OKABE_ITO["green"], ls="--",
                               label="90% half-width"))
 
+    # Per-arm accepted/non-settling counts go into the tick labels: as tiny
+    # in-axes annotations they crammed against the panel edge and each other
+    # at column width (caught by the reader, not the QA pass).
     ax.set_xticks(list(xpos.values()))
-    ax.set_xticklabels([xlabels[a] for a in order], fontsize=6.5)
+    ax.set_xticklabels(
+        [f"{xlabels[a]}\n{counts.get(a, (0, 0))[0]}/{counts.get(a, (0, 0))[1]}"
+         for a in order], fontsize=6.5)
     ax.set_ylabel(r"$|C_D^{\mathrm{head}} - C_D^{\mathrm{Fluent,corr}}|$")
     ax.legend(handles=proxies, frameon=False, fontsize=6, loc="lower right",
               handletextpad=0.3, borderaxespad=0.3)
