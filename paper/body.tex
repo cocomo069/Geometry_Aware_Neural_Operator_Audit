@@ -1288,19 +1288,27 @@ that correction is what admitted the two post-stall points of
 \S\ref{sec:fluent_compare}.
 
 \paragraph{Grid-independence study.} NACA0012, $\Rey=3\times10^6$,
-$\aoa=5\degrees$, three levels:
+$\aoa=5\degrees$, three levels (Table~\ref{tab:gridstudy}).
 
-\begin{center}\small
-\begin{tabular}{lrrrr}
-\toprule
-level & cells & $y^+_{\max}$ & $C_D$ (SA) & $C_L$ (SA) \\
-\midrule
-L1 (coarse) & 18{,}796 & 0.87 & 0.011122 & 0.5538 \\
-L2 (medium) & 43{,}008 & 0.59 & 0.010755 & 0.5530 \\
-L3 (fine)   & 96{,}768 & 0.39 & 0.010755 & 0.5521 \\
-\bottomrule
-\end{tabular}
-\end{center}
+% A float, not an inline center tabular: REVTeX's two-column output routine
+% (ltxgrid) displaced the bottom rules of an inline booktabs tabular landing
+% at a column bottom, striking through the last row. Floats are atomic; a
+% widetable so all appendix tables pack together on shared float pages.
+\begin{widetable}
+  \caption{Grid-independence study: NACA0012, $\Rey=3\times10^6$,
+    $\aoa=5\degrees$, SA closure.}
+  \label{tab:gridstudy}
+  \tblfont
+  \begin{tabular}{lrrrr}
+    \toprule
+    level & cells & $y^+_{\max}$ & $C_D$ (SA) & $C_L$ (SA) \\
+    \midrule
+    L1 (coarse) & 18{,}796 & 0.87 & 0.011122 & 0.5538 \\
+    L2 (medium) & 43{,}008 & 0.59 & 0.010755 & 0.5530 \\
+    L3 (fine)   & 96{,}768 & 0.39 & 0.010755 & 0.5521 \\
+    \bottomrule
+  \end{tabular}
+\end{widetable}
 
 $C_D$ moves $3.3\%$ from L1 to L2 and $0.003\%$ from L2 to L3; $C_L$ varies
 under $0.3\%$; $y^+<1$ at every level. The L2-L3 $C_D$ difference sits at the
@@ -1332,21 +1340,26 @@ Every number below is summed directly from the \texttt{train\_time\_s} field
 of the 110 committed per-run \texttt{metrics.json} files that carry
 it (core grid, deep ensembles, data-efficiency sweep and ablations; the two
 non-learned baselines fit in sub-second CPU time and are excluded), so it is
-a lower bound on total compute, not an estimate:
+a lower bound on total compute, not an estimate (Table~\ref{tab:compute}).
 
-\begin{center}\small
-\begin{tabular}{lrr}
-\toprule
-Model & GPU-hours & runs summed \\
-\midrule
-\Mgnn{}      & 42.8 & 32 \\
-\Mfno{}      & 9.8  & 41 \\
-\Mtrans{}    & 8.4  & 37 \\
-\midrule
-Total        & 61.0 & 110 \\
-\bottomrule
-\end{tabular}
-\end{center}
+% Also a widetable: a single-column float cannot share a float page with the
+% table* floats, so as a plain table it stranded alone on a near-blank page.
+\begin{widetable}
+  \caption{Training compute, summed over every committed run, by model.}
+  \label{tab:compute}
+  \tblfont
+  \begin{tabular}{lrr}
+    \toprule
+    Model & GPU-hours & runs summed \\
+    \midrule
+    \Mgnn{}      & 42.8 & 32 \\
+    \Mfno{}      & 9.8  & 41 \\
+    \Mtrans{}    & 8.4  & 37 \\
+    \midrule
+    Total        & 61.0 & 110 \\
+    \bottomrule
+  \end{tabular}
+\end{widetable}
 
 \Mgnn{} dominates the bill despite the fewest runs: $k$NN graph
 reconstruction on every forward pass makes it $7$--$8\times$ costlier per run
@@ -1356,8 +1369,13 @@ $K=5$. Hardware: local gating and development on a Quadro P2000 (4\,GB,
 Pascal); every training run summed above executed on Kaggle's free-tier Tesla
 T4 (16\,GB), chained across interruptible sessions via per-epoch
 checkpointing (\S\ref{sec:models}). The local machine's CPU ran the Fluent
-leg (6 cores). Energy accounting is not available from the Kaggle API and is
-not reported.
+leg (6 cores). Energy accounting is not available from the Kaggle API.
+
+% Flush every deferred appendix float BEFORE the references start, so no
+% appendix table lands on (or past) the bibliography pages. \FloatBarrier
+% rather than \clearpage: it lets the references flow on after the floats
+% instead of stranding a mostly-blank page in the onecolumn build.
+\FloatBarrier
 
 \prebib
 \bibliography{refs}

@@ -673,23 +673,25 @@ def fig11_active_verify(outdir: Path, results: str) -> Path | None:
         ax.set_ylim(lo, hi * 3.0)  # headroom so the acc/div annotations clear the top markers
     if half is not None:
         ax.axhspan(ax.get_ylim()[0], half, color=style.OKABE_ITO["green"], alpha=0.12, zorder=0)
-        ax.axhline(half, color=style.OKABE_ITO["green"], lw=1.0, ls="--",
-                   label=f"90% conformal half-width ({half:.2g})")
-    # legend proxies for the regime marker
+        ax.axhline(half, color=style.OKABE_ITO["green"], lw=1.0, ls="--")
+    # Legend proxies for the regime marker. Labels stay SHORT and the legend
+    # sits in the verified-empty lower-right region (no accepted point below
+    # the half-width band for the variance/acquisition columns): at column
+    # width the old center-right legend sat on the random-column data.
     from matplotlib.lines import Line2D
     proxies = [Line2D([0], [0], marker="o", color="w", mec=style.OKABE_ITO["blue"],
                       mfc=style.OKABE_ITO["blue"], label="moderate-α accepted"),
                Line2D([0], [0], marker="s", color="w", mec=style.OKABE_ITO["vermillion"],
-                      mfc=style.OKABE_ITO["vermillion"], label="α=18° (post-stall) accepted")]
+                      mfc=style.OKABE_ITO["vermillion"], label="post-stall accepted")]
     if half is not None:
         proxies.append(Line2D([0], [0], color=style.OKABE_ITO["green"], ls="--",
-                              label=f"90% conformal half-width ({half:.2g})"))
+                              label="90% half-width"))
 
     ax.set_xticks(list(xpos.values()))
     ax.set_xticklabels([xlabels[a] for a in order], fontsize=6.5)
     ax.set_ylabel(r"$|C_D^{\mathrm{head}} - C_D^{\mathrm{Fluent,corr}}|$")
-    ax.legend(handles=proxies, frameon=False, fontsize=5.5, loc="center right",
-              handletextpad=0.3, borderaxespad=0.2)
+    ax.legend(handles=proxies, frameon=False, fontsize=6, loc="lower right",
+              handletextpad=0.3, borderaxespad=0.3)
     ax.grid(True, axis="y", which="both", alpha=0.3)
     style.panel_letter(fig, "b")
     return _save(fig, outdir, "fig11_active_verify")
