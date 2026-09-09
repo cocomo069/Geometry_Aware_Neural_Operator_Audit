@@ -175,19 +175,28 @@ def fig2_cp_profiles(
         return None
 
     present = [s for s in splits if s in sims]
-    fig, axes = plt.subplots(1, len(present), figsize=(3.4 * len(present), 3.4), sharey=True)
-    if len(present) == 1:
-        axes = [axes]
+    # 2x2 at the final printed full width (7.05 in): the old 1x4 was drawn
+    # 13.6 in wide and shrank to ~51% on insertion, leaving ~4.5 pt text
+    # (research-figures: draw at final width, at most two panels per row).
+    ncols = min(2, len(present))
+    nrows = (len(present) + ncols - 1) // ncols
+    fig, axgrid = plt.subplots(nrows, ncols, figsize=(7.05, 2.6 * nrows),
+                               sharey=True, squeeze=False)
+    axes = axgrid.ravel()
+    for ax in axes[len(present):]:
+        ax.set_visible(False)
     for ax, split in zip(axes, present):
         sim = sims[split]
         _profile_panel(ax, sim, style.split_color(split), band=sim["n_members"] > 1)
         k = sim["n_members"]
-        ax.set_title(f"{style.split_label(split)}\n(K={k})", fontsize=8)
+        ax.set_title(f"{style.split_label(split)} (K={k})", fontsize=8.5)
     # Invert the shared c_p axis exactly once (aerodynamics convention,
     # suction up); see the note in _profile_panel.
     if not axes[0].yaxis_inverted():
         axes[0].invert_yaxis()
-    axes[0].set_ylabel(r"$c_p$ (suction up)")
+    for ri in range(nrows):
+        axgrid[ri][0].set_ylabel(r"$c_p$ (suction up)")
+    fig.tight_layout(rect=(0, 0, 1, 0.95))
     handles = [
         plt.Line2D([], [], color="black", lw=1.3, label="truth"),
         plt.Line2D([], [], color=style.model_color(model), lw=1.3, label="prediction ($\\pm 1$ std)"),
@@ -195,7 +204,7 @@ def fig2_cp_profiles(
         plt.Line2D([], [], color="black", lw=1.3, ls="--", label="lower surface"),
     ]
     fig.legend(handles=handles, loc="upper center", ncol=4, frameon=False,
-               bbox_to_anchor=(0.5, 1.08))
+               bbox_to_anchor=(0.5, 1.0))
     return _save(fig, outdir, "fig02_cp_profiles")
 
 
@@ -228,7 +237,7 @@ def fig3_surface_fields(
     # on the same scale by construction), the error panel keeps its own. The
     # old version drew three tall colorbars per row -- two of them identical --
     # and left most of the canvas as whitespace.
-    fig, axes = plt.subplots(len(rows), 3, figsize=(9.0, 1.7 * len(rows)),
+    fig, axes = plt.subplots(len(rows), 3, figsize=(7.05, 1.35 * len(rows)),
                              squeeze=False, constrained_layout=True)
     for ri, (split, sim) in enumerate(rows):
         x, y = sim["x"], sim["y"]

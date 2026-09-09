@@ -66,3 +66,6 @@ paper/*.blg
 paper/*.fls
 paper/*.fdb_latexmk
 paper/*.toc
+paper/single_column.pdf
+paper/two_column.pdf
+paper/*Notes.bib

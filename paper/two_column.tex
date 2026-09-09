@@ -1,0 +1,10 @@
+% two_column.tex -- two-column (reprint) variant. Build:
+%   latexmk -pdf -interaction=nonstopmode -halt-on-error two_column.tex
+\documentclass[aps,superscriptaddress,amsmath,amssymb,floatfix,longbibliography,nofootinbib,reprint]{revtex4-2}
+\input{preamble_shared}
+% Per-variant hook: two-column REVTeX does NOT auto-print a References
+% heading, so this wrapper supplies it. Defined here, never in body.tex.
+\newcommand{\prebib}{\section*{References}}
+\begin{document}
+\input{body}
+\end{document}

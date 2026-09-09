@@ -266,6 +266,17 @@ def save_figure(
     return written
 
 
+def panel_letter(fig: Figure, letter: str) -> None:
+    """Stamp "(a)" style panel lettering into the top-left corner of a figure.
+
+    Used by figures that are placed side by side as one composite float in the
+    paper (REVTeX has no subcaption support), so the letter must live inside
+    the image itself, per the research-figures skill.
+    """
+    fig.text(0.02, 0.98, f"({letter})", ha="left", va="top",
+             fontsize=9, fontweight="bold")
+
+
 def annotate_todo(ax, message: str) -> None:
     """Stamp an empty panel with why it is empty, instead of shipping a lie."""
     ax.text(

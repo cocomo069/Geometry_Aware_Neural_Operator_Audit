@@ -1,0 +1,69 @@
+% preamble_shared.tex -- loaded by BOTH wrappers (single_column.tex,
+% two_column.tex). House rules (latex-paper-build skill): no natbib (REVTeX
+% owns citations and loads it itself), no references heading here (the
+% wrappers supply \prebib), hyperref LAST, column count is a class option in
+% the wrapper, never set here.
+
+% ---------------------------------------------------------------------------
+% Packages (amsmath/amssymb come in via class options; loading order matters
+% only for hyperref, which must be last)
+% ---------------------------------------------------------------------------
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{siunitx}
+\usepackage{adjustbox}   % last-resort shrink for the widest appendix table only
+
+\input{macros}
+
+% ---------------------------------------------------------------------------
+% Figure widths -- MACROS, never \newlength (page geometry is not finalized
+% in the preamble; a length set here bakes in zero width and the figure
+% silently vanishes). Figures are DRAWN at these final widths and inserted at
+% 100%: column figures at 3.4 in (= REVTeX reprint \columnwidth of 246 pt),
+% full-width figures at 7.05 in (= the 510 pt text block).
+% ---------------------------------------------------------------------------
+% \figw is the true column width in the two-column build, but capped near the
+% drawn size in the onecolumn build, where \columnwidth is the full 510 pt
+% text block and an uncapped insert blew a 3.4 in figure up to ~207% (18 pt
+% effective text). The \ifdim must sit at the USE site: REVTeX's ltxgrid has
+% not narrowed \columnwidth yet at \AtBeginDocument, so a cap resolved there
+% misfires and shrinks two-column figures instead (verified: both column
+% figures came out 260 pt in the reprint build).
+\newcommand{\figw}{\ifdim\columnwidth>4.5in 3.6in\else\columnwidth\fi}
+\newcommand{\figwidthfull}{\linewidth} % full-width figures (figure*)
+
+% ---------------------------------------------------------------------------
+% Wide floats. In the two-column build these span both columns; in the
+% onecolumn build figure*/table* degrade gracefully to full width. Defined
+% here once so body.tex never carries variant-conditional text.
+% ---------------------------------------------------------------------------
+\newenvironment{widefigure}{\begin{figure*}[tb]\centering}{\end{figure*}}
+\newenvironment{widetable}{\begin{table*}[tb]\centering}{\end{table*}}
+
+% ---------------------------------------------------------------------------
+% Float-page fixes: pin floats to the top of float-only pages (kills the big
+% white band above a lone float). Both registers, since the document mixes
+% figure and figure*.
+% ---------------------------------------------------------------------------
+\makeatletter
+\setlength{\@fptop}{0pt}
+\setlength{\@fpbot}{0pt plus 1fil}
+\setlength{\@dblfptop}{0pt}
+\setlength{\@dblfpbot}{0pt plus 1fil}
+\makeatother
+
+% ---------------------------------------------------------------------------
+% Table font hook -- generated table bodies call \tblfont instead of naming a
+% size, so a variant can retune every table in one line after this \input.
+% ---------------------------------------------------------------------------
+\providecommand{\tblfont}{\footnotesize}
+
+% Let paragraph breaking stretch a little before producing overfull lines.
+\emergencystretch=1.5em
+
+% hyperref LAST
+\PassOptionsToPackage{hyphens}{url}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+% Let \url break at underscores too (the repository name is underscore-heavy).
+\expandafter\def\expandafter\UrlBreaks\expandafter{\UrlBreaks\do\_}

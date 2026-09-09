@@ -32,12 +32,13 @@ def referenced_tables(body: str) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--variant", default="main", choices=["main", "main_twocol"])
+    ap.add_argument("--variant", default="single_column",
+                    choices=["single_column", "two_column"])
     args = ap.parse_args(argv)
 
     body = (PAPER / "body.tex").read_text(encoding="utf-8")
-    files = [f"{args.variant}.tex", "body.tex", "macros.tex", "refs.bib",
-             f"{args.variant}.bbl"]
+    files = [f"{args.variant}.tex", "body.tex", "preamble_shared.tex",
+             "macros.tex", "refs.bib", f"{args.variant}.bbl"]
     files += referenced_tables(body)
     files += referenced_figures(body)
 

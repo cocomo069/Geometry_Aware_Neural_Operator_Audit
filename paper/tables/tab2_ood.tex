@@ -1,8 +1,8 @@
 \caption{Out-of-distribution field $p$ rel-$L_2$ by split (seed mean $\pm$ std where multiple seeds exist; \texttt{scarce}/\texttt{combined} are single-seed). Bold marks the best neural model per split.}
 \label{tab:ood}
-\footnotesize
-\setlength{\tabcolsep}{3pt}
-\begin{adjustbox}{max width=\linewidth}
+\providecommand{\tblfont}{\footnotesize}%
+\tblfont
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{lrrrrrr}
 \toprule
 model & full (in-dist.) & scarce & Reynolds shift & AoA shift & shape family & combined \\
@@ -14,4 +14,3 @@ Ridge & 1.42 & 1.4 & 1.62 & 1.18 & 1.6 & 1.86 \\
 Constant & 1.42 & 1.4 & 1.62 & 1.18 & 1.6 & 1.86 \\
 \bottomrule
 \end{tabular}
-\end{adjustbox}

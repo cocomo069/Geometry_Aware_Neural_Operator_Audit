@@ -1,9 +1,19 @@
 % =====================================================================
-% body.tex -- shared content for the single-column (main.tex) and
-% two-column (main_twocol.tex) builds. Everything except the preamble
-% and \maketitle lives here. Wide floats use the widefigure/widetable
-% environments, which each wrapper maps to figure/table or figure*/table*.
+% body.tex -- the ENTIRE paper, shared verbatim by both wrappers
+% (single_column.tex, two_column.tex). No \documentclass here, no
+% variant-conditional text. Wide floats use the widefigure/widetable
+% environments defined in preamble_shared.tex (figure*/table*).
 % =====================================================================
+
+\title{Geometry-Aware Neural Operator Surrogates for External Aerodynamics:
+       Physics Consistency, Out-of-Distribution Generalization
+       and Calibrated Uncertainty}
+
+\author{T.~Amin}
+\email{taimooramin419@gmail.com}
+\noaffiliation
+
+\date{\today}
 
 \begin{abstract}
 Geometry-conditioned neural surrogates are reported as accurate on external
@@ -38,6 +48,9 @@ steady solver itself struggles; on the two post-stall cases the solver could
 settle, the surrogates were off by $640$--$900\times$ their in-distribution
 error. Code, split manifests, and the Fluent verification set are released.
 \end{abstract}
+
+\maketitle
+\raggedbottom
 
 % =====================================================================
 \section{Introduction}
@@ -102,7 +115,7 @@ derived coefficients has not been systematically reported.
 \end{enumerate}
 
 \begin{widefigure}
-  \includegraphics[width=0.92\linewidth]{figures/fig01_schematic.pdf}
+  \includegraphics[width=\figwidthfull]{figures/fig01_schematic.pdf}
   \caption{The three geometry-encoding families and the shared evaluation
            protocol beneath them: only the encoder changes; the force
            integration, the six OOD splits, the ensembling/conformal
@@ -372,8 +385,8 @@ family other than the ones used (\S\ref{sec:discussion}).
 
 \paragraph{Splits.} Six splits, all derived deterministically from the dataset's
 own manifest or from parsed design parameters, each with train/calibration/test
-lists that are asserted programmatically disjoint
-(\texttt{tests/test\_splits\_no\_leakage.py}): in-distribution \splitname{full}
+lists whose pairwise disjointness is asserted by a dedicated test
+(\texttt{test\_splits\_no\_leakage.py}): in-distribution \splitname{full}
 (the official random 800/200 train/test task); \splitname{scarce} (the official
 low-data task, 200 training cases, evaluated on \splitname{full}'s test set,
 which has no test set of its own); Reynolds shift \splitname{reynolds} (train
@@ -395,7 +408,7 @@ calibration (\S\ref{sec:models}).
     calibration and test, mean shift magnitude $\shift$ over the test set
     (\S\ref{sec:protocol}), source dataset, and licence.}
   \label{tab:datacard}
-  \small
+  \tblfont
   \begin{tabular}{lrrrlll}
     \toprule
     Split & Train & Cal & Test & $\bar\shift$ & Source & Licence \\
@@ -450,7 +463,7 @@ subject to the reflected-camber caveat of \S\ref{sec:protocol}.
 \end{widetable}
 
 \begin{widefigure}
-  \includegraphics[width=\linewidth]{figures/fig02_cp_profiles.pdf}
+  \includegraphics[width=\figwidthfull]{figures/fig02_cp_profiles.pdf}
   \caption{\Mtrans{} surface $\cp$, prediction versus truth, on one
            representative test simulation per split (full, Reynolds shift,
            AoA shift, shape family), upper and lower surface shown separately
@@ -470,7 +483,7 @@ subject to the reflected-camber caveat of \S\ref{sec:protocol}.
 \end{widefigure}
 
 \begin{widefigure}
-  \includegraphics[width=\linewidth]{figures/fig03_surface_fields.pdf}
+  \includegraphics[width=\figwidthfull]{figures/fig03_surface_fields.pdf}
   \caption{\Mtrans{} surface $\cp$ scattered on the airfoil contour: truth,
            prediction, and absolute error (truth and prediction share one
            colour scale per row) for one in-distribution simulation
@@ -544,7 +557,7 @@ a good field, but not a field whose integral \emph{is} that drag, which is
 exactly what \S\ref{sec:results_consistency} quantifies.
 
 \begin{widefigure}
-  \includegraphics[width=\linewidth]{figures/fig04_error_vs_shift.pdf}
+  \includegraphics[width=\figwidthfull]{figures/fig04_error_vs_shift.pdf}
   \caption{Error versus distribution shift, one panel per OOD axis (scarcity,
            Reynolds, angle of attack, shape family/combined), one line per
            model, splits ordered along each axis; seed means over the
@@ -594,7 +607,7 @@ score of \S\ref{sec:activelearning}.
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=0.9\linewidth]{figures/fig05_fsc_scatter.pdf}
+  \includegraphics[width=\figw]{figures/fig05_fsc_scatter.pdf}
   \caption{Force self-consistency: $\Cdint$ against $\Cdhead$, one point per
            test simulation pooled over all three models, coloured by split,
            against the identity line (axes zoomed to the central 99\% of the
@@ -605,7 +618,7 @@ score of \S\ref{sec:activelearning}.
 \end{figure}
 
 \begin{widefigure}
-  \includegraphics[width=0.75\linewidth]{figures/fig10_symmetry.pdf}
+  \includegraphics[width=\figwidthfull]{figures/fig10_symmetry.pdf}
   \caption{Symmetry (mirror-equivariance) residual per model, by split; no
            augmentation is applied in any run reported here
            (\S\ref{sec:models}). The residual grows from \splitname{full} to
@@ -725,7 +738,7 @@ next to its interval width.
 \end{widetable}
 
 \begin{widefigure}
-  \includegraphics[width=\linewidth]{figures/fig06_reliability.pdf}
+  \includegraphics[width=\figwidthfull]{figures/fig06_reliability.pdf}
   \caption{Reliability of the matched-calibration $\Cdint$ band, one panel per
            model, coloured by split, largest available $K$ per model ($K=3$
            \Mgnn, $K=5$ otherwise): empirical versus nominal coverage at
@@ -735,7 +748,7 @@ next to its interval width.
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=0.95\linewidth]{figures/fig07_coverage_vs_shift.pdf}
+  \includegraphics[width=\figw]{figures/fig07_coverage_vs_shift.pdf}
   \caption{Empirical coverage at nominal 90\% against split, matched (dashed)
            versus transfer-calibrated on \splitname{full} (solid), normalized
            score. Neither calibration choice reliably dominates once the split
@@ -745,7 +758,7 @@ next to its interval width.
 \end{figure}
 
 \begin{widefigure}
-  \includegraphics[width=0.9\linewidth]{figures/fig08_interval_width.pdf}
+  \includegraphics[width=\figwidthfull]{figures/fig08_interval_width.pdf}
   \caption{Interval-width distributions, in-distribution versus OOD, matched
            calibration: mean interval width at nominal 90\%, per model and
            split, for the $\Cdint$ coefficient band and the pointwise field
@@ -762,7 +775,7 @@ next to its interval width.
 
 All three models were retrained at training-set sizes
 $\{25, 50, 100, 200, 400\}$, three seeds each (45 runs), with the full-700
-point reused from the core grid: Figure~\ref{fig:data_efficiency}. Two things
+point reused from the core grid: Figure~\ref{fig:efficiency}(a). Two things
 are worth the reader's attention. First, \textbf{\Mtrans{} is the most
 accurate at every size}, including 25 airfoils (field $p$ rel-$L_2$ $0.271$
 vs.\ $0.292$ for \Mgnn{} and $0.325$ for \Mfno): the transformer's advantage
@@ -779,7 +792,7 @@ clean \Mtrans{} $>$ \Mfno{} $>$ \Mgnn{} hierarchy of
 \S\ref{sec:results_id} is therefore a large-data statement, and a
 single-budget ranking under-specifies method choice for data-scarce practice.
 
-The cost axis (Figure~\ref{fig:pareto}) makes the deployment reading direct:
+The cost axis (Figure~\ref{fig:efficiency}(b)) makes the deployment reading direct:
 at the full budget \Mgnn{} is Pareto-dominated, costing $2.4$--$3.2$ GPU-h
 across seeds (mean $2.9$) to
 train against \Mfno's $0.36$\,h and \Mtrans's $0.41$\,h (the $k$NN
@@ -789,17 +802,18 @@ below $n\approx100$ (above) is the one place this study found it earning its
 cost.
 
 \begin{widefigure}
-  \begin{subfigure}{0.48\linewidth}\centering
+  \begin{minipage}{0.48\figwidthfull}\centering
     \includegraphics[width=\linewidth]{figures/fig09_data_efficiency.pdf}
-    \caption{Data efficiency (log-log, seed bands).}\label{fig:data_efficiency}
-  \end{subfigure}\hfill
-  \begin{subfigure}{0.48\linewidth}\centering
+  \end{minipage}\hfill
+  \begin{minipage}{0.48\figwidthfull}\centering
     \includegraphics[width=\linewidth]{figures/fig12_cost_accuracy.pdf}
-    \caption{Cost versus accuracy at the full budget.}\label{fig:pareto}
-  \end{subfigure}
-  \caption{Data efficiency and the cost--accuracy trade-off. The \Mfno/\Mgnn{}
+  \end{minipage}
+  \caption{Data efficiency and the cost--accuracy trade-off. (a) Data
+           efficiency: field error against training-set size, log-log, seed
+           bands shaded. The \Mfno/\Mgnn{}
            curves cross around $n\approx70$--$100$ training simulations;
-           \Mtrans{} leads everywhere.}
+           \Mtrans{} leads everywhere. (b) Cost versus accuracy at the full
+           training budget.}
   \label{fig:efficiency}
 \end{widefigure}
 
@@ -858,7 +872,7 @@ farthest-point diversity in normalised design space. Three arms of $k=8$:
 acquisition, pure ensemble variance, and random. Scorer: the \Mtrans{} $K=5$
 \splitname{full} ensemble.
 
-Figure~\ref{fig:active_pool} shows the result before any solver runs: the
+Figure~\ref{fig:active_learning}(a) shows the result before any solver runs: the
 acquisition and variance arms place \textbf{all 16 of their picks at
 $\aoa=18\degrees$}, the top of the pool grid and well past both the training
 range ($12.5\degrees$) and the dataset's own envelope ($\sim$15$\degrees$),
@@ -876,14 +890,12 @@ extrapolation, which here coincides with hard physics, and the solver runs
 below test what that is worth.
 
 \begin{widefigure}
-  \begin{subfigure}{0.48\linewidth}\centering
+  \begin{minipage}{0.48\figwidthfull}\centering
     \includegraphics[width=\linewidth]{figures/fig11_active_pool.pdf}
-    \caption{Pool and the three arms.}\label{fig:active_pool}
-  \end{subfigure}\hfill
-  \begin{subfigure}{0.48\linewidth}\centering
+  \end{minipage}\hfill
+  \begin{minipage}{0.48\figwidthfull}\centering
     \includegraphics[width=\linewidth]{figures/fig11_active_verify.pdf}
-    \caption{Surrogate error by arm on the accepted set.}\label{fig:active_verify}
-  \end{subfigure}
+  \end{minipage}
   \caption{Active learning: (a) the 630-candidate pool against $\aoa$,
            coloured by $\Rey$, with the three $k{=}8$ arms marked; acquisition
            and pure-variance selection agree with each other (all 16 picks at
@@ -999,7 +1011,7 @@ controlled offset replicas the surrogate sits inside its band in 15 of 18
 model-case pairs, but on the random arm coverage is 3/6 (\Mgnn) and 0/6
 (\Mfno, \Mtrans). So the score does separate hard from easy, the conformal
 bands do not survive the trip, and both statements are visible at once in
-Figure~\ref{fig:active_verify}.
+Figure~\ref{fig:active_learning}(b).
 
 \begin{widetable}
   \input{tables/tab5_summary}
@@ -1188,8 +1200,6 @@ given seed, split manifest and code commit, modulo GPU reduction-order
 non-associativity, which is not controlled across the local Quadro P2000 and
 the cloud Tesla T4.
 
-\bibliography{refs}
-
 \appendix
 
 % =====================================================================
@@ -1204,7 +1214,7 @@ reproduces the values needed to rebuild a run without opening those files.
 \begin{widetable}
   \caption{Architecture hyperparameters, one column per model.}
   \label{tab:app_arch}
-  \footnotesize
+  \tblfont
   \setlength{\tabcolsep}{3.5pt}
   \begin{adjustbox}{max width=\linewidth}
   \begin{tabular}{lccc}
@@ -1229,7 +1239,7 @@ reproduces the values needed to rebuild a run without opening those files.
     (\S\ref{sec:models}) and identical in every core-grid, ensemble,
     data-efficiency and baseline-comparable run.}
   \label{tab:app_train}
-  \footnotesize
+  \tblfont
   \begin{tabular}{ll}
     \toprule
     Optimiser & Adam, weight decay 0 \\
@@ -1319,7 +1329,7 @@ the geometry gate and per-case viscosity matching are described in
 \label{app:compute}
 % =====================================================================
 Every number below is summed directly from the \texttt{train\_time\_s} field
-of the 110 committed \texttt{results/<run\_id>/metrics.json} files that carry
+of the 110 committed per-run \texttt{metrics.json} files that carry
 it (core grid, deep ensembles, data-efficiency sweep and ablations; the two
 non-learned baselines fit in sub-second CPU time and are excluded), so it is
 a lower bound on total compute, not an estimate:
@@ -1348,3 +1358,6 @@ T4 (16\,GB), chained across interruptible sessions via per-epoch
 checkpointing (\S\ref{sec:models}). The local machine's CPU ran the Fluent
 leg (6 cores). Energy accounting is not available from the Kaggle API and is
 not reported.
+
+\prebib
+\bibliography{refs}

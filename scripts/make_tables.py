@@ -49,6 +49,28 @@ def _fmt(x: float | None, prec: int = 4) -> str:
     return f"{x:.{prec}g}"
 
 
+def _fmt_tex(x: float | None, prec: int = 4) -> str:
+    """Like _fmt, but e-notation becomes proper math: 1.5e-05 -> $1.5\\times10^{-5}$.
+
+    Raw e-notation in a printed table is the numbers-and-macros trap from the
+    latex-paper-build skill; every LaTeX cell routes through this."""
+    s = _fmt(x, prec)
+    if s == DASH or "e" not in s:
+        return s
+    mant, expo = s.split("e")
+    if mant in ("1", "-1"):
+        sign = "-" if mant.startswith("-") else ""
+        return rf"${sign}10^{{{int(expo)}}}$"
+    return rf"${mant}\times10^{{{int(expo)}}}$"
+
+
+#: Standard opening for every generated LaTeX table body: the per-variant font
+#: hook from preamble_shared (standalone-safe via \providecommand), plus a
+#: slightly tightened column separation.
+TBL_FONT = [r"\providecommand{\tblfont}{\footnotesize}%", r"\tblfont",
+            r"\setlength{\tabcolsep}{4pt}"]
+
+
 def _best_mask(series: pd.Series, lower_is_better: bool) -> pd.Series:
     vals = pd.to_numeric(series, errors="coerce")
     if vals.notna().sum() == 0:
@@ -96,14 +118,15 @@ def _render(df: pd.DataFrame, cols, row_key: str, *, caption: str, label: str,
         vals = pd.to_numeric(df.loc[df[row_key] == rk, col], errors="coerce").dropna()
         if vals.empty:
             return DASH
-        s = _fmt(vals.mean() * scale, prec)
+        fmt1 = _fmt_tex if latex else _fmt
+        s = fmt1(vals.mean() * scale, prec)
         if s == DASH:
             return DASH
         if len(vals) > 1:
             sd = vals.std(ddof=1) * scale
             if np.isfinite(sd) and sd > 0:
                 sep = r"\,$\pm$\," if latex else " ± "
-                s = f"{s}{sep}{_fmt(sd, 2)}"
+                s = f"{s}{sep}{fmt1(sd, 2)}"
         if col in best and rk in best[col].index and bool(best[col].get(rk, False)):
             s = (r"\textbf{" + s + "}") if latex else f"**{s}**"
         return s
@@ -116,12 +139,11 @@ def _render(df: pd.DataFrame, cols, row_key: str, *, caption: str, label: str,
     if latex:
         ncol = len(headers)
         out = [f"\\caption{{{caption}}}", f"\\label{{{label}}}",
-               r"\footnotesize", r"\setlength{\tabcolsep}{3pt}",
-               r"\begin{adjustbox}{max width=\linewidth}",
+               *TBL_FONT,
                r"\begin{tabular}{l" + "r" * (ncol - 1) + "}",
                r"\toprule", " & ".join(headers) + r" \\", r"\midrule"]
         out += [" & ".join(r) + r" \\" for r in body]
-        out += [r"\bottomrule", r"\end{tabular}", r"\end{adjustbox}", ""]
+        out += [r"\bottomrule", r"\end{tabular}", ""]
         return "\n".join(out)
     # markdown
     out = ["| " + " | ".join(headers) + " |",
@@ -200,12 +222,11 @@ def table2_ood(df: pd.DataFrame, outdir: Path) -> list[Path]:
                      r"(seed mean $\pm$ std where multiple seeds exist; "
                      r"\texttt{scarce}/\texttt{combined} are single-seed). "
                      r"Bold marks the best neural model per split.}",
-                     r"\label{tab:ood}", r"\footnotesize", r"\setlength{\tabcolsep}{3pt}",
-                     r"\begin{adjustbox}{max width=\linewidth}",
+                     r"\label{tab:ood}", *TBL_FONT,
                      r"\begin{tabular}{l" + "r" * len(splits) + "}",
                      r"\toprule", " & ".join(headers) + r" \\", r"\midrule"]
             lines += [" & ".join(r) + r" \\" for r in body]
-            lines += [r"\bottomrule", r"\end{tabular}", r"\end{adjustbox}", ""]
+            lines += [r"\bottomrule", r"\end{tabular}", ""]
             txt = "\n".join(lines)
         else:
             lines = ["| " + " | ".join(headers) + " |",
@@ -290,13 +311,17 @@ def table3_calibration(results: str, outdir: Path) -> list[Path]:
     headers = ["model", "split", "cov@.8", "cov@.9", "cov@.95",
                "cov@.9 (tr)", "width@.9", "ECE"]
     rows = []
+    prev_model = None
     for model, split in keys:
         m_rep = matched.get((model, split))
         t_rep = transfer.get((model, split))
         m_rec = _pick_record(m_rep, "cd_int", "coefficient")
         t_rec = _pick_record(t_rep, "cd_int", "coefficient")
+        # House style (reference paper T2): the group key prints once per
+        # block, continuation rows leave it empty, blocks separated by
+        # \addlinespace. The markdown mirror keeps the full label per row.
         rows.append([
-            style.model_label(model),
+            style.model_label(model), model != prev_model,
             style.split_label(split),
             _fmt(_lv(m_rec, 0.8, "coverage"), 3),
             _fmt(_lv(m_rec, 0.9, "coverage"), 3),
@@ -305,6 +330,7 @@ def table3_calibration(results: str, outdir: Path) -> list[Path]:
             _fmt(_lv(m_rec, 0.9, "mean_width"), 3),
             _fmt(None if m_rec is None else m_rec.get("ece"), 3),
         ])
+        prev_model = model
 
     caption = (r"Split-conformal calibration of the integrated drag band "
                r"($C_D^{\mathrm{int}}$, normalized score, largest available ensemble: "
@@ -317,17 +343,20 @@ def table3_calibration(results: str, outdir: Path) -> list[Path]:
     for ext, latex in (("tex", True), ("md", False)):
         if latex:
             lines = [f"\\caption{{{caption}}}",
-                     r"\label{tab:calibration}", r"\footnotesize",
-                     r"\setlength{\tabcolsep}{3.5pt}",
+                     r"\label{tab:calibration}", *TBL_FONT,
                      r"\begin{tabular}{ll" + "r" * (len(headers) - 2) + "}",
                      r"\toprule", " & ".join(headers) + r" \\", r"\midrule"]
-            lines += [" & ".join(r) + r" \\" for r in rows]
+            for r in rows:
+                label, first, rest = r[0], r[1], r[2:]
+                if first and lines[-1] != r"\midrule":
+                    lines.append(r"\addlinespace")
+                lines.append(" & ".join([label if first else ""] + rest) + r" \\")
             lines += [r"\bottomrule", r"\end{tabular}", ""]
             txt = "\n".join(lines)
         else:
             lines = ["| " + " | ".join(headers) + " |",
                      "| " + " | ".join("---" for _ in headers) + " |"]
-            lines += ["| " + " | ".join(r) + " |" for r in rows]
+            lines += ["| " + " | ".join([r[0]] + r[2:]) + " |" for r in rows]
             txt = "\n".join(lines) + "\n"
         outdir.mkdir(parents=True, exist_ok=True)
         p = outdir / f"tab3_calibration.{ext}"
@@ -483,8 +512,7 @@ def table5_fluent(results: str, outdir: Path) -> list[Path]:
         r"calibration study. In-dist.\ MAE is the same model's $C_D$ MAE on the "
         r"\texttt{full} test set.}",
         r"\label{tab:fluent_verify}",
-        r"\small",
-        r"\setlength{\tabcolsep}{4pt}",
+        *TBL_FONT,
         r"\begin{tabular}{lrrrrrr}",
         r"\toprule",
         r"& \multicolumn{4}{c}{moderate $\alpha$ ($-6\degrees..12\degrees$)} & "
@@ -523,8 +551,7 @@ def table5_fluent(results: str, outdir: Path) -> list[Path]:
         r"C_D^{\mathrm{AirfRANS}}$; every replica reads high, so the mean offset "
         r"$\bar{\delta}_{C_D}$ is subtracted before any surrogate comparison.}",
         r"\label{tab:fluent_offset}",
-        r"\small",
-        r"\setlength{\tabcolsep}{4pt}",
+        *TBL_FONT,
         r"\begin{tabular}{lrrrrrr}",
         r"\toprule",
         r"replica (NACA) & $C_D^{\mathrm{AF}}$ & $C_L^{\mathrm{AF}}$ & $C_D^{\mathrm{SA}}$ & "
@@ -538,8 +565,11 @@ def table5_fluent(results: str, outdir: Path) -> list[Path]:
         off_lines.append(" & ".join([label] + [str(c) for c in r[1:7]]) + r" \\")
     if osum and "sa" in osum:
         s = osum["sa"]
+        # Footer as a \multicolumn so its long label cannot widen column 1
+        # (a widened first column stretched the whole table with a visible
+        # gap band in the two-column build).
         off_lines += [r"\midrule",
-                      f"mean $\\pm$ s (SA, n={s['n']}) & & & & & "
+                      f"\\multicolumn{{5}}{{r}}{{mean $\\pm$ s (SA, n={s['n']}):}} & "
                       f"{s['dbar_cd']:+.2g} $\\pm$ {s['s_cd']:.2g} & \\\\"]
     off_lines += [r"\bottomrule", r"\end{tabular}", ""]
     (outdir / "tab5_offset.tex").write_text("\n".join(off_lines), encoding="utf-8")
@@ -552,8 +582,7 @@ def table5_fluent(results: str, outdir: Path) -> list[Path]:
         r"std of the coefficient head; cov@90 flags whether \Mtrans{} lands inside "
         r"its 90\% conformal interval.}",
         r"\label{tab:fluent_cases}",
-        r"\footnotesize",
-        r"\setlength{\tabcolsep}{3pt}",
+        *TBL_FONT,
         r"\begin{adjustbox}{max width=\linewidth}",
         r"\begin{tabular}{llrrlrrrrl}",
         r"\toprule",
@@ -638,7 +667,7 @@ def table4_ablation(results: str, outdir: Path) -> list[Path]:
         r"force-consistency loss ($\lamF$): the physics term cuts the residual it "
         r"penalises (FSC) at a cost in in-distribution field accuracy.}",
         r"\label{tab:ablations}",
-        r"\small",
+        *TBL_FONT,
         r"\begin{tabular}{lrr}",
         r"\multicolumn{3}{l}{(a) \Mfno{} geometry conditioning ($p$ rel-$L_2$)} \\",
         r"\toprule",
